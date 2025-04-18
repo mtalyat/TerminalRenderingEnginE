@@ -801,7 +801,138 @@ TREE_String TREE_Key_GetString(TREE_Key key)
 	case TREE_KEY_ESCAPE: return "ESCAPE";
 	case TREE_KEY_SPACE: return "SPACE";
 	case TREE_KEY_EXCLAMATION: return "EXCLAMATION";
-
+	case TREE_KEY_DOUBLE_QUOTE: return "DOUBLE QUOTE";
+	case TREE_KEY_HASH: return "HASH";
+	case TREE_KEY_DOLLAR: return "DOLLAR";
+	case TREE_KEY_PERCENT: return "PERCENT";
+	case TREE_KEY_AMPERSAND: return "AMPERSAND";
+	case TREE_KEY_SINGLE_QUOTE: return "SINGLE QUOTE";
+	case TREE_KEY_LEFT_PARENTHESIS: return "LEFT PARENTHESIS";
+	case TREE_KEY_RIGHT_PARENTHESIS: return "RIGHT PARENTHESIS";
+	case TREE_KEY_ASTERISK: return "ASTERISK";
+	case TREE_KEY_PLUS: return "PLUS";
+	case TREE_KEY_COMMA: return "COMMA";
+	case TREE_KEY_MINUS: return "MINUS";
+	case TREE_KEY_PERIOD: return "PERIOD";
+	case TREE_KEY_SLASH: return "SLASH";
+	case TREE_KEY_0: return "ZERO";
+	case TREE_KEY_1: return "ONE";
+	case TREE_KEY_2: return "TWO";
+	case TREE_KEY_3: return "THREE";
+	case TREE_KEY_4: return "FOUR";
+	case TREE_KEY_5: return "FIVE";
+	case TREE_KEY_6: return "SIX";
+	case TREE_KEY_7: return "SEVEN";
+	case TREE_KEY_8: return "EIGHT";
+	case TREE_KEY_9: return "NINE";
+	case TREE_KEY_COLON: return "COLON";
+	case TREE_KEY_SEMICOLON: return "SEMICOLON";
+	case TREE_KEY_LESS_THAN: return "LESS THAN";
+	case TREE_KEY_EQUAL: return "EQUAL";
+	case TREE_KEY_GREATER_THAN: return "GREATER THAN";
+	case TREE_KEY_QUESTION: return "QUESTION";
+	case TREE_KEY_AT: return "AT";
+	case TREE_KEY_A: return "A";
+	case TREE_KEY_B: return "B";
+	case TREE_KEY_C: return "C";
+	case TREE_KEY_D: return "D";
+	case TREE_KEY_E: return "E";
+	case TREE_KEY_F: return "F";
+	case TREE_KEY_G: return "G";
+	case TREE_KEY_H: return "H";
+	case TREE_KEY_I: return "I";
+	case TREE_KEY_J: return "J";
+	case TREE_KEY_K: return "K";
+	case TREE_KEY_L: return "L";
+	case TREE_KEY_M: return "M";
+	case TREE_KEY_N: return "N";
+	case TREE_KEY_O: return "O";
+	case TREE_KEY_P: return "P";
+	case TREE_KEY_Q: return "Q";
+	case TREE_KEY_R: return "R";
+	case TREE_KEY_S: return "S";
+	case TREE_KEY_T: return "T";
+	case TREE_KEY_U: return "U";
+	case TREE_KEY_V: return "V";
+	case TREE_KEY_W: return "W";
+	case TREE_KEY_X: return "X";
+	case TREE_KEY_Y: return "Y";
+	case TREE_KEY_Z: return "Z";
+	case TREE_KEY_LEFT_BRACKET: return "LEFT BRACKET";
+	case TREE_KEY_BACKSLASH: return "BACKSLASH";
+	case TREE_KEY_RIGHT_BRACKET: return "RIGHT BRACKET";
+	case TREE_KEY_CARET: return "CARET";
+	case TREE_KEY_UNDERSCORE: return "UNDERSCORE";
+	case TREE_KEY_GRAVE_ACCENT: return "ACCENT";
+	case TREE_KEY_a: return "a";
+	case TREE_KEY_b: return "b";
+	case TREE_KEY_c: return "c";
+	case TREE_KEY_d: return "d";
+	case TREE_KEY_e: return "e";
+	case TREE_KEY_f: return "f";
+	case TREE_KEY_g: return "g";
+	case TREE_KEY_h: return "h";
+	case TREE_KEY_i: return "i";
+	case TREE_KEY_j: return "j";
+	case TREE_KEY_k: return "k";
+	case TREE_KEY_l: return "l";
+	case TREE_KEY_m: return "m";
+	case TREE_KEY_n: return "n";
+	case TREE_KEY_o: return "o";
+	case TREE_KEY_p: return "p";
+	case TREE_KEY_q: return "q";
+	case TREE_KEY_r: return "r";
+	case TREE_KEY_s: return "s";
+	case TREE_KEY_t: return "t";
+	case TREE_KEY_u: return "u";
+	case TREE_KEY_v: return "v";
+	case TREE_KEY_w: return "w";
+	case TREE_KEY_x: return "x";
+	case TREE_KEY_y: return "y";
+	case TREE_KEY_z: return "z";
+	case TREE_KEY_LEFT_CURLY_BRACE: return "LEFT CURLY BRACE";
+	case TREE_KEY_PIPE: return "PIPE";
+	case TREE_KEY_RIGHT_CURLY_BRACE: return "RIGHT CURLY BRACE";
+	case TREE_KEY_TILDE: return "TILDE";
+	case TREE_KEY_DELETE: return "DELETE";
+	case TREE_KEY_UP: return "UP";
+	case TREE_KEY_DOWN: return "DOWN";
+	case TREE_KEY_LEFT: return "LEFT";
+	case TREE_KEY_RIGHT: return "RIGHT";
+	case TREE_KEY_PAGE_UP: return "PAGE UP";
+	case TREE_KEY_PAGE_DOWN: return "PAGE DOWN";
+	case TREE_KEY_HOME: return "HOME";
+	case TREE_KEY_END: return "END";
+	case TREE_KEY_INSERT: return "INSERT";
+	case TREE_KEY_F1: return "F1";
+	case TREE_KEY_F2: return "F2";
+	case TREE_KEY_F3: return "F3";
+	case TREE_KEY_F4: return "F4";
+	case TREE_KEY_F5: return "F5";
+	case TREE_KEY_F6: return "F6";
+	case TREE_KEY_F7: return "F7";
+	case TREE_KEY_F8: return "F8";
+	case TREE_KEY_F9: return "F9";
+	case TREE_KEY_F10: return "F10";
+	case TREE_KEY_F11: return "F11";
+	case TREE_KEY_F12: return "F12";
+	case TREE_KEY_NUMPAD_0: return "NUMPAD 0";
+	case TREE_KEY_NUMPAD_1: return "NUMPAD 1";
+	case TREE_KEY_NUMPAD_2: return "NUMPAD 2";
+	case TREE_KEY_NUMPAD_3: return "NUMPAD 3";
+	case TREE_KEY_NUMPAD_4: return "NUMPAD 4";
+	case TREE_KEY_NUMPAD_5: return "NUMPAD 5";
+	case TREE_KEY_NUMPAD_6: return "NUMPAD 6";
+	case TREE_KEY_NUMPAD_7: return "NUMPAD 7";
+	case TREE_KEY_NUMPAD_8: return "NUMPAD 8";
+	case TREE_KEY_NUMPAD_9: return "NUMPAD 9";
+	case TREE_KEY_NUMPAD_MULTIPLY: return "NUMPAD MULTIPLY";
+	case TREE_KEY_NUMPAD_ADD: return "NUMPAD ADD";
+	case TREE_KEY_NUMPAD_SUBTRACT: return "NUMPAD SUBTRACT";
+	case TREE_KEY_NUMPAD_DECIMAL: return "NUMPAD DECIMAL";
+	case TREE_KEY_NUMPAD_DIVIDE: return "NUMPAD DIVIDE";
+	case TREE_KEY_NUMPAD_ENTER: return"NUMPAD ENTER";
+	default: return "";
 	};
 }
 
@@ -851,4 +982,214 @@ TREE_Key TREE_Input_GetKey()
 
 	// no key pressed
 	return TREE_KEY_NULL;
+}
+
+TREE_ErrorCode TREE_Control_Init(TREE_Control* control, TREE_Offset offset, TREE_Extent extent)
+{
+	// validate
+	if (!control)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	// allocate data
+	TREE_ErrorCode result = TREE_Image_Init(&control->image, extent);
+	if (result)
+	{
+		return result;
+	}
+
+	// set data
+	control->type = TREE_CONTROL_TYPE_NONE;
+	control->focused = TREE_FALSE;
+	control->offset = offset;
+	control->data = NULL;
+
+	return TREE_OK;
+}
+
+void TREE_Control_Free(TREE_Control* control)
+{
+	if (!control)
+	{
+		return;
+	}
+
+	TREE_Image_Free(&control->image);
+	control->type = TREE_CONTROL_TYPE_NONE;
+	control->focused = TREE_FALSE;
+	control->offset.x = 0;
+	control->offset.y = 0;
+
+	if (control->data)
+	{
+		free(control->data);
+		control->data = NULL;
+	}
+}
+
+TREE_ErrorCode TREE_Control_Label_Init(TREE_Control* control, TREE_Offset offset, TREE_String text, TREE_ColorPair colorPair)
+{
+	// validate
+	if (!text)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	// calculate extent
+	TREE_Size textLength = strlen(text);
+	TREE_Extent extent = { (TREE_UInt)textLength, 1 };
+
+	// init
+	TREE_ErrorCode result = TREE_Control_Init(control, offset, extent);
+	if (result)
+	{
+		return result;
+	}
+
+	// allocate data
+	control->data = (TREE_Char*)malloc((textLength + 1) * sizeof(TREE_Char));
+	if (!control->data)
+	{
+		TREE_Control_Free(control);
+		return TREE_ERROR_ALLOC;
+	}
+
+	// set data
+	control->type = TREE_CONTROL_TYPE_LABEL;
+	memcpy(control->data, text, (textLength + 1) * sizeof(TREE_Char));
+
+	// draw string
+	TREE_Offset origin = { 0, 0 };
+	TREE_Image_DrawString(
+		&control->image,
+		origin,
+		text,
+		colorPair);
+
+	return TREE_OK;
+}
+
+TREE_ErrorCode TREE_Control_Label_SetText(TREE_Control* control, TREE_String text, TREE_ColorPair colorPair)
+{
+	// validate
+	if (!control || !text)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	// allocate data
+	TREE_Size textLength = strlen(text);
+	TREE_Char* newText = (TREE_Char*)malloc((textLength + 1) * sizeof(TREE_Char));
+	if (!newText)
+	{
+		return TREE_ERROR_ALLOC;
+	}
+	
+	// set data
+	memcpy(newText, text, (textLength + 1) * sizeof(TREE_Char));
+	if (control->data)
+	{
+		free(control->data);
+	}
+	control->data = newText;
+
+	// draw string
+	TREE_Offset origin = { 0, 0 };
+	TREE_Image_DrawString(
+		&control->image,
+		origin,
+		text,
+		colorPair);
+
+	return TREE_OK;
+}
+
+TREE_String TREE_Control_Label_GetText(TREE_Control* control)
+{
+	if (!control || !control->data)
+	{
+		return NULL;
+	}
+
+	return (TREE_String)control->data;
+}
+
+TREE_ErrorCode TREE_Application_Init(TREE_Application* application, TREE_Surface* surface, TREE_Size capacity)
+{
+	// validate
+	if (!application || !surface)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+	if (capacity == 0)
+	{
+		return TREE_ERROR_ARG_OUT_OF_RANGE;
+	}
+
+	// allocate data
+	application->controls = (TREE_Control**)malloc(capacity * sizeof(TREE_Control*));
+	if (!application->controls)
+	{
+		return TREE_ERROR_ALLOC;
+	}
+
+	// set data
+	application->controlsCapacity = capacity;
+	application->controlsSize = 0;
+	application->surface = surface;
+
+	return TREE_OK;
+}
+
+void TREE_Application_Free(TREE_Application* application)
+{
+	if (!application)
+	{
+		return;
+	}
+
+	if (application->controls)
+	{
+		free(application->controls);
+		application->controls = NULL;
+	}
+
+	application->controlsCapacity = 0;
+	application->controlsSize = 0;
+	application->surface = NULL;
+}
+
+TREE_ErrorCode TREE_Application_AddControl(TREE_Application* application, TREE_Control* control)
+{
+	// validate
+	if (!application || !control)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+	if (application->controlsSize == application->controlsCapacity)
+	{
+		return TREE_ERROR;
+	}
+
+	// add to the application
+	application->controls[application->controlsSize] = control;
+	application->controlsSize++;
+
+	return TREE_OK;
+}
+
+TREE_ErrorCode TREE_Application_Run(TREE_Application* application)
+{
+	if (!application)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	while (TREE_TRUE)
+	{
+		break;
+	}
+
+	return TREE_OK;
 }

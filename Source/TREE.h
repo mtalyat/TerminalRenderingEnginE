@@ -5,13 +5,17 @@
 // Constants and Macros              //
 ///////////////////////////////////////
 
+typedef int TREE_Bool;
 typedef int TREE_Int;
 typedef unsigned TREE_UInt;
 typedef unsigned char TREE_Byte;
 typedef char TREE_Char;
 typedef TREE_Char const* TREE_String;
 typedef unsigned long long TREE_Size;
+typedef int(*TREE_Function)();
 
+#define TREE_FALSE 0
+#define TREE_TRUE 1
 #define TREE_COLOR_STRING_LENGTH 6
 
 ///////////////////////////////////////
@@ -290,65 +294,45 @@ typedef enum _TREE_Key
 	TREE_KEY_TILDE = 126,
 	TREE_KEY_DELETE = 127,
 
-	TREE_KEY_UP = 1'128,
-	TREE_KEY_DOWN = 1'129,
-	TREE_KEY_LEFT = 1'130,
-	TREE_KEY_RIGHT = 1'131,
-	TREE_KEY_PAGE_UP = 1'132,
-	TREE_KEY_PAGE_DOWN = 1'133,
-	TREE_KEY_HOME = 1'134,
-	TREE_KEY_END = 1'135,
-	TREE_KEY_INSERT = 1'136,
+	TREE_KEY_UP = 1'000,
+	TREE_KEY_DOWN = 1'001,
+	TREE_KEY_LEFT = 1'002,
+	TREE_KEY_RIGHT = 1'003,
+	TREE_KEY_PAGE_UP = 1'004,
+	TREE_KEY_PAGE_DOWN = 1'005,
+	TREE_KEY_HOME = 1'006,
+	TREE_KEY_END = 1'007,
+	TREE_KEY_INSERT = 1'008,
 
-	TREE_KEY_F1 = 2'137,
-	TREE_KEY_F2 = 2'138,
-	TREE_KEY_F3 = 2'139,
-	TREE_KEY_F4 = 2'140,
-	TREE_KEY_F5 = 2'141,
-	TREE_KEY_F6 = 2'142,
-	TREE_KEY_F7 = 2'143,
-	TREE_KEY_F8 = 2'144,
-	TREE_KEY_F9 = 2'145,
-	TREE_KEY_F10 = 2'146,
-	TREE_KEY_F11 = 2'147,
-	TREE_KEY_F12 = 2'148,
-	TREE_KEY_F13 = 2'149,
-	TREE_KEY_F14 = 2'150,
-	TREE_KEY_F15 = 2'151,
-	TREE_KEY_F16 = 2'152,
-	TREE_KEY_F17 = 2'153,
-	TREE_KEY_F18 = 2'154,
-	TREE_KEY_F19 = 2'155,
-	TREE_KEY_F20 = 2'156,
-	TREE_KEY_F21 = 2'157,
-	TREE_KEY_F22 = 2'158,
-	TREE_KEY_F23 = 2'159,
-	TREE_KEY_F24 = 2'160,
-	TREE_KEY_F25 = 2'161,
-	TREE_KEY_F26 = 2'162,
-	TREE_KEY_F27 = 2'163,
-	TREE_KEY_F28 = 2'164,
-	TREE_KEY_F29 = 2'165,
-	TREE_KEY_F30 = 2'166,
-	TREE_KEY_F31 = 2'167,
-	TREE_KEY_F32 = 2'168,
+	TREE_KEY_F1 = 2'000,
+	TREE_KEY_F2 = 2'001,
+	TREE_KEY_F3 = 2'002,
+	TREE_KEY_F4 = 2'003,
+	TREE_KEY_F5 = 2'004,
+	TREE_KEY_F6 = 2'005,
+	TREE_KEY_F7 = 2'006,
+	TREE_KEY_F8 = 2'007,
+	TREE_KEY_F9 = 2'008,
+	TREE_KEY_F10 = 2'009,
+	TREE_KEY_F11 = 2'010,
+	TREE_KEY_F12 = 2'011,
 
-	TREE_KEY_NUMPAD_0 = 3'171,
-	TREE_KEY_NUMPAD_1 = 3'172,
-	TREE_KEY_NUMPAD_2 = 3'173,
-	TREE_KEY_NUMPAD_3 = 3'174,
-	TREE_KEY_NUMPAD_4 = 3'175,
-	TREE_KEY_NUMPAD_5 = 3'176,
-	TREE_KEY_NUMPAD_6 = 3'177,
-	TREE_KEY_NUMPAD_7 = 3'178,
-	TREE_KEY_NUMPAD_8 = 3'179,
-	TREE_KEY_NUMPAD_9 = 3'180,
-	TREE_KEY_NUMPAD_MULTIPLY = 3'181,
-	TREE_KEY_NUMPAD_ADD = 3'182,
-	TREE_KEY_NUMPAD_SUBTRACT = 3'183,
-	TREE_KEY_NUMPAD_DECIMAL = 3'184,
-	TREE_KEY_NUMPAD_DIVIDE = 3'185,
-	TREE_KEY_NUMPAD_ENTER = 3'186,
+	TREE_KEY_NUMPAD_0 = 3'000,
+	TREE_KEY_NUMPAD_1 = 3'001,
+	TREE_KEY_NUMPAD_2 = 3'002,
+	TREE_KEY_NUMPAD_3 = 3'003,
+	TREE_KEY_NUMPAD_4 = 3'004,
+	TREE_KEY_NUMPAD_5 = 3'005,
+	TREE_KEY_NUMPAD_6 = 3'006,
+	TREE_KEY_NUMPAD_7 = 3'007,
+	TREE_KEY_NUMPAD_8 = 3'008,
+	TREE_KEY_NUMPAD_9 = 3'009,
+	TREE_KEY_NUMPAD_MULTIPLY = 3'010,
+	TREE_KEY_NUMPAD_ADD = 3'011,
+	TREE_KEY_NUMPAD_SUBTRACT = 3'012,
+	TREE_KEY_NUMPAD_DECIMAL = 3'013,
+	TREE_KEY_NUMPAD_DIVIDE = 3'014,
+	TREE_KEY_NUMPAD_ENTER = 3'015,
 } TREE_Key;
 
 TREE_Char TREE_Key_GetChar(TREE_Key key);
@@ -360,6 +344,64 @@ TREE_String TREE_Key_GetString(TREE_Key key);
 ///////////////////////////////////////
 
 TREE_Key TREE_Input_GetKey();
+
+///////////////////////////////////////
+// Control                           //
+///////////////////////////////////////
+
+typedef enum _TREE_ControlType
+{
+	TREE_CONTROL_TYPE_NONE,
+	TREE_CONTROL_TYPE_LABEL
+} TREE_ControlType;
+
+typedef struct _TREE_Control
+{
+	TREE_ControlType type;
+	TREE_Bool focused;
+	TREE_Offset offset;
+	TREE_Image image;
+	void* data;
+} TREE_Control;
+
+TREE_ErrorCode TREE_Control_Init(TREE_Control* control, TREE_Offset offset, TREE_Extent extent);
+
+void TREE_Control_Free(TREE_Control* control);
+
+///////////////////////////////////////
+// Control: Label                    //
+///////////////////////////////////////
+
+TREE_ErrorCode TREE_Control_Label_Init(TREE_Control* control, TREE_Offset offset, TREE_String text, TREE_ColorPair colorPair);
+
+TREE_ErrorCode TREE_Control_Label_SetText(TREE_Control* control, TREE_String text, TREE_ColorPair colorPair);
+
+TREE_String TREE_Control_Label_GetText(TREE_Control* control);
+
+///////////////////////////////////////
+// Control: ?????                    //
+///////////////////////////////////////
+
+///////////////////////////////////////
+// Application                       //
+///////////////////////////////////////
+
+typedef struct _TREE_Application
+{
+	TREE_Control** controls;
+	TREE_Size controlsSize;
+	TREE_Size controlsCapacity;
+
+	TREE_Surface* surface;
+} TREE_Application;
+
+TREE_ErrorCode TREE_Application_Init(TREE_Application* application, TREE_Surface* surface, TREE_Size capacity);
+
+void TREE_Application_Free(TREE_Application* application);
+
+TREE_ErrorCode TREE_Application_AddControl(TREE_Application* application, TREE_Control* control);
+
+TREE_ErrorCode TREE_Application_Run(TREE_Application* application);
 
 ///////////////////////////////////////
 //                                   //

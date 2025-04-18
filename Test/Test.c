@@ -13,7 +13,7 @@ int main()
 			continue;
 		}
 
-		printf("Pressed: %d\n", key);
+		printf("Pressed: %d->%c (%s)\n", key, TREE_Key_GetChar(key), TREE_Key_GetString(key));
 
 		if (key == TREE_KEY_ESCAPE)
 		{
