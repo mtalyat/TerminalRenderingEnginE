@@ -55,7 +55,7 @@ int main()
 
 	// create the single control
 	TREE_Control_LabelData labelData;
-	result = TREE_Control_LabelData_Init(&labelData, "Hello world!", TREE_ColorPair_Create(TREE_COLOR_BRIGHT_WHITE, TREE_COLOR_RED));
+	result = TREE_Control_LabelData_Init(&labelData, "Hello world!", TREE_ALIGNMENT_TOPLEFT, TREE_ColorPair_Create(TREE_COLOR_BRIGHT_WHITE, TREE_COLOR_RED));
 	if (result)
 	{
 		printf("Failed to initialize label data: %s\n", TREE_Result_ToString(result));

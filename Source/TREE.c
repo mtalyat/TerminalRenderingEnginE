@@ -1440,7 +1440,7 @@ TREE_Result TREE_Control_Dirty(TREE_Control* control)
 	return TREE_OK;
 }
 
-TREE_Result TREE_Control_LabelData_Init(TREE_Control_LabelData* data, TREE_String text, TREE_ColorPair normalColor)
+TREE_Result TREE_Control_LabelData_Init(TREE_Control_LabelData* data, TREE_String text, TREE_Alignment alignment, TREE_ColorPair normalColor)
 {
 	// validate
 	if (!data || !text)
@@ -1460,6 +1460,7 @@ TREE_Result TREE_Control_LabelData_Init(TREE_Control_LabelData* data, TREE_Strin
 	// set data
 	memcpy(data->text, text, textSize);
 	data->text[textLength] = '\0'; // null terminator
+	data->alignment = alignment;
 	data->normalColor = normalColor;
 
 	return TREE_OK;
@@ -1475,6 +1476,7 @@ void TREE_Control_LabelData_Free(TREE_Control_LabelData* data)
 
 	// free data
 	TREE_DELETE(data->text);
+	data->alignment = TREE_ALIGNMENT_NONE;
 	data->normalColor = TREE_ColorPair_CreateDefault();
 }
 
@@ -1584,54 +1586,145 @@ TREE_Result TREE_Control_Label_EventHandler(TREE_Event const* event)
 			transform->globalRect.extent,
 			pixel
 		);
-		// draw each line of text (as much that will fit)
-		TREE_Size index = 0;
-		TREE_Size textLength = strlen(labelData->text);
-		for (TREE_Size y = 0; y < transform->globalRect.extent.height && index < textLength; ++y)
+
+		// capture each line of text
+		TREE_String text = labelData->text;
+		TREE_Size textLength = strlen(text);
+		TREE_Size maxLines = transform->globalRect.extent.height;
+		TREE_Size maxLineLength = transform->globalRect.extent.width;
+		TREE_Size lineCount = 0;
+		TREE_Char** lines = TREE_NEW_ARRAY(TREE_Char*, maxLines);
+		if (!lines)
 		{
-			// calculate width
-			TREE_Size width = 0;
-			for (TREE_Size i = 0; i < transform->localExtent.width; ++i)
+			return TREE_ERROR_ALLOC;
+		}
+		TREE_Size index = 0;
+		for (TREE_Size i = 0; i < maxLines && index < textLength; i++)
+		{
+			// skip any spaces at the beginning
+			while (text[index] == ' ')
 			{
-				if (labelData->text[index + i] == '\0' || labelData->text[index + i] == '\n')
+				index++;
+			}
+
+			// if at the end
+			if (index >= textLength)
+			{
+				break;
+			}
+
+			// start at end, shrink until a space for word wrapping
+			TREE_Size potentialLength = MIN(maxLineLength, textLength - index);
+			TREE_Size length = potentialLength;
+			for (TREE_Int j = (TREE_Int)length - 1; j >= 0; j--)
+			{
+				if (isspace(text[index + j]))
 				{
 					break;
 				}
-				width++;
+			}
+			if (length < 0)
+			{
+				length = potentialLength;
 			}
 
-			// create substring
-			TREE_Char* sub = TREE_NEW_ARRAY(TREE_Char, width + 1);
-			if (!sub)
+			// create line
+			TREE_Char* line = TREE_NEW_ARRAY(TREE_Char, length);
+			if (!line)
 			{
 				return TREE_ERROR_ALLOC;
 			}
-			memcpy(sub, labelData->text + index, width * sizeof(TREE_Char));
-			sub[width] = '\0'; // null terminator
 
-			// draw that many characters
-			TREE_Offset offset = transform->globalRect.offset;
-			offset.y += (TREE_Int)y;
-			result = TREE_Image_DrawString(
-				target,
-				offset,
-				sub,
-				labelData->normalColor
-			);
-			TREE_DELETE(sub);
-			if (result)
+			// add to lines
+			lines[lineCount] = line;
+			lineCount++;
+
+			// increment index
+			index += length;
+		}
+
+		// draw each line, using the alignment to determine the position within the rect
+		TREE_Alignment alignment = labelData->alignment;
+		TREE_Int top;
+		TREE_Offset offset;
+		if (alignment & TREE_ALIGNMENT_TOP)
+		{
+			top = 0;
+		}
+		else if (alignment & TREE_ALIGNMENT_CENTER)
+		{
+			top = (TREE_Int)(maxLines - lineCount) / 2;
+		}
+		else
+		{
+			top = (TREE_Int)(maxLines - lineCount);
+		}
+		
+		if (alignment & TREE_ALIGNMENT_LEFT)
+		{
+			offset.x = 0;
+			for (TREE_Int i = 0; i < lineCount; i++)
 			{
-				return result;
+				offset.y = top + i;
+				result = TREE_Image_DrawString(
+					target,
+					offset,
+					lines[i],
+					labelData->normalColor
+				);
+				if (result)
+				{
+					break;
+				}
 			}
-
-			// increment index to skip the characters drawn
-			index += width;
-
-			// skip newline, if one was found
-			if (width < transform->globalRect.extent.width)
+		}
+		else if (alignment & TREE_ALIGNMENT_CENTER)
+		{
+			for (TREE_Int i = 0; i < lineCount; i++)
 			{
-				index += 1;
+				offset.x = (TREE_Int)(maxLineLength - strlen(lines[i])) / 2;
+				offset.y = top + i;
+				result = TREE_Image_DrawString(
+					target,
+					offset,
+					lines[i],
+					labelData->normalColor
+				);
+				if (result)
+				{
+					break;
+				}
 			}
+		}
+		else
+		{
+			for (TREE_Int i = 0; i < lineCount; i++)
+			{
+				offset.x = (TREE_Int)(maxLineLength - strlen(lines[i]));
+				offset.y = top + i;
+				result = TREE_Image_DrawString(
+					target,
+					offset,
+					lines[i],
+					labelData->normalColor
+				);
+				if (result)
+				{
+					break;
+				}
+			}
+		}
+
+		// free all the lines
+		for (TREE_Size i = 0; i < lineCount; i++)
+		{
+			TREE_DELETE(lines[i]);
+		}
+		TREE_DELETE(lines);
+
+		if (result)
+		{
+			return result;
 		}
 
 		break;

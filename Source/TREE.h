@@ -560,10 +560,11 @@ TREE_Result TREE_Control_HandleEvent(TREE_Control* control, TREE_Event const* ev
 typedef struct _TREE_Control_LabelData
 {
 	TREE_Char* text;
+	TREE_Alignment alignment;
 	TREE_ColorPair normalColor;
 } TREE_Control_LabelData;
 
-TREE_Result TREE_Control_LabelData_Init(TREE_Control_LabelData* data, TREE_String text, TREE_ColorPair normalColor);
+TREE_Result TREE_Control_LabelData_Init(TREE_Control_LabelData* data, TREE_String text, TREE_Alignment alignment, TREE_ColorPair normalColor);
 
 void TREE_Control_LabelData_Free(TREE_Control_LabelData* data);
 
