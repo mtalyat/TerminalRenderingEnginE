@@ -43,16 +43,6 @@ int main()
 		return 1;
 	}
 
-	// test drawing to the surface
-	TREE_Image_DrawString(
-		&surface.image,
-		(TREE_Offset) {
-		1, 1
-	},
-		"Hello, TREE!",
-		TREE_ColorPair_Create(TREE_COLOR_BRIGHT_WHITE, TREE_COLOR_CYAN)
-	);
-
 	// create the application
 	TREE_Application app;
 	g_application = &app; // Store the application globally for the event handler
@@ -65,7 +55,7 @@ int main()
 
 	// create the single control
 	TREE_Control_LabelData labelData;
-	result = TREE_Control_LabelData_Init(&labelData, "Hello world!", TREE_ColorPair_CreateDefault());
+	result = TREE_Control_LabelData_Init(&labelData, "Hello world!", TREE_ColorPair_Create(TREE_COLOR_BRIGHT_WHITE, TREE_COLOR_RED));
 	if (result)
 	{
 		printf("Failed to initialize label data: %s\n", TREE_Result_ToString(result));
@@ -77,6 +67,15 @@ int main()
 	if (result)
 	{
 		printf("Failed to initialize control: %s\n", TREE_Result_ToString(result));
+		return 1;
+	}
+
+	control.transform.localOffset = (TREE_Offset){ 2, 2 };
+	control.transform.localExtent = (TREE_Extent){ 10, 3 };
+	result = TREE_Transform_Dirty(&control.transform);
+	if (result)
+	{
+		printf("Failed to dirty transform: %s\n", TREE_Result_ToString(result));
 		return 1;
 	}
 

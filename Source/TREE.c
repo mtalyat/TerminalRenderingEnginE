@@ -989,6 +989,13 @@ TREE_Key TREE_Input_GetKey()
 			}
 
 			// normal key
+			switch (ch)
+			{
+			case 13: // return key
+				return TREE_KEY_ENTER;
+			}
+			
+			// default
 			return (TREE_Key)ch;
 		}
 	}
@@ -1566,17 +1573,65 @@ TREE_Result TREE_Control_Label_EventHandler(TREE_Event const* event)
 		TREE_EventData_Draw* drawData = (TREE_EventData_Draw*)event->data;
 		TREE_Image* target = drawData->target;
 
-		// draw the label
+		// draw the rect
 		TREE_Transform* transform = &event->control->transform;
-		TREE_Result result = TREE_Image_DrawString(
+		TREE_Pixel pixel;
+		pixel.character = ' ';
+		pixel.colorPair = labelData->normalColor;
+		TREE_Result result = TREE_Image_FillRect(
 			target,
 			transform->globalRect.offset,
-			labelData->text,
-			labelData->normalColor
+			transform->globalRect.extent,
+			pixel
 		);
-		if (result)
+		// draw each line of text (as much that will fit)
+		TREE_Size index = 0;
+		TREE_Size textLength = strlen(labelData->text);
+		for (TREE_Size y = 0; y < transform->globalRect.extent.height && index < textLength; ++y)
 		{
-			return result;
+			// calculate width
+			TREE_Size width = 0;
+			for (TREE_Size i = 0; i < transform->localExtent.width; ++i)
+			{
+				if (labelData->text[index + i] == '\0' || labelData->text[index + i] == '\n')
+				{
+					break;
+				}
+				width++;
+			}
+
+			// create substring
+			TREE_Char* sub = TREE_NEW_ARRAY(TREE_Char, width + 1);
+			if (!sub)
+			{
+				return TREE_ERROR_ALLOC;
+			}
+			memcpy(sub, labelData->text + index, width * sizeof(TREE_Char));
+			sub[width] = '\0'; // null terminator
+
+			// draw that many characters
+			TREE_Offset offset = transform->globalRect.offset;
+			offset.y += (TREE_Int)y;
+			result = TREE_Image_DrawString(
+				target,
+				offset,
+				sub,
+				labelData->normalColor
+			);
+			TREE_DELETE(sub);
+			if (result)
+			{
+				return result;
+			}
+
+			// increment index to skip the characters drawn
+			index += width;
+
+			// skip newline, if one was found
+			if (width < transform->globalRect.extent.width)
+			{
+				index += 1;
+			}
 		}
 
 		break;
