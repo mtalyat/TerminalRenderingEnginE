@@ -8,33 +8,46 @@
 typedef int TREE_Bool;
 typedef int TREE_Int;
 typedef unsigned TREE_UInt;
+typedef float TREE_Float;
 typedef unsigned char TREE_Byte;
 typedef char TREE_Char;
 typedef TREE_Char const* TREE_String;
 typedef unsigned long long TREE_Size;
-typedef int(*TREE_Function)();
+typedef void* TREE_Data;
 
 #define TREE_FALSE 0
 #define TREE_TRUE 1
 #define TREE_COLOR_STRING_LENGTH 6
 
+#define TREE_NEW(type) ((type*)malloc(sizeof(type)))
+#define TREE_NEW_ARRAY(type, count) ((type*)malloc((count) * sizeof(type)))
+#define TREE_REPLACE(ptr, newPtr) do { free(ptr); ptr = newPtr; } while (0)
+#define TREE_DELETE(ptr) TREE_REPLACE(ptr, NULL)
+#define TREE_COPY(dest, src, type) memcpy(dest, src, sizeof(type))
+#define TREE_COPY_ARRAY(dest, src, type, count) memcpy(dest, src, (count) * sizeof(type))
+
 ///////////////////////////////////////
 // Error Handling                    //
 ///////////////////////////////////////
 
-typedef enum _TREE_ErrorCode
+typedef enum _TREE_Result
 {
 	TREE_OK = 0,
-	TREE_ERROR = 1,
+	TREE_CANCEL = 1,
+	TREE_NOT_IMPLEMENTED = 2,
 
-	TREE_ERROR_ARG_NULL = 100,
-	TREE_ERROR_ARG_OUT_OF_RANGE = 101,
-	TREE_ERROR_ARG_INVALID = 102,
+	TREE_ERROR = 100,
 
-	TREE_ERROR_ALLOC = 200,
-} TREE_ErrorCode;
+	TREE_ERROR_ARG_NULL = 200,
+	TREE_ERROR_ARG_OUT_OF_RANGE = 201,
+	TREE_ERROR_ARG_INVALID = 202,
 
-TREE_String TREE_GetErrorString(TREE_ErrorCode code);
+	TREE_ERROR_ALLOC = 300,
+
+	TREE_ERROR_PRESENTATION = 400,
+} TREE_Result;
+
+TREE_String TREE_Result_ToString(TREE_Result code);
 
 ///////////////////////////////////////
 // Color and ColorPair               //
@@ -90,6 +103,16 @@ typedef struct _TREE_Offset
 } TREE_Offset;
 
 ///////////////////////////////////////
+// Coords                            //
+///////////////////////////////////////
+
+typedef struct _TREE_Coords
+{
+	TREE_Float x;
+	TREE_Float y;
+} TREE_Coords;
+
+///////////////////////////////////////
 // Extent                            //
 ///////////////////////////////////////
 
@@ -98,6 +121,16 @@ typedef struct _TREE_Extent
 	TREE_UInt width;
 	TREE_UInt height;
 } TREE_Extent;
+
+///////////////////////////////////////
+// Rect                              //
+///////////////////////////////////////
+
+typedef struct _TREE_Rect
+{
+	TREE_Offset offset;
+	TREE_Extent extent;
+} TREE_Rect;
 
 ///////////////////////////////////////
 // Pixel                             //
@@ -121,13 +154,13 @@ typedef struct _TREE_Pattern
 	TREE_Pixel* pixels;
 } TREE_Pattern;
 
-TREE_ErrorCode TREE_Pattern_Init(TREE_Pattern* pattern, TREE_UInt size);
+TREE_Result TREE_Pattern_Init(TREE_Pattern* pattern, TREE_UInt size);
 
-TREE_ErrorCode TREE_Pattern_InitFromString(TREE_Pattern* pattern, TREE_String string, TREE_ColorPair colorPair);
+TREE_Result TREE_Pattern_InitFromString(TREE_Pattern* pattern, TREE_String string, TREE_ColorPair colorPair);
 
-TREE_ErrorCode TREE_Pattern_Set(TREE_Pattern* pattern, TREE_UInt index, TREE_Pixel pixel);
+TREE_Result TREE_Pattern_Set(TREE_Pattern* pattern, TREE_UInt index, TREE_Pixel pixel);
 
-TREE_ErrorCode TREE_Pattern_Get(TREE_Pattern* pattern, TREE_UInt index, TREE_Pixel* pixel);
+TREE_Result TREE_Pattern_Get(TREE_Pattern* pattern, TREE_UInt index, TREE_Pixel* pixel);
 
 void TREE_Pattern_Free(TREE_Pattern* pattern);
 
@@ -142,25 +175,25 @@ typedef struct _TREE_Image
 	TREE_ColorPair* colors;
 } TREE_Image;
 
-TREE_ErrorCode TREE_Image_Init(TREE_Image* image, TREE_Extent size);
+TREE_Result TREE_Image_Init(TREE_Image* image, TREE_Extent size);
 
 void TREE_Image_Free(TREE_Image* image);
 
-TREE_ErrorCode TREE_Image_Set(TREE_Image* image, TREE_Offset offset, TREE_Char character, TREE_ColorPair colorPair);
+TREE_Result TREE_Image_Set(TREE_Image* image, TREE_Offset offset, TREE_Char character, TREE_ColorPair colorPair);
 
-TREE_ErrorCode TREE_Image_Get(TREE_Image* image, TREE_Offset offset, TREE_Char* character, TREE_ColorPair* colorPair);
+TREE_Result TREE_Image_Get(TREE_Image* image, TREE_Offset offset, TREE_Char* character, TREE_ColorPair* colorPair);
 
-TREE_ErrorCode TREE_Image_DrawImage(TREE_Image* image, TREE_Offset offset, TREE_Image* other);
+TREE_Result TREE_Image_DrawImage(TREE_Image* image, TREE_Offset offset, TREE_Image* other);
 
-TREE_ErrorCode TREE_Image_DrawString(TREE_Image* image, TREE_Offset offset, TREE_String string, TREE_ColorPair colorPair);
+TREE_Result TREE_Image_DrawString(TREE_Image* image, TREE_Offset offset, TREE_String string, TREE_ColorPair colorPair);
 
-TREE_ErrorCode TREE_Image_DrawLine(TREE_Image* image, TREE_Offset start, TREE_Offset end, TREE_Pattern* pattern);
+TREE_Result TREE_Image_DrawLine(TREE_Image* image, TREE_Offset start, TREE_Offset end, TREE_Pattern* pattern);
 
-TREE_ErrorCode TREE_Image_DrawRect(TREE_Image* image, TREE_Offset start, TREE_Extent size, TREE_Pattern* pattern);
+TREE_Result TREE_Image_DrawRect(TREE_Image* image, TREE_Offset start, TREE_Extent size, TREE_Pattern* pattern);
 
-TREE_ErrorCode TREE_Image_FillRect(TREE_Image* image, TREE_Offset start, TREE_Extent size, TREE_Pixel pixel);
+TREE_Result TREE_Image_FillRect(TREE_Image* image, TREE_Offset start, TREE_Extent size, TREE_Pixel pixel);
 
-TREE_ErrorCode TREE_Image_Clear(TREE_Image* image, TREE_Pixel pixel);
+TREE_Result TREE_Image_Clear(TREE_Image* image, TREE_Pixel pixel);
 
 ///////////////////////////////////////
 // Surface                           //
@@ -172,17 +205,17 @@ typedef struct _TREE_Surface
 	TREE_Char* text;
 } TREE_Surface;
 
-TREE_ErrorCode TREE_Surface_Init(TREE_Surface* surface, TREE_Extent size);
+TREE_Result TREE_Surface_Init(TREE_Surface* surface, TREE_Extent size);
 
 void TREE_Surface_Free(TREE_Surface* surface);
 
-TREE_ErrorCode TREE_Surface_Refresh(TREE_Surface* surface);
+TREE_Result TREE_Surface_Refresh(TREE_Surface* surface);
 
 ///////////////////////////////////////
 // Window                            //
 ///////////////////////////////////////
 
-TREE_ErrorCode TREE_Window_Present(TREE_Surface* surface);
+TREE_Result TREE_Window_Present(TREE_Surface* surface);
 
 TREE_Extent TREE_Window_GetExtent();
 
@@ -335,15 +368,137 @@ typedef enum _TREE_Key
 	TREE_KEY_NUMPAD_ENTER = 3'015,
 } TREE_Key;
 
-TREE_Char TREE_Key_GetChar(TREE_Key key);
+TREE_Char TREE_Key_ToChar(TREE_Key key);
 
-TREE_String TREE_Key_GetString(TREE_Key key);
+TREE_String TREE_Key_ToString(TREE_Key key);
 
 ///////////////////////////////////////
 // Input                             //
 ///////////////////////////////////////
 
 TREE_Key TREE_Input_GetKey();
+
+///////////////////////////////////////
+// Direction                         //
+///////////////////////////////////////
+
+typedef enum _TREE_Direction
+{
+	TREE_DIRECTION_NONE,
+	TREE_DIRECTION_EAST,
+	TREE_DIRECTION_NORTH,
+	TREE_DIRECTION_WEST,
+	TREE_DIRECTION_SOUTH,
+} TREE_Direction;
+
+TREE_Direction TREE_Direction_Opposite(TREE_Direction direction);
+
+///////////////////////////////////////
+// Alignment                         //
+///////////////////////////////////////
+
+typedef enum _TREE_Alignment
+{
+	TREE_ALIGNMENT_NONE = 0x0,
+	TREE_ALIGNMENT_LEFT = 0x1,
+	TREE_ALIGNMENT_CENTER = 0x2,
+	TREE_ALIGNMENT_RIGHT = 0x4,
+	TREE_ALIGNMENT_TOP = 0x8,
+	TREE_ALIGNMENT_MIDDLE = 0x10,
+	TREE_ALIGNMENT_BOTTOM = 0x20,
+
+	TREE_ALIGNMENT_TOPLEFT = (TREE_ALIGNMENT_LEFT | TREE_ALIGNMENT_TOP),
+	TREE_ALIGNMENT_TOPCENTER = (TREE_ALIGNMENT_CENTER | TREE_ALIGNMENT_TOP),
+	TREE_ALIGNMENT_TOPRIGHT = (TREE_ALIGNMENT_RIGHT | TREE_ALIGNMENT_TOP),
+	TREE_ALIGNMENT_MIDDLELEFT = (TREE_ALIGNMENT_LEFT | TREE_ALIGNMENT_MIDDLE),
+	TREE_ALIGNMENT_MIDDLECENTER = (TREE_ALIGNMENT_CENTER | TREE_ALIGNMENT_MIDDLE),
+	TREE_ALIGNMENT_MIDDLERIGHT = (TREE_ALIGNMENT_RIGHT | TREE_ALIGNMENT_MIDDLE),
+	TREE_ALIGNMENT_BOTTOMLEFT = (TREE_ALIGNMENT_LEFT | TREE_ALIGNMENT_BOTTOM),
+	TREE_ALIGNMENT_BOTTOMCENTER = (TREE_ALIGNMENT_CENTER | TREE_ALIGNMENT_BOTTOM),
+	TREE_ALIGNMENT_BOTTOMRIGHT = (TREE_ALIGNMENT_RIGHT | TREE_ALIGNMENT_BOTTOM),
+
+	TREE_ALIGNMENT_VERTICALSTRETCH = (TREE_ALIGNMENT_TOP | TREE_ALIGNMENT_BOTTOM),
+	TREE_ALIGNMENT_HORIZONTALSTRETCH = (TREE_ALIGNMENT_LEFT | TREE_ALIGNMENT_RIGHT),
+	TREE_ALIGNMENT_STRETCH = (TREE_ALIGNMENT_VERTICALSTRETCH | TREE_ALIGNMENT_HORIZONTALSTRETCH),
+
+	TREE_ALIGNMENT_TOPSTRETCH = (TREE_ALIGNMENT_HORIZONTALSTRETCH | TREE_ALIGNMENT_TOP),
+	TREE_ALIGNMENT_MIDDLESTRETCH = (TREE_ALIGNMENT_HORIZONTALSTRETCH | TREE_ALIGNMENT_MIDDLE),
+	TREE_ALIGNMENT_BOTTOMSTRETCH = (TREE_ALIGNMENT_HORIZONTALSTRETCH | TREE_ALIGNMENT_BOTTOM),
+	TREE_ALIGNMENT_LEFTSTRETCH = (TREE_ALIGNMENT_VERTICALSTRETCH | TREE_ALIGNMENT_LEFT),
+	TREE_ALIGNMENT_CENTERSTRETCH = (TREE_ALIGNMENT_VERTICALSTRETCH | TREE_ALIGNMENT_CENTER),
+	TREE_ALIGNMENT_RIGHTSTRETCH = (TREE_ALIGNMENT_VERTICALSTRETCH | TREE_ALIGNMENT_RIGHT),
+
+	TREE_ALIGNMENT_ALL = (TREE_ALIGNMENT_LEFT | TREE_ALIGNMENT_CENTER | TREE_ALIGNMENT_RIGHT |
+		TREE_ALIGNMENT_TOP | TREE_ALIGNMENT_MIDDLE | TREE_ALIGNMENT_BOTTOM),
+} TREE_Alignment;
+
+///////////////////////////////////////
+// Event                             //
+///////////////////////////////////////
+
+typedef enum _TREE_EventType
+{
+	TREE_EVENT_TYPE_NONE = 000,
+	TREE_EVENT_TYPE_DRAW = 001,
+
+	TREE_EVENT_TYPE_INPUT_KEY = 1'000,
+} TREE_EventType;
+
+typedef struct _TREE_Control TREE_Control;
+
+typedef struct _TREE_Event
+{
+	TREE_EventType type;
+	TREE_Control* control;
+	TREE_Data data;
+} TREE_Event;
+
+typedef TREE_Result(*TREE_EventHandler)(TREE_Event const* event);
+
+typedef struct _TREE_EventData_Draw
+{
+	TREE_Image* target;
+} TREE_EventData_Draw;
+
+typedef struct _TREE_EventData_InputKey
+{
+	TREE_Key key;
+} TREE_EventData_InputKey;
+
+///////////////////////////////////////
+// Transform                         //
+///////////////////////////////////////
+
+typedef struct _TREE_Transform TREE_Transform;
+
+typedef struct _TREE_Transform
+{
+	TREE_Offset localOffset;
+	TREE_Coords localPivot;
+	TREE_Extent localExtent;
+	TREE_Alignment localAlignment;
+
+	TREE_Transform* parent;
+	TREE_Transform* child;
+	TREE_Transform* sibling;
+
+	TREE_Bool dirty;
+	TREE_Rect globalRect;
+} TREE_Transform;
+
+TREE_Result TREE_Transform_Init(TREE_Transform* transform, TREE_Offset localOffset, TREE_Coords localPivot, TREE_Extent localExtent, TREE_Alignment localAlignment);
+
+void TREE_Transform_Free(TREE_Transform* transform);
+
+// marks the transform (and children) as dirty
+TREE_Result TREE_Transform_Dirty(TREE_Transform* transform);
+
+TREE_Result TREE_Transform_SetParent(TREE_Transform* transform, TREE_Transform* parent);
+
+TREE_Result TREE_Transform_DisconnectChildren(TREE_Transform* transform);
+
+// calculate the global rectangle based on the local transform and parent
+TREE_Result TREE_Transform_Refresh(TREE_Transform* transform);
 
 ///////////////////////////////////////
 // Control                           //
@@ -355,28 +510,82 @@ typedef enum _TREE_ControlType
 	TREE_CONTROL_TYPE_LABEL
 } TREE_ControlType;
 
+typedef enum _TREE_ControlFlags
+{
+	TREE_CONTROL_FLAGS_NONE = 0x0,
+	TREE_CONTROL_FLAGS_FOCUSABLE = 0x1,
+} TREE_ControlFlag;
+
+typedef enum _TREE_ControlStateFlags
+{
+	TREE_CONTROL_STATE_FLAGS_NONE = 0x0,
+	TREE_CONTROL_STATE_FLAGS_DIRTY = 0x1,
+	TREE_CONTROL_STATE_FLAGS_FOCUSED = 0x2,
+} TREE_ControlStateFlags;
+
+typedef enum _TREE_ControlLink
+{
+	TREE_CONTROL_LINK_NONE,
+	TREE_CONTROL_LINK_SINGLE,
+	TREE_CONTROL_LINK_DOUBLE,
+	TREE_CONTROL_LINK_UNIQUE
+} TREE_ControlLink;
+
 typedef struct _TREE_Control
 {
 	TREE_ControlType type;
-	TREE_Bool focused;
-	TREE_Offset offset;
-	TREE_Image image;
-	void* data;
+	TREE_ControlFlag flags;
+	TREE_ControlStateFlags stateFlags;
+	TREE_Transform transform;
+	TREE_Control* adjacent[4];
+	TREE_EventHandler eventHandler;
+	TREE_Data data;
 } TREE_Control;
 
-TREE_ErrorCode TREE_Control_Init(TREE_Control* control, TREE_Offset offset, TREE_Extent extent);
+TREE_Result TREE_Control_Init(TREE_Control* control, TREE_Transform* parent, TREE_EventHandler eventHandler, TREE_Data data);
 
 void TREE_Control_Free(TREE_Control* control);
+
+// refresh the transform, if dirty
+TREE_Result TREE_Control_Refresh(TREE_Control* control);
+
+TREE_Result TREE_Control_Link(TREE_Control* control, TREE_Direction direction, TREE_ControlLink link, TREE_Control* other);
+
+TREE_Result TREE_Control_HandleEvent(TREE_Control* control, TREE_Event const* event);
 
 ///////////////////////////////////////
 // Control: Label                    //
 ///////////////////////////////////////
 
-TREE_ErrorCode TREE_Control_Label_Init(TREE_Control* control, TREE_Offset offset, TREE_String text, TREE_ColorPair colorPair);
+typedef struct _TREE_Control_LabelData
+{
+	TREE_Char* text;
+	TREE_ColorPair normalColor;
+} TREE_Control_LabelData;
 
-TREE_ErrorCode TREE_Control_Label_SetText(TREE_Control* control, TREE_String text, TREE_ColorPair colorPair);
+TREE_Result TREE_Control_LabelData_Init(TREE_Control_LabelData* data, TREE_String text, TREE_ColorPair normalColor);
+
+void TREE_Control_LabelData_Free(TREE_Control_LabelData* data);
+
+TREE_Result TREE_Control_Label_Init(TREE_Control* control, TREE_Transform* parent, TREE_Control_LabelData* data);
+
+TREE_Result TREE_Control_Label_SetText(TREE_Control* control, TREE_String text, TREE_ColorPair colorPair);
 
 TREE_String TREE_Control_Label_GetText(TREE_Control* control);
+
+TREE_Result TREE_Control_Label_EventHandler(TREE_Event const* event);
+
+///////////////////////////////////////
+// Control: Button                   //
+///////////////////////////////////////
+
+typedef struct _TREE_Control_ButtonData
+{
+	TREE_Char* text;
+	TREE_ColorPair normalColor;
+	TREE_ColorPair focusedColor;
+	TREE_ColorPair pressedColor;
+} TREE_Control_ButtonData;
 
 ///////////////////////////////////////
 // Control: ?????                    //
@@ -392,16 +601,24 @@ typedef struct _TREE_Application
 	TREE_Size controlsSize;
 	TREE_Size controlsCapacity;
 
+	TREE_Bool running;
+
+	TREE_EventHandler eventHandler;
+
 	TREE_Surface* surface;
 } TREE_Application;
 
-TREE_ErrorCode TREE_Application_Init(TREE_Application* application, TREE_Surface* surface, TREE_Size capacity);
+TREE_Result TREE_Application_Init(TREE_Application* application, TREE_Surface* surface, TREE_Size capacity, TREE_EventHandler eventHandler);
 
 void TREE_Application_Free(TREE_Application* application);
 
-TREE_ErrorCode TREE_Application_AddControl(TREE_Application* application, TREE_Control* control);
+TREE_Result TREE_Application_AddControl(TREE_Application* application, TREE_Control* control);
 
-TREE_ErrorCode TREE_Application_Run(TREE_Application* application);
+TREE_Result TREE_Application_DispatchEvent(TREE_Application const* application, TREE_Event const* event);
+
+TREE_Result TREE_Application_Run(TREE_Application* application);
+
+void TREE_Application_Quit(TREE_Application* application);
 
 ///////////////////////////////////////
 //                                   //
