@@ -795,6 +795,15 @@ TREE_Result TREE_Window_Present(TREE_Surface* surface)
 		return TREE_ERROR_ARG_NULL;
 	}
 
+	// move the cursor to the top left corner
+#ifdef TREE_WINDOWS
+	{
+		HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+		COORD coord = { 0, 0 };
+		SetConsoleCursorPosition(hConsole, coord);
+	}
+#endif // TREE_WINDOWS
+
 	// print to the console
 	int result = printf("%s", surface->text);
 	if (result < 0)
@@ -828,6 +837,27 @@ TREE_Extent TREE_Window_GetExtent()
 #endif
 
 	return extent;
+}
+
+TREE_Result TREE_Cursor_SetVisible(TREE_Bool visible)
+{
+#ifdef TREE_WINDOWS
+	HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+	CONSOLE_CURSOR_INFO cursorInfo;
+	if (!GetConsoleCursorInfo(hConsole, &cursorInfo))
+	{
+		return TREE_ERROR;
+	}
+	cursorInfo.bVisible = visible;
+	if (!SetConsoleCursorInfo(hConsole, &cursorInfo))
+	{
+		return TREE_ERROR;
+	}
+
+	return TREE_OK;
+#else
+	return TREE_NOT_IMPLEMENTED;
+#endif
 }
 
 TREE_String TREE_Key_ToString(TREE_Key key)
@@ -1993,6 +2023,9 @@ TREE_Result TREE_Application_Run(TREE_Application* application)
 	}
 	application->running = TREE_TRUE;
 
+	// hide cursor
+	TREE_Cursor_SetVisible(TREE_FALSE);
+
 	TREE_Result result;
 	TREE_Rect dirtyRect;
 	TREE_Bool shouldPresent;
@@ -2298,6 +2331,9 @@ TREE_Result TREE_Application_Run(TREE_Application* application)
 			}
 		}
 	}
+
+	// show cursor
+	TREE_Cursor_SetVisible(TREE_TRUE);
 
 	return TREE_OK;
 }

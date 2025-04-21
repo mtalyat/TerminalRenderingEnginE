@@ -228,6 +228,12 @@ TREE_Result TREE_Window_Present(TREE_Surface* surface);
 TREE_Extent TREE_Window_GetExtent();
 
 ///////////////////////////////////////
+// Cursor                            //
+///////////////////////////////////////
+
+TREE_Result TREE_Cursor_SetVisible(TREE_Bool visible);
+
+///////////////////////////////////////
 // Key                               //
 ///////////////////////////////////////
 
