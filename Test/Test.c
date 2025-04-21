@@ -18,12 +18,6 @@ TREE_Result ApplicationEventHandler(TREE_Event const* event)
 		// get the event data
 		TREE_EventData_Key const* eventData = (TREE_EventData_Key const*)event->data;
 
-		// quit on escape
-		if (eventData->key == TREE_KEY_ESCAPE)
-		{
-			TREE_Application_Quit(g_application);
-		}
-
 		break;
 	}
 	}
@@ -107,6 +101,53 @@ int main()
 			printf("Failed to add button %zu to application: %s\n", i, TREE_Result_ToString(result));
 			return 1;
 		}
+	}
+
+	// create text input data
+	TREE_Control_TextInputData textInputData;
+	result = TREE_Control_TextInputData_Init(&textInputData, "", 256, "Enter text", TREE_CONTROL_TEXT_INPUT_TYPE_NORMAL, NULL, NULL);
+	if (result)
+	{
+		printf("Failed to initialize text input data: %s\n", TREE_Result_ToString(result));
+		return 1;
+	}
+
+	// create text input control
+	TREE_Control textInput;
+	result = TREE_Control_TextInput_Init(&textInput, NULL, &textInputData);
+	if (result)
+	{
+		printf("Failed to initialize text input control: %s\n", TREE_Result_ToString(result));
+		return 1;
+	}
+	textInput.transform->localOffset = (TREE_Offset){ 2, 12 };
+
+	// link buttons to text input
+	for (TREE_Size i = 0; i < BUTTON_COUNT; i++)
+	{
+		TREE_Control* button = &buttons[i];
+		result = TREE_Control_Link(button, TREE_DIRECTION_SOUTH, TREE_CONTROL_LINK_SINGLE, &textInput);
+		if (result)
+		{
+			printf("Failed to link button %zu to text input: %s\n", i, TREE_Result_ToString(result));
+			return 1;
+		}
+	}
+
+	// link text input to first button
+	result = TREE_Control_Link(&textInput, TREE_DIRECTION_NORTH, TREE_CONTROL_LINK_SINGLE, &buttons[0]);
+	if (result)
+	{
+		printf("Failed to link text input to button 0: %s\n", TREE_Result_ToString(result));
+		return 1;
+	}
+
+	// add text input to application
+	result = TREE_Application_AddControl(&app, &textInput);
+	if (result)
+	{
+		printf("Failed to add text input to application: %s\n", TREE_Result_ToString(result));
+		return 1;
 	}
 
 	// run the application

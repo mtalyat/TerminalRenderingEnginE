@@ -188,9 +188,11 @@ TREE_Result TREE_Image_Init(TREE_Image* image, TREE_Extent size);
 
 void TREE_Image_Free(TREE_Image* image);
 
-TREE_Result TREE_Image_Set(TREE_Image* image, TREE_Offset offset, TREE_Char character, TREE_ColorPair colorPair);
+TREE_Result TREE_Image_Set(TREE_Image* image, TREE_Offset offset, TREE_Pixel pixel);
 
-TREE_Result TREE_Image_Get(TREE_Image* image, TREE_Offset offset, TREE_Char* character, TREE_ColorPair* colorPair);
+TREE_Pixel TREE_Image_Get(TREE_Image* image, TREE_Offset offset);
+
+TREE_Result TREE_Image_Resize(TREE_Image* image, TREE_Extent extent);
 
 TREE_Result TREE_Image_DrawImage(TREE_Image* image, TREE_Offset offset, TREE_Image const* other, TREE_Offset otherOffset, TREE_Extent extent);
 
@@ -361,6 +363,8 @@ typedef enum TREE_KeyModifierFlags
 	TREE_KEY_MODIFIER_FLAGS_CAPS_LOCK = 0x40,
 } TREE_KeyModifierFlags;
 
+TREE_Char TREE_Key_ToChar(TREE_Key key, TREE_KeyModifierFlags modifierFlags);
+
 ///////////////////////////////////////
 // Input                             //
 ///////////////////////////////////////
@@ -522,6 +526,7 @@ typedef enum _TREE_ControlType
 	TREE_CONTROL_TYPE_NONE,
 	TREE_CONTROL_TYPE_LABEL,
 	TREE_CONTROL_TYPE_BUTTON,
+	TREE_CONTROL_TYPE_TEXT_INPUT,
 } TREE_ControlType;
 
 typedef enum _TREE_ControlFlags
@@ -599,7 +604,7 @@ typedef struct _TREE_Control_ButtonData
 	TREE_Alignment alignment;
 	TREE_Pixel normal;
 	TREE_Pixel focused;
-	TREE_Pixel pressed;
+	TREE_Pixel active;
 	TREE_Function onSubmit;
 } TREE_Control_ButtonData;
 
@@ -616,8 +621,46 @@ TREE_String TREE_Control_Button_GetText(TREE_Control* control);
 TREE_Result TREE_Control_Button_EventHandler(TREE_Event const* event);
 
 ///////////////////////////////////////
-// Control: ?????                    //
+// Control: TextInput                //
 ///////////////////////////////////////
+
+typedef enum _TREE_Control_TextInputType
+{
+	TREE_CONTROL_TEXT_INPUT_TYPE_NONE,
+	TREE_CONTROL_TEXT_INPUT_TYPE_NORMAL,
+	TREE_CONTROL_TEXT_INPUT_TYPE_PASSWORD,
+	TREE_CONTROL_TEXT_INPUT_TYPE_PATH,
+} TREE_Control_TextInputType;
+
+typedef struct _TREE_Control_TextInputData
+{
+	TREE_Control_TextInputType type;
+	TREE_Char* text;
+	TREE_Size capacity;
+	TREE_Char* placeholder;
+	TREE_Pixel normal;
+	TREE_Pixel focused;
+	TREE_Pixel active;
+	TREE_Pixel cursor;
+	TREE_Size cursorPosition;
+	TREE_Byte cursorTimer;
+	TREE_Size scroll;
+	TREE_ColorPair selection;
+	TREE_Function onChange;
+	TREE_Function onSubmit;
+} TREE_Control_TextInputData;
+
+TREE_Result TREE_Control_TextInputData_Init(TREE_Control_TextInputData* data, TREE_String text, TREE_Size capacity, TREE_String placeholder, TREE_Control_TextInputType type, TREE_Function onChange, TREE_Function onSubmit);
+
+void TREE_Control_TextInputData_Free(TREE_Control_TextInputData* data);
+
+TREE_Result TREE_Control_TextInput_Init(TREE_Control* control, TREE_Transform* parent, TREE_Control_TextInputData* data);
+
+TREE_Result TREE_Control_TextInput_SetText(TREE_Control* control, TREE_String text);
+
+TREE_String TREE_Control_TextInput_GetText(TREE_Control* control);
+
+TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event);
 
 ///////////////////////////////////////
 // Application                       //

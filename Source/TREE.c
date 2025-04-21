@@ -17,6 +17,8 @@
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
+#define CALL_ACTION(action, ...) do { if (action) { action(__VA_ARGS__); } } while (0)
+
 TREE_Char const* TREE_Result_ToString(TREE_Result code)
 {
 	switch (code)
@@ -360,7 +362,7 @@ void TREE_Image_Free(TREE_Image* image)
 	image->extent.height = 0;
 }
 
-TREE_Result TREE_Image_Set(TREE_Image* image, TREE_Offset offset, TREE_Char character, TREE_ColorPair colorPair)
+TREE_Result TREE_Image_Set(TREE_Image* image, TREE_Offset offset, TREE_Pixel pixel)
 {
 	// validate
 	if (!image)
@@ -376,30 +378,56 @@ TREE_Result TREE_Image_Set(TREE_Image* image, TREE_Offset offset, TREE_Char char
 
 	// set data
 	TREE_Size index = _TREE_Image_GetIndex(image, offset);
-	image->text[index] = character;
-	image->colors[index] = colorPair;
+	image->text[index] = pixel.character;
+	image->colors[index] = pixel.colorPair;
 
 	return TREE_OK;
 }
 
-TREE_Result TREE_Image_Get(TREE_Image* image, TREE_Offset offset, TREE_Char* character, TREE_ColorPair* colorPair)
+TREE_Pixel TREE_Image_Get(TREE_Image* image, TREE_Offset offset)
 {
+	TREE_Pixel pixel = { 0, 0 };
+
 	// validate
-	if (!image || !character || !colorPair)
+	if (!image)
 	{
-		return TREE_ERROR_ARG_NULL;
+		return pixel;
 	}
 	if (offset.x < 0 || offset.y < 0 ||
 		offset.x >= (TREE_Int)image->extent.width ||
 		offset.y >= (TREE_Int)image->extent.height)
 	{
-		return TREE_ERROR_ARG_OUT_OF_RANGE;
+		return pixel;
 	}
 
 	// get data
 	TREE_Size index = _TREE_Image_GetIndex(image, offset);
-	*character = image->text[index];
-	*colorPair = image->colors[index];
+	pixel.character = image->text[index];
+	pixel.colorPair = image->colors[index];
+
+	return pixel;
+}
+
+TREE_Result TREE_Image_Resize(TREE_Image* image, TREE_Extent extent)
+{
+	// validate
+	if (!image)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	// do nothing if size is the same
+	if (image->extent.width == extent.width && image->extent.height == extent.height)
+	{
+		return TREE_OK;
+	}
+
+	TREE_Image_Free(image);
+	TREE_Result result = TREE_Image_Init(image, extent);
+	if (result)
+	{
+		return result;
+	}
 
 	return TREE_OK;
 }
@@ -507,8 +535,7 @@ TREE_Result TREE_Image_DrawLine(TREE_Image* image, TREE_Offset start, TREE_Offse
 		TREE_Image_Set(
 			image,
 			start,
-			pixel.character,
-			pixel.colorPair
+			pixel
 		);
 
 		// move to the next point in the pattern
@@ -963,6 +990,65 @@ TREE_String TREE_Key_ToString(TREE_Key key)
 	case TREE_KEY_RIGHT_BRACKET: return "Right Bracket";
 	case TREE_KEY_APOSTROPHE: return "Apostrophe";
 	default: return "Unknown";
+	}
+}
+
+TREE_Char TREE_Key_ToChar(TREE_Key key, TREE_KeyModifierFlags modifiers)
+{
+	TREE_Bool isShiftPressed = (modifiers & TREE_KEY_MODIFIER_FLAGS_SHIFT) != 0;
+	TREE_Bool isCapsLockOn = (modifiers & TREE_KEY_MODIFIER_FLAGS_CAPS_LOCK) != 0;
+
+	// handle alphabetic characters
+	if (key >= TREE_KEY_A && key <= TREE_KEY_Z)
+	{
+		TREE_Bool isUpperCase = isShiftPressed ^ isCapsLockOn; // XOR: Shift or Caps Lock toggles case
+		return isUpperCase ? (TREE_Char)key : (TREE_Char)(key + 32); // Convert to lowercase if not uppercase
+	}
+
+	// handle number keys (0-9) and their shifted symbols
+	if (key >= TREE_KEY_0 && key <= TREE_KEY_9)
+	{
+		if (isShiftPressed)
+		{
+			// Shifted symbols for number keys
+			static const TREE_Char shiftedSymbols[] = { ')', '!', '@', '#', '$', '%', '^', '&', '*', '(' };
+			return shiftedSymbols[key - TREE_KEY_0];
+		}
+		return (TREE_Char)key;
+	}
+
+	// handle special characters and symbols
+	if (key >= TREE_KEY_SEMICOLON && key <= TREE_KEY_APOSTROPHE)
+	{
+		static const TREE_Char normalChars[] = {
+			';', '=', ',', '-', '.', '/', '`', '[', '\\', ']', '\'', // Normal characters
+		};
+		static const TREE_Char shiftedChars[] = {
+			':', '+', '<', '_', '>', '?', '~', '{', '|', '}', '"'  // Shifted characters
+		};
+		TREE_Size index = key - TREE_KEY_SEMICOLON;
+		return isShiftPressed ? shiftedChars[index] : normalChars[index];
+	}
+
+	// handle numpad keys (if Num Lock is on)
+	if (key >= TREE_KEY_NUMPAD_0 && key <= TREE_KEY_NUMPAD_9)
+	{
+		TREE_Bool isNumLockOn = (modifiers & TREE_KEY_MODIFIER_FLAGS_NUM_LOCK) != 0;
+		if (isNumLockOn)
+		{
+			return (TREE_Char)(key - TREE_KEY_NUMPAD_0 + '0'); // Convert to corresponding number
+		}
+	}
+
+	// handle other keys
+	switch (key)
+	{
+	case TREE_KEY_SPACE: return ' ';
+	case TREE_KEY_TAB: return '\t';
+	case TREE_KEY_BACKSPACE: return '\b';
+	case TREE_KEY_ENTER: return '\n';
+	case TREE_KEY_ESCAPE: return '\033';
+	default: return '\0'; // Return null for unhandled keys
 	}
 }
 
@@ -1522,6 +1608,75 @@ TREE_Result TREE_Control_HandleEvent(TREE_Control* control, TREE_Event const* ev
 	return TREE_OK;
 }
 
+TREE_Char** _TREE_WordWrap(TREE_String text, TREE_Size width, TREE_Size* lineCount)
+{
+	// validate
+	if (!text || width == 0 || !lineCount)
+	{
+		return NULL;
+	}
+
+	// allocate lines
+	TREE_Size textLength = strlen(text);
+	TREE_Size maxLines = textLength / width + 1;
+	TREE_Char** lines = TREE_NEW_ARRAY(TREE_Char*, maxLines);
+	if (!lines)
+	{
+		return NULL;
+	}
+	// capture each line of text
+	TREE_Size index = 0;
+	TREE_Size count = 0;
+	for (TREE_Size i = 0; i < maxLines && index < textLength; i++)
+	{
+		// skip any spaces at the beginning
+		while (text[index] == ' ')
+		{
+			index++;
+		}
+
+		// if at the end
+		if (index >= textLength)
+		{
+			break;
+		}
+
+		// start at end, shrink until a space for word wrapping
+		TREE_Int potentialLength = (TREE_Int)MIN(width, textLength - index);
+		TREE_Int length = potentialLength;
+		for (; length >= 0; length--)
+		{
+			TREE_Char ch = text[index + length];
+			if (!ch || isspace(ch))
+			{
+				break;
+			}
+		}
+
+		if (length < 0)
+		{
+			length = potentialLength;
+		}
+
+		lines[i] = TREE_NEW_ARRAY(TREE_Char, length + 1);
+		if (!lines[i])
+		{
+			return NULL;
+		}
+
+		// set the line data
+		memcpy(lines[i], &text[index], length * sizeof(TREE_Char));
+		lines[i][length] = '\0'; // null terminator
+
+		count++;
+
+		// increment index
+		index += length;
+	}
+	*lineCount = count;
+	return lines;
+}
+
 TREE_Result _TREE_Control_Refresh_Text(TREE_Image* target, TREE_Extent extent, TREE_String text, TREE_Alignment alignment, TREE_Pixel design)
 {
 	TREE_Result result;
@@ -1542,65 +1697,8 @@ TREE_Result _TREE_Control_Refresh_Text(TREE_Image* target, TREE_Extent extent, T
 	// draw the rect
 	result = TREE_Image_Clear(target, design);
 
-	// capture each line of text
-	TREE_Size textLength = strlen(text);
-	TREE_Size maxLines = extent.height;
-	TREE_Size maxLineLength = extent.width;
-	TREE_Size lineCount = 0;
-	TREE_Char** lines = TREE_NEW_ARRAY(TREE_Char*, maxLines);
-	if (!lines)
-	{
-		return TREE_ERROR_ALLOC;
-	}
-	TREE_Size index = 0;
-	for (TREE_Size i = 0; i < maxLines && index < textLength; i++)
-	{
-		// skip any spaces at the beginning
-		while (text[index] == ' ')
-		{
-			index++;
-		}
-
-		// if at the end
-		if (index >= textLength)
-		{
-			break;
-		}
-
-		// start at end, shrink until a space for word wrapping
-		TREE_Int potentialLength = (TREE_Int)MIN(maxLineLength, textLength - index);
-		TREE_Int length = potentialLength;
-		for (; length >= 0; length--)
-		{
-			TREE_Char ch = text[index + length];
-			if (!ch || isspace(ch))
-			{
-				break;
-			}
-		}
-		if (length < 0)
-		{
-			length = potentialLength;
-		}
-
-		// create line
-		TREE_Char* line = TREE_NEW_ARRAY(TREE_Char, length + 1);
-		if (!line)
-		{
-			return TREE_ERROR_ALLOC;
-		}
-
-		// set the line data
-		memcpy(line, &text[index], length * sizeof(TREE_Char));
-		line[length] = '\0'; // null terminator
-
-		// add to lines
-		lines[lineCount] = line;
-		lineCount++;
-
-		// increment index
-		index += length;
-	}
+	TREE_Size lineCount;
+	TREE_Char** lines = _TREE_WordWrap(text, extent.width, &lineCount);
 
 	// draw each line, using the alignment to determine the position within the rect
 	TREE_Int top;
@@ -1611,11 +1709,11 @@ TREE_Result _TREE_Control_Refresh_Text(TREE_Image* target, TREE_Extent extent, T
 	}
 	else if (alignment & TREE_ALIGNMENT_CENTER)
 	{
-		top = (TREE_Int)(maxLines - lineCount) / 2;
+		top = (TREE_Int)(extent.height - lineCount) / 2;
 	}
 	else
 	{
-		top = (TREE_Int)(maxLines - lineCount);
+		top = (TREE_Int)(extent.height - lineCount);
 	}
 
 	if (alignment & TREE_ALIGNMENT_LEFT)
@@ -1640,7 +1738,7 @@ TREE_Result _TREE_Control_Refresh_Text(TREE_Image* target, TREE_Extent extent, T
 	{
 		for (TREE_Int i = 0; i < lineCount; i++)
 		{
-			offset.x = (TREE_Int)(maxLineLength - strlen(lines[i])) / 2;
+			offset.x = (TREE_Int)(extent.width - strlen(lines[i])) / 2;
 			offset.y = top + i;
 			result = TREE_Image_DrawString(
 				target,
@@ -1658,7 +1756,7 @@ TREE_Result _TREE_Control_Refresh_Text(TREE_Image* target, TREE_Extent extent, T
 	{
 		for (TREE_Int i = 0; i < lineCount; i++)
 		{
-			offset.x = (TREE_Int)(maxLineLength - strlen(lines[i]));
+			offset.x = (TREE_Int)(extent.width - strlen(lines[i]));
 			offset.y = top + i;
 			result = TREE_Image_DrawString(
 				target,
@@ -1922,8 +2020,8 @@ TREE_Result TREE_Control_ButtonData_Init(TREE_Control_ButtonData* data, TREE_Str
 	data->normal.colorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_WHITE, TREE_COLOR_BRIGHT_BLACK);
 	data->focused.character = ' ';
 	data->focused.colorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_BRIGHT_WHITE);
-	data->pressed.character = ' ';
-	data->pressed.colorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_WHITE);
+	data->active.character = ' ';
+	data->active.colorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_WHITE);
 	data->onSubmit = onSubmit;
 
 	return TREE_OK;
@@ -1944,8 +2042,8 @@ void TREE_Control_ButtonData_Free(TREE_Control_ButtonData* data)
 	data->normal.colorPair = TREE_ColorPair_CreateDefault();
 	data->focused.character = ' ';
 	data->focused.colorPair = TREE_ColorPair_CreateDefault();
-	data->pressed.character = ' ';
-	data->pressed.colorPair = TREE_ColorPair_CreateDefault();
+	data->active.character = ' ';
+	data->active.colorPair = TREE_ColorPair_CreateDefault();
 	data->onSubmit = NULL;
 }
 
@@ -2021,14 +2119,20 @@ TREE_String TREE_Control_Button_GetText(TREE_Control* control)
 TREE_Result TREE_Control_Button_EventHandler(TREE_Event const* event)
 {
 	// validate
-	if (!event || !event->control || event->control->type != TREE_CONTROL_TYPE_BUTTON)
+	if (!event)
 	{
 		return TREE_ERROR_ARG_NULL;
 	}
+	if (event->control->type != TREE_CONTROL_TYPE_BUTTON)
+	{
+		return TREE_ERROR_ARG_INVALID;
+	}
+
 	// get the data
 	TREE_Control* control = event->control;
 	TREE_Control_ButtonData* buttonData = (TREE_Control_ButtonData*)event->control->data;
 	TREE_Result result;
+
 	// handle the event
 	switch (event->type)
 	{
@@ -2082,7 +2186,7 @@ TREE_Result TREE_Control_Button_EventHandler(TREE_Event const* event)
 		TREE_Pixel const* pixel = &buttonData->normal;
 		if (control->stateFlags & TREE_CONTROL_STATE_FLAGS_ACTIVE)
 		{
-			pixel = &buttonData->pressed;
+			pixel = &buttonData->active;
 		}
 		else if (control->stateFlags & TREE_CONTROL_STATE_FLAGS_FOCUSED)
 		{
@@ -2099,6 +2203,562 @@ TREE_Result TREE_Control_Button_EventHandler(TREE_Event const* event)
 		if (result)
 		{
 			return result;
+		}
+
+		break;
+	}
+	case TREE_EVENT_TYPE_DRAW:
+	{
+		// get the event data
+		TREE_EventData_Draw* drawData = (TREE_EventData_Draw*)event->data;
+		TREE_Image* target = drawData->target;
+		TREE_Rect const* dirtyRect = &drawData->dirtyRect;
+
+		result = _TREE_Control_Draw(
+			target,
+			dirtyRect,
+			&control->transform->globalRect,
+			control->image
+		);
+		if (result)
+		{
+			return result;
+		}
+
+		break;
+	}
+	}
+	return TREE_OK;
+}
+
+TREE_Result TREE_Control_TextInputData_Init(TREE_Control_TextInputData* data, TREE_String text, TREE_Size capacity, TREE_String placeholder, TREE_Control_TextInputType type, TREE_Function onChange, TREE_Function onSubmit)
+{
+	// validate
+	if (!data || !text || !placeholder)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	// allocate data
+	TREE_Size textLength = strlen(text);
+	TREE_Size placeholderLength = strlen(placeholder);
+	data->text = TREE_NEW_ARRAY(TREE_Char, textLength + 1);
+	if (!data->text)
+	{
+		return TREE_ERROR_ALLOC;
+	}
+	data->placeholder = TREE_NEW_ARRAY(TREE_Char, placeholderLength + 1);
+	if (!data->placeholder)
+	{
+		TREE_DELETE(data->text);
+		return TREE_ERROR_ALLOC;
+	}
+
+	// set data
+	data->type = type;
+	memcpy(data->text, text, textLength * sizeof(TREE_Char));
+	data->text[textLength] = '\0'; // null terminator
+	data->capacity = capacity;
+	memcpy(data->placeholder, placeholder, placeholderLength * sizeof(TREE_Char));
+	data->placeholder[placeholderLength] = '\0'; // null terminator
+
+	data->normal.character = ' ';
+	data->normal.colorPair = TREE_ColorPair_Create(TREE_COLOR_BLACK, TREE_COLOR_BRIGHT_BLACK);
+	data->focused.character = ' ';
+	data->focused.colorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_BRIGHT_WHITE);
+	data->active.character = ' ';
+	data->active.colorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_WHITE);
+	data->cursor.character = '_';
+	data->cursor.colorPair = TREE_ColorPair_Create(TREE_COLOR_WHITE, TREE_COLOR_BRIGHT_BLACK);
+	data->cursorPosition = 0;
+	data->cursorTimer = 0;
+	data->scroll = 0;
+	data->selection = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_BRIGHT_YELLOW);
+
+	data->onChange = onChange;
+	data->onSubmit = onSubmit;
+
+	return TREE_OK;
+}
+
+void TREE_Control_TextInputData_Free(TREE_Control_TextInputData* data)
+{
+	// validate
+	if (!data)
+	{
+		return;
+	}
+
+	// free data
+	TREE_DELETE(data->text);
+	TREE_DELETE(data->placeholder);
+	data->type = TREE_CONTROL_TEXT_INPUT_TYPE_NONE;
+	data->capacity = 0;
+	data->normal.character = ' ';
+	data->normal.colorPair = TREE_ColorPair_CreateDefault();
+	data->focused.character = ' ';
+	data->focused.colorPair = TREE_ColorPair_CreateDefault();
+	data->active.character = ' ';
+	data->active.colorPair = TREE_ColorPair_CreateDefault();
+	data->cursor.character = ' ';
+	data->cursor.colorPair = TREE_ColorPair_CreateDefault();
+	data->cursorPosition = 0;
+	data->cursorTimer = 0;
+	data->scroll = 0;
+	data->selection = TREE_ColorPair_CreateDefault();
+	data->onChange = NULL;
+	data->onSubmit = NULL;
+}
+
+TREE_Result TREE_Control_TextInput_Init(TREE_Control* control, TREE_Transform* parent, TREE_Control_TextInputData* data)
+{
+	// validate
+	if (!control || !data)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+	if (data->type == TREE_CONTROL_TYPE_TEXT_INPUT)
+	{
+		return TREE_ERROR_ARG_INVALID;
+	}
+
+	// initialize control
+	TREE_Result result = TREE_Control_Init(control, parent, TREE_Control_TextInput_EventHandler, data);
+	if (result)
+	{
+		return result;
+	}
+
+	// set data
+	control->transform->localExtent.width = 20;
+	control->transform->localExtent.height = 1;
+	control->type = TREE_CONTROL_TYPE_TEXT_INPUT;
+	control->flags = TREE_CONTROL_FLAGS_FOCUSABLE;
+
+	return TREE_OK;
+}
+
+TREE_Result TREE_Control_TextInput_SetText(TREE_Control* control, TREE_String text)
+{
+	// validate
+	if (!control || !text)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+	if (control->type != TREE_CONTROL_TYPE_TEXT_INPUT)
+	{
+		return TREE_ERROR_ARG_INVALID;
+	}
+
+	// get data
+	TREE_Control_TextInputData* textInputData = (TREE_Control_TextInputData*)control->data;
+
+	// allocate new text
+	TREE_Size textLength = strlen(text);
+	TREE_Char* newText = TREE_NEW_ARRAY(TREE_Char, textLength + 1);
+	if (!newText)
+	{
+		return TREE_ERROR_ALLOC;
+	}
+
+	// set data
+	memcpy(newText, text, textLength * sizeof(TREE_Char));
+	newText[textLength] = '\0'; // null terminator
+	TREE_REPLACE(textInputData->text, newText);
+
+	// mark as dirty to get redrawn
+	control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+
+	return TREE_OK;
+}
+
+TREE_String TREE_Control_TextInput_GetText(TREE_Control* control)
+{
+	// validate
+	if (!control)
+	{
+		return NULL;
+	}
+
+	// get data
+	TREE_Control_TextInputData* textInputData = (TREE_Control_TextInputData*)control->data;
+
+	// return text
+	return textInputData->text;
+}
+
+TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
+{
+	// validate
+	if (!event)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+	if (event->control->type != TREE_CONTROL_TYPE_TEXT_INPUT)
+	{
+		return TREE_ERROR_ARG_INVALID;
+	}
+
+	// get the data
+	TREE_Control* control = event->control;
+	TREE_Control_TextInputData* data = (TREE_Control_TextInputData*)event->control->data;
+	TREE_Result result;
+
+	// determine if multiline or single line
+	TREE_Extent const* extent = &control->transform->globalRect.extent;
+	TREE_Bool multiline = extent->height > 1;
+
+	// handle the event
+	switch (event->type)
+	{
+	case TREE_EVENT_TYPE_KEY_DOWN:
+	case TREE_EVENT_TYPE_KEY_HELD:
+	{
+		// ignore if not focused
+		if (!(control->stateFlags & TREE_CONTROL_STATE_FLAGS_FOCUSED))
+		{
+			break;
+		}
+
+		// get the event data
+		TREE_EventData_Key* keyData = (TREE_EventData_Key*)event->data;
+		TREE_Key key = keyData->key;
+
+		// if not active, do nothing
+		if (!(control->stateFlags & TREE_CONTROL_STATE_FLAGS_ACTIVE))
+		{
+			// if not active but a submit key is pressed, become active
+			if (key == TREE_KEY_ENTER || key == TREE_KEY_SPACE)
+			{
+				control->stateFlags |= TREE_CONTROL_STATE_FLAGS_ACTIVE | TREE_CONTROL_STATE_FLAGS_DIRTY;
+			}
+			break;
+		}
+
+		// get text length for calculations
+		TREE_Size textLength = strlen(data->text);
+
+		// handle key inputs
+		switch (key)
+		{
+		case TREE_KEY_ESCAPE: // exit out of active state, call submit function
+			control->stateFlags &= ~TREE_CONTROL_STATE_FLAGS_ACTIVE;
+			control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+			CALL_ACTION(data->onSubmit, control);
+			break;
+		case TREE_KEY_BACKSPACE: // remove character before cursor
+			if (data->cursorPosition > 0)
+			{
+				// shift string over
+				memmove(&data->text[data->cursorPosition - 1], &data->text[data->cursorPosition], (textLength - data->cursorPosition) * sizeof(TREE_Char));
+				control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+				data->cursorPosition--;
+				data->cursorTimer = 0;
+				CALL_ACTION(data->onChange, control);
+			}
+			break;
+		case TREE_KEY_DELETE: // remove character at cursor
+			if (data->cursorPosition < textLength)
+			{
+				// shift string over
+				memmove(&data->text[data->cursorPosition], &data->text[data->cursorPosition + 1], (textLength - data->cursorPosition) * sizeof(TREE_Char));
+				control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+				data->cursorTimer = 0;
+				CALL_ACTION(data->onChange, control);
+			}
+			break;
+		case TREE_KEY_LEFT_ARROW: // move cursor left 1
+			if (data->cursorPosition > 0)
+			{
+				data->cursorPosition--;
+				control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+				data->cursorTimer = 0;
+			}
+			break;
+		case TREE_KEY_RIGHT_ARROW: // move cursor right 1
+			if (data->cursorPosition < textLength)
+			{
+				data->cursorPosition++;
+				control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+				data->cursorTimer = 0;
+			}
+			break;
+		case TREE_KEY_UP_ARROW: // move cursor up 1
+			if (data->cursorPosition > 0)
+			{
+				if (multiline)
+				{
+					data->cursorPosition = (TREE_Size)MAX(0, (TREE_Int)data->cursorPosition - (TREE_Int)extent->width);
+				}
+				else
+				{
+					// act like HOME if single line
+					data->cursorPosition = 0;
+				}
+				control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+				data->cursorTimer = 0;
+			}
+			break;
+		case TREE_KEY_DOWN_ARROW: // move cursor down 1
+			if (data->cursorPosition < textLength)
+			{
+				if (multiline)
+				{
+					data->cursorPosition = (TREE_Size)MIN(textLength, (TREE_Int)data->cursorPosition + (TREE_Int)extent->width);
+				}
+				else
+				{
+					// act like END if single line
+					data->cursorPosition = textLength;
+				}
+				control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+				data->cursorTimer = 0;
+			}
+			break;
+		case TREE_KEY_HOME: // move cursor to start
+			data->cursorPosition = 0;
+			control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+			data->cursorTimer = 0;
+			break;
+		case TREE_KEY_END: // move cursor to end
+			data->cursorPosition = textLength;
+			control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+			data->cursorTimer = 0;
+			break;
+		default:
+		{
+			// if at capacity, ignore new characters
+			if (textLength >= data->capacity)
+			{
+				break;
+			}
+
+			// get the character to add
+			TREE_Char ch = TREE_Key_ToChar(key, keyData->modifiers);
+
+			// if invalid, ignore it
+			if (ch == 0)
+			{
+				break;
+			}
+
+			// shift string over, if needed
+			if (data->cursorPosition < textLength)
+			{
+				memmove(&data->text[data->cursorPosition + 1], &data->text[data->cursorPosition], (textLength - data->cursorPosition) * sizeof(TREE_Char));
+			}
+
+			// insert character
+			data->text[data->cursorPosition] = (TREE_Char)key;
+			data->cursorPosition++;
+			control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+			data->cursorTimer = 0;
+			CALL_ACTION(data->onChange, control);
+			break;
+		}
+		}
+
+		// clamp the scroll to follow the cursor
+		if (multiline)
+		{
+			// scroll is up and down on multiline
+			TREE_Size cursorLine = data->cursorPosition / extent->width;
+			if (data->scroll + extent->height < cursorLine)
+			{
+				data->scroll = cursorLine - extent->height;
+			}
+			else if (data->scroll > cursorLine)
+			{
+				data->scroll = cursorLine;
+			}
+		}
+		else
+		{
+			// scroll is left and right on singleline
+			if(data->scroll + extent->width < data->cursorPosition)
+			{
+				data->scroll = data->cursorPosition - extent->width;
+			}
+			else if (data->scroll > data->cursorPosition)
+			{
+				data->scroll = data->cursorPosition;
+			}
+		}
+
+		break;
+	}
+	case TREE_EVENT_TYPE_REFRESH:
+	{
+		result = TREE_Image_Resize(control->image, *extent);
+		if (result)
+		{
+			return result;
+		}
+
+		TREE_Bool active = (control->stateFlags & TREE_CONTROL_STATE_FLAGS_ACTIVE);
+
+		// determine pixel from state
+		TREE_Pixel const* pixel = &data->normal;
+		if (active)
+		{
+			pixel = &data->active;
+		}
+		else if (control->stateFlags & TREE_CONTROL_STATE_FLAGS_FOCUSED)
+		{
+			pixel = &data->focused;
+		}
+
+		// draw the background
+		result = TREE_Image_Clear(control->image, *pixel);
+		if (result)
+		{
+			return result;
+		}
+
+		// determine what text to draw
+		TREE_Char* text = data->text;
+		TREE_Bool disposeText = TREE_FALSE;
+
+		// if not active and no text, use placeholder
+		if (!(active) && !text[0])
+		{
+			text = data->placeholder;
+		}
+		// if not placeholder and is a password, replace with stars
+		else if (data->type == TREE_CONTROL_TEXT_INPUT_TYPE_PASSWORD)
+		{
+			TREE_Size textLength = strlen(text);
+			TREE_Char* passwordText = TREE_NEW_ARRAY(TREE_Char, textLength + 1);
+			if (!passwordText)
+			{
+				return TREE_ERROR_ALLOC;
+			}
+			memset(passwordText, '*', textLength);
+			passwordText[textLength] = '\0'; // null terminator
+			text = passwordText;
+			disposeText = TREE_TRUE;
+		}
+
+		TREE_Size textLength = strlen(text);
+
+		if (multiline)
+		{
+			// multiline
+
+			// word wrap the text
+			TREE_Size lineCount;
+			TREE_Char** lines = _TREE_WordWrap(text, extent->width, &lineCount);
+
+			// draw the lines based on the scroll
+			TREE_Size count = MIN(lineCount, extent->height);
+			TREE_Size scroll = data->scroll;
+
+			// add one to scroll if cursor at end of text, but also beginning of a new line
+			if (data->cursorPosition == textLength && data->cursorPosition % extent->width == 0)
+			{
+				scroll++;
+				if (count == extent->height)
+				{
+					count--;
+				}
+			}
+
+			// draw each line
+			for (TREE_Size i = 0; i < count; i++)
+			{
+				TREE_Offset offset;
+				offset.x = 0;
+				offset.y = (TREE_Int)i;
+				result = TREE_Image_DrawString(
+					control->image,
+					offset,
+					lines[data->scroll + i],
+					pixel->colorPair
+				);
+				if (result)
+				{
+					break;
+				}
+			}
+
+			// draw cursor if active
+			if (active)
+			{
+				TREE_Offset cursorOffset;
+				cursorOffset.x = (TREE_Int)(data->cursorPosition % extent->width);
+				cursorOffset.y = (TREE_Int)(data->cursorPosition / extent->width - scroll);
+				result = TREE_Image_Set(
+					control->image,
+					cursorOffset,
+					data->cursor
+				);
+				if (result)
+				{
+					return result;
+				}
+			}
+		}
+		else
+		{
+			// single line
+			
+			// find the offset
+			TREE_Size offset = data->scroll;
+			if (data->cursorPosition == textLength)
+			{
+				offset++;
+			}
+
+			// get size of text using the offset
+			TREE_Size length = MIN(extent->width, textLength - offset);
+
+			// get a copy of the text to draw
+			TREE_Char* textCopy = TREE_NEW_ARRAY(TREE_Char, length + 1);
+			if (!textCopy)
+			{
+				return TREE_ERROR_ALLOC;
+			}
+			memcpy(textCopy, &text[offset], length * sizeof(TREE_Char));
+			textCopy[length] = '\0'; // null terminator
+
+			// draw the text
+			TREE_Offset imageOffset;
+			imageOffset.x = 0;
+			imageOffset.y = 0;
+			result = TREE_Image_DrawString(
+				control->image,
+				imageOffset,
+				textCopy,
+				pixel->colorPair
+			);
+			TREE_DELETE(textCopy);
+			if (result)
+			{
+				return result;
+			}
+
+			// draw cursor if active
+			if (active)
+			{
+				TREE_Offset cursorOffset;
+				cursorOffset.x = (TREE_Int)(data->cursorPosition - offset);
+				cursorOffset.y = 0;
+				result = TREE_Image_Set(
+					control->image,
+					cursorOffset,
+					data->cursor
+				);
+				if (result)
+				{
+					return result;
+				}
+			}
+		}
+
+		// if needed, dispose of text
+		if (disposeText)
+		{
+			TREE_DELETE(text);
 		}
 
 		break;
