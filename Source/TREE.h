@@ -132,6 +132,12 @@ typedef struct _TREE_Rect
 	TREE_Extent extent;
 } TREE_Rect;
 
+TREE_Bool TREE_Rect_IsOverlapping(TREE_Rect const* rectA, TREE_Rect const* rectB);
+
+TREE_Rect TREE_Rect_Combine(TREE_Rect const* rectA, TREE_Rect const* rectB);
+
+TREE_Rect TREE_Rect_GetIntersection(TREE_Rect const* rectA, TREE_Rect const* rectB);
+
 ///////////////////////////////////////
 // Pixel                             //
 ///////////////////////////////////////
@@ -170,7 +176,7 @@ void TREE_Pattern_Free(TREE_Pattern* pattern);
 
 typedef struct _TREE_Image
 {
-	TREE_Extent size;
+	TREE_Extent extent;
 	TREE_Char* text;
 	TREE_ColorPair* colors;
 } TREE_Image;
@@ -183,7 +189,7 @@ TREE_Result TREE_Image_Set(TREE_Image* image, TREE_Offset offset, TREE_Char char
 
 TREE_Result TREE_Image_Get(TREE_Image* image, TREE_Offset offset, TREE_Char* character, TREE_ColorPair* colorPair);
 
-TREE_Result TREE_Image_DrawImage(TREE_Image* image, TREE_Offset offset, TREE_Image* other);
+TREE_Result TREE_Image_DrawImage(TREE_Image* image, TREE_Offset offset, TREE_Image* other, TREE_Offset otherOffset, TREE_Extent extent);
 
 TREE_Result TREE_Image_DrawString(TREE_Image* image, TREE_Offset offset, TREE_String string, TREE_ColorPair colorPair);
 
@@ -439,16 +445,19 @@ typedef enum _TREE_Alignment
 typedef enum _TREE_EventType
 {
 	TREE_EVENT_TYPE_NONE = 000,
-	TREE_EVENT_TYPE_DRAW = 001,
+	TREE_EVENT_TYPE_REFRESH = 001,
+	TREE_EVENT_TYPE_DRAW = 002,
 
 	TREE_EVENT_TYPE_INPUT_KEY = 1'000,
 } TREE_EventType;
 
+typedef struct _TREE_Application TREE_Application;
 typedef struct _TREE_Control TREE_Control;
 
 typedef struct _TREE_Event
 {
 	TREE_EventType type;
+	TREE_Application* application;
 	TREE_Control* control;
 	TREE_Data data;
 } TREE_Event;
@@ -458,6 +467,7 @@ typedef TREE_Result(*TREE_EventHandler)(TREE_Event const* event);
 typedef struct _TREE_EventData_Draw
 {
 	TREE_Image* target;
+	TREE_Rect dirtyRect;
 } TREE_EventData_Draw;
 
 typedef struct _TREE_EventData_InputKey
@@ -536,7 +546,8 @@ typedef struct _TREE_Control
 	TREE_ControlType type;
 	TREE_ControlFlag flags;
 	TREE_ControlStateFlags stateFlags;
-	TREE_Transform transform;
+	TREE_Transform* transform;
+	TREE_Image* image;
 	TREE_Control* adjacent[4];
 	TREE_EventHandler eventHandler;
 	TREE_Data data;
@@ -545,9 +556,6 @@ typedef struct _TREE_Control
 TREE_Result TREE_Control_Init(TREE_Control* control, TREE_Transform* parent, TREE_EventHandler eventHandler, TREE_Data data);
 
 void TREE_Control_Free(TREE_Control* control);
-
-// refresh the transform, if dirty
-TREE_Result TREE_Control_Refresh(TREE_Control* control);
 
 TREE_Result TREE_Control_Link(TREE_Control* control, TREE_Direction direction, TREE_ControlLink link, TREE_Control* other);
 
@@ -573,6 +581,8 @@ TREE_Result TREE_Control_Label_Init(TREE_Control* control, TREE_Transform* paren
 TREE_Result TREE_Control_Label_SetText(TREE_Control* control, TREE_String text, TREE_ColorPair colorPair);
 
 TREE_String TREE_Control_Label_GetText(TREE_Control* control);
+
+TREE_Result TREE_Control_Label_Refresh(TREE_Control* control);
 
 TREE_Result TREE_Control_Label_EventHandler(TREE_Event const* event);
 
@@ -615,7 +625,7 @@ void TREE_Application_Free(TREE_Application* application);
 
 TREE_Result TREE_Application_AddControl(TREE_Application* application, TREE_Control* control);
 
-TREE_Result TREE_Application_DispatchEvent(TREE_Application const* application, TREE_Event const* event);
+TREE_Result TREE_Application_DispatchEvent(TREE_Application* application, TREE_Event const* event);
 
 TREE_Result TREE_Application_Run(TREE_Application* application);
 

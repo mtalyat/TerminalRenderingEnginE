@@ -118,6 +118,43 @@ TREE_String TREE_Color_GetResetString()
 	return "\033[000m";
 }
 
+TREE_Bool TREE_Rect_IsOverlapping(TREE_Rect const* rectA, TREE_Rect const* rectB)
+{
+	return (
+		rectA->offset.x < rectB->offset.x + (TREE_Int)rectB->extent.width &&
+		rectA->offset.x + (TREE_Int)rectA->extent.width > rectB->offset.x &&
+		rectA->offset.y < rectB->offset.y + (TREE_Int)rectB->extent.height &&
+		rectA->offset.y + (TREE_Int)rectA->extent.height > rectB->offset.y
+		);
+}
+
+TREE_Rect TREE_Rect_Combine(TREE_Rect const* rectA, TREE_Rect const* rectB)
+{
+	TREE_Rect result;
+	result.offset.x = MIN(rectA->offset.x, rectB->offset.x);
+	result.offset.y = MIN(rectA->offset.y, rectB->offset.y);
+	result.extent.width = MAX(rectA->offset.x + (TREE_Int)rectA->extent.width, rectB->offset.x + (TREE_Int)rectB->extent.width) - result.offset.x;
+	result.extent.height = MAX(rectA->offset.y + (TREE_Int)rectA->extent.height, rectB->offset.y + (TREE_Int)rectB->extent.height) - result.offset.y;
+	return result;
+}
+
+TREE_Rect TREE_Rect_GetIntersection(TREE_Rect const* rectA, TREE_Rect const* rectB)
+{
+	// ignore if not overlapping
+	if (!rectA || !rectB || !TREE_Rect_IsOverlapping(rectA, rectB))
+	{
+		TREE_Rect emptyRect = { {0, 0}, {0, 0} };
+		return emptyRect;
+	}
+
+	TREE_Rect result;
+	result.offset.x = MAX(rectA->offset.x, rectB->offset.x);
+	result.offset.y = MAX(rectA->offset.y, rectB->offset.y);
+	result.extent.width = MIN(rectA->offset.x + (TREE_Int)rectA->extent.width, rectB->offset.x + (TREE_Int)rectB->extent.width) - result.offset.x;
+	result.extent.height = MIN(rectA->offset.y + (TREE_Int)rectA->extent.height, rectB->offset.y + (TREE_Int)rectB->extent.height) - result.offset.y;
+	return result;
+}
+
 TREE_Pixel TREE_Pixel_CreateDefault()
 {
 	TREE_Pixel pixel;
@@ -249,23 +286,30 @@ void TREE_Pattern_Free(TREE_Pattern* pattern)
 static TREE_Size _TREE_Image_GetIndex(TREE_Image* image, TREE_Offset offset)
 {
 	// calculate index
-	return (TREE_Size)offset.y * image->size.width + offset.x;
+	return (TREE_Size)offset.y * image->extent.width + offset.x;
 }
 
-TREE_Result TREE_Image_Init(TREE_Image* image, TREE_Extent size)
+TREE_Result TREE_Image_Init(TREE_Image* image, TREE_Extent extent)
 {
 	// validate
 	if (!image)
 	{
 		return TREE_ERROR_ARG_NULL;
 	}
-	if (size.width == 0 || size.height == 0)
+
+	// if size is 0, set to defaults
+	if (extent.width == 0 || extent.height == 0)
 	{
-		return TREE_ERROR_ARG_OUT_OF_RANGE;
+		image->text = NULL;
+		image->colors = NULL;
+		image->extent.width = 0;
+		image->extent.height = 0;
+
+		return TREE_OK;
 	}
 
 	// calculate sizes
-	TREE_Size imageSize = (TREE_Size)(size.width * size.height);
+	TREE_Size imageSize = (TREE_Size)(extent.width * extent.height);
 	TREE_Size textSize = (imageSize + 1) * sizeof(TREE_Char); // +1 for null terminator
 	TREE_Size colorSize = imageSize * sizeof(TREE_ColorPair);
 
@@ -287,7 +331,7 @@ TREE_Result TREE_Image_Init(TREE_Image* image, TREE_Extent size)
 	memset(image->text, ' ', textSize);
 	image->text[imageSize] = '\0'; // null terminator
 	memset(image->colors, TREE_ColorPair_CreateDefault(), colorSize);
-	image->size = size;
+	image->extent = extent;
 
 	return TREE_OK;
 }
@@ -311,8 +355,8 @@ void TREE_Image_Free(TREE_Image* image)
 		free(image->colors);
 		image->colors = NULL;
 	}
-	image->size.width = 0;
-	image->size.height = 0;
+	image->extent.width = 0;
+	image->extent.height = 0;
 }
 
 TREE_Result TREE_Image_Set(TREE_Image* image, TREE_Offset offset, TREE_Char character, TREE_ColorPair colorPair)
@@ -323,8 +367,8 @@ TREE_Result TREE_Image_Set(TREE_Image* image, TREE_Offset offset, TREE_Char char
 		return TREE_ERROR_ARG_NULL;
 	}
 	if (offset.x < 0 || offset.y < 0 ||
-		offset.x >= (TREE_Int)image->size.width ||
-		offset.y >= (TREE_Int)image->size.height)
+		offset.x >= (TREE_Int)image->extent.width ||
+		offset.y >= (TREE_Int)image->extent.height)
 	{
 		return TREE_ERROR_ARG_OUT_OF_RANGE;
 	}
@@ -345,8 +389,8 @@ TREE_Result TREE_Image_Get(TREE_Image* image, TREE_Offset offset, TREE_Char* cha
 		return TREE_ERROR_ARG_NULL;
 	}
 	if (offset.x < 0 || offset.y < 0 ||
-		offset.x >= (TREE_Int)image->size.width ||
-		offset.y >= (TREE_Int)image->size.height)
+		offset.x >= (TREE_Int)image->extent.width ||
+		offset.y >= (TREE_Int)image->extent.height)
 	{
 		return TREE_ERROR_ARG_OUT_OF_RANGE;
 	}
@@ -359,7 +403,7 @@ TREE_Result TREE_Image_Get(TREE_Image* image, TREE_Offset offset, TREE_Char* cha
 	return TREE_OK;
 }
 
-TREE_Result TREE_Image_DrawImage(TREE_Image* image, TREE_Offset offset, TREE_Image* other)
+TREE_Result TREE_Image_DrawImage(TREE_Image* image, TREE_Offset offset, TREE_Image* other, TREE_Offset otherOffset, TREE_Extent extent)
 {
 	// validate
 	if (!image || !other)
@@ -368,20 +412,20 @@ TREE_Result TREE_Image_DrawImage(TREE_Image* image, TREE_Offset offset, TREE_Ima
 	}
 
 	// ignore if out of bounds
-	if (offset.x + other->size.width <= 0 || offset.y + other->size.height <= 0 ||
-		offset.x >= (TREE_Int)image->size.width ||
-		offset.y >= (TREE_Int)image->size.height)
+	if (offset.x + extent.width <= 0 || offset.y + extent.height <= 0 ||
+		offset.x >= (TREE_Int)image->extent.width ||
+		offset.y >= (TREE_Int)image->extent.height)
 	{
 		return TREE_OK;
 	}
 
 	// calculate sizes
-	TREE_UInt otherOffsetX = offset.x < 0 ? -offset.x : 0;
-	TREE_UInt otherOffsetY = offset.y < 0 ? -offset.y : 0;
+	TREE_UInt otherOffsetX = offset.x < -otherOffset.x ? otherOffset.x - offset.x : otherOffset.x;
+	TREE_UInt otherOffsetY = offset.y < -otherOffset.y ? otherOffset.y - offset.y : otherOffset.y;
 	TREE_UInt offsetX = offset.x < 0 ? 0 : offset.x;
 	TREE_UInt offsetY = offset.y < 0 ? 0 : offset.y;
-	TREE_UInt width = MIN(other->size.width, image->size.width - offsetX);
-	TREE_UInt height = MIN(other->size.height, image->size.height - offsetY);
+	TREE_UInt width = MIN(extent.width, image->extent.width - offsetX);
+	TREE_UInt height = MIN(extent.height, image->extent.height - offsetY);
 	TREE_Size textCopySize = width * sizeof(TREE_Char);
 	TREE_Size colorCopySize = width * sizeof(TREE_ColorPair);
 
@@ -390,8 +434,8 @@ TREE_Result TREE_Image_DrawImage(TREE_Image* image, TREE_Offset offset, TREE_Ima
 	for (TREE_UInt row = 0; row < height; ++row)
 	{
 		// get indexes to "pixel"
-		index = (row + offsetY) * image->size.width + offsetX;
-		otherIndex = (row + otherOffsetY) * other->size.width + otherOffsetX;
+		index = (row + offsetY) * image->extent.width + offsetX;
+		otherIndex = (row + otherOffsetY) * extent.width + otherOffsetX;
 
 		// copy data over from other
 		memcpy(&image->text[index], &other->text[otherIndex], textCopySize);
@@ -412,8 +456,8 @@ TREE_Result TREE_Image_DrawString(TREE_Image* image, TREE_Offset offset, TREE_St
 
 	// ignore if out of bounds
 	if (offset.x + stringLength <= 0 || offset.y < 0 ||
-		offset.x >= (TREE_Int)image->size.width ||
-		offset.y >= (TREE_Int)image->size.height)
+		offset.x >= (TREE_Int)image->extent.width ||
+		offset.y >= (TREE_Int)image->extent.height)
 	{
 		return TREE_OK;
 	}
@@ -421,10 +465,10 @@ TREE_Result TREE_Image_DrawString(TREE_Image* image, TREE_Offset offset, TREE_St
 	// calculate sizes
 	TREE_UInt stringOffsetX = offset.x < 0 ? -offset.x : 0;
 	TREE_UInt offsetX = offset.x < 0 ? 0 : offset.x;
-	TREE_UInt width = MIN((TREE_UInt)stringLength, image->size.width - offsetX);
+	TREE_UInt width = MIN((TREE_UInt)stringLength, image->extent.width - offsetX);
 
 	// draw the string
-	TREE_UInt index = offset.y * image->size.width + offsetX;
+	TREE_UInt index = offset.y * image->extent.width + offsetX;
 	TREE_UInt stringIndex = stringOffsetX;
 	memcpy(&image->text[index], &string[stringIndex], width * sizeof(TREE_Char));
 	memset(&image->colors[index], colorPair, width * sizeof(TREE_Byte));
@@ -551,8 +595,8 @@ TREE_Result TREE_Image_FillRect(TREE_Image* image, TREE_Offset start, TREE_Exten
 	// calculate bounds
 	TREE_Int startX = MAX(start.x, 0);
 	TREE_Int startY = MAX(start.y, 0);
-	TREE_Int endX = MIN(start.x + (TREE_Int)size.width, (TREE_Int)image->size.width);
-	TREE_Int endY = MIN(start.y + (TREE_Int)size.height, (TREE_Int)image->size.height);
+	TREE_Int endX = MIN(start.x + (TREE_Int)size.width, (TREE_Int)image->extent.width);
+	TREE_Int endY = MIN(start.y + (TREE_Int)size.height, (TREE_Int)image->extent.height);
 
 	// fill the rectangle
 	for (TREE_Int y = startY; y < endY; ++y)
@@ -582,7 +626,7 @@ TREE_Result TREE_Image_Clear(TREE_Image* image, TREE_Pixel pixel)
 	}
 
 	// fill the image with the pixel
-	TREE_Size pixelCount = (TREE_Size)(image->size.width * image->size.height);
+	TREE_Size pixelCount = (TREE_Size)(image->extent.width * image->extent.height);
 	memset(image->text, pixel.character, pixelCount * sizeof(TREE_Char));
 	memset(image->colors, pixel.colorPair, pixelCount * sizeof(TREE_ColorPair));
 
@@ -662,7 +706,7 @@ TREE_Result TREE_Surface_Refresh(TREE_Surface* surface)
 	TREE_Color lastBgColor = TREE_ColorPair_GetBackground(image->colors[0]) + 1;
 	TREE_Size fgCount = 1;
 	TREE_Size bgCount = 1;
-	TREE_Size pixelCount = (TREE_Size)(image->size.width * image->size.height);
+	TREE_Size pixelCount = (TREE_Size)(image->extent.width * image->extent.height);
 	for (TREE_Size i = 1; i < pixelCount; ++i)
 	{
 		TREE_Color fgColor = TREE_ColorPair_GetForeground(image->colors[i]);
@@ -967,27 +1011,18 @@ TREE_Key TREE_Input_GetKey()
 			case 80: return TREE_KEY_DOWN;
 			case 75: return TREE_KEY_LEFT;
 			case 77: return TREE_KEY_RIGHT;
+			case 71: return TREE_KEY_HOME;
+			case 73: return TREE_KEY_PAGE_UP;
+			case 79: return TREE_KEY_END;
+			case 81: return TREE_KEY_PAGE_DOWN;
+			case 82: return TREE_KEY_INSERT;
+			case 83: return TREE_KEY_DELETE;
+
 			default: return TREE_KEY_NULL;
 			}
 		}
 		else
 		{
-			// check if the key is a numpad key
-			SHORT state = GetAsyncKeyState(VK_NUMLOCK); // check if Num Lock is on
-			int isNumLockOn = (state & 0x0001) != 0;
-
-			if (isNumLockOn)
-			{
-				for (int i = VK_NUMPAD0; i <= VK_NUMPAD9; ++i)
-				{
-					// check if numpad key pressed
-					if (GetAsyncKeyState(i) & 0x8000)
-					{
-						return TREE_KEY_NUMPAD_0 + (i - VK_NUMPAD0);
-					}
-				}
-			}
-
 			// normal key
 			switch (ch)
 			{
@@ -1285,18 +1320,47 @@ TREE_Result TREE_Control_Init(TREE_Control* control, TREE_Transform* parent, TRE
 		return TREE_ERROR_ARG_NULL;
 	}
 
+	TREE_Result result;
+
+	// allocate data
+	control->transform = TREE_NEW(TREE_Transform);
+	if (!control->transform)
+	{
+		return TREE_ERROR_ALLOC;
+	}
+	control->image = TREE_NEW(TREE_Image);
+	if (!control->image)
+	{
+		TREE_DELETE(control->transform);
+		return TREE_ERROR_ALLOC;
+	}
+
 	// set data
 	control->type = TREE_CONTROL_TYPE_NONE;
 	control->flags = TREE_CONTROL_FLAGS_NONE;
-	control->stateFlags = TREE_CONTROL_STATE_FLAGS_NONE;
-	TREE_Transform_Init(&control->transform, (TREE_Offset) { 0, 0 }, (TREE_Coords) { 0.0f, 0.0f }, (TREE_Extent) { 0, 0 }, TREE_ALIGNMENT_TOPLEFT);
+	control->stateFlags = TREE_CONTROL_STATE_FLAGS_DIRTY;
+	result = TREE_Transform_Init(control->transform, (TREE_Offset) { 0, 0 }, (TREE_Coords) { 0.0f, 0.0f }, (TREE_Extent) { 0, 0 }, TREE_ALIGNMENT_TOPLEFT);
+	if (result)
+	{
+		TREE_DELETE(control->image);
+		TREE_DELETE(control->transform);
+		return result;
+	}
+	result = TREE_Image_Init(control->image, (TREE_Extent) { 0, 0 });
+	if (result)
+	{
+		TREE_Transform_Free(control->transform);
+		TREE_DELETE(control->image);
+		TREE_DELETE(control->transform);
+		return result;
+	}
 	memset(control->adjacent, 0, 4 * sizeof(TREE_Control*));
 	control->eventHandler = eventHandler;
 	control->data = data;
 
 	if (parent)
 	{
-		TREE_Result result = TREE_Transform_SetParent(&control->transform, parent);
+		TREE_Result result = TREE_Transform_SetParent(control->transform, parent);
 		if (result)
 		{
 			return result;
@@ -1317,37 +1381,13 @@ void TREE_Control_Free(TREE_Control* control)
 	control->type = TREE_CONTROL_TYPE_NONE;
 	control->flags = TREE_CONTROL_FLAGS_NONE;
 	control->stateFlags = TREE_CONTROL_STATE_FLAGS_NONE;
-	TREE_Transform_Free(&control->transform);
+	TREE_Transform_Free(control->transform);
+	TREE_DELETE(control->transform);
+	TREE_Image_Free(control->image);
+	TREE_DELETE(control->image);
 	memset(control->adjacent, 0, 4 * sizeof(TREE_Control*));
 	control->eventHandler = NULL;
 	control->data = NULL;
-}
-
-TREE_Result TREE_Control_Refresh(TREE_Control* control)
-{
-	// validate
-	if (!control)
-	{
-		return TREE_ERROR_ARG_NULL;
-	}
-
-	// ignore if clean
-	if (!(control->stateFlags & TREE_CONTROL_STATE_FLAGS_DIRTY))
-	{
-		return TREE_OK;
-	}
-
-	// set as clean
-	control->stateFlags &= ~TREE_CONTROL_STATE_FLAGS_DIRTY;
-
-	// refresh the transform
-	TREE_Result result = TREE_Transform_Refresh(&control->transform);
-	if (result)
-	{
-		return result;
-	}
-
-	return TREE_OK;
 }
 
 TREE_Result TREE_Control_Link(TREE_Control* control, TREE_Direction direction, TREE_ControlLink link, TREE_Control* other)
@@ -1411,7 +1451,7 @@ TREE_Result TREE_Control_Link(TREE_Control* control, TREE_Direction direction, T
 TREE_Result TREE_Control_HandleEvent(TREE_Control* control, TREE_Event const* event)
 {
 	// validate
-	if (!control || !event || !event->data)
+	if (!control || !event)
 	{
 		return TREE_ERROR_ARG_NULL;
 	}
@@ -1423,20 +1463,6 @@ TREE_Result TREE_Control_HandleEvent(TREE_Control* control, TREE_Event const* ev
 	}
 
 	// no event handler, so ignore the event
-	return TREE_OK;
-}
-
-TREE_Result TREE_Control_Dirty(TREE_Control* control)
-{
-	// validate
-	if (!control)
-	{
-		return TREE_ERROR_ARG_NULL;
-	}
-
-	// set as dirty
-	control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
-
 	return TREE_OK;
 }
 
@@ -1496,8 +1522,8 @@ TREE_Result TREE_Control_Label_Init(TREE_Control* control, TREE_Transform* paren
 	}
 
 	// set data
-	control->transform.localExtent.width = (TREE_UInt)strlen(data->text);
-	control->transform.localExtent.height = 1;
+	control->transform->localExtent.width = (TREE_UInt)strlen(data->text);
+	control->transform->localExtent.height = 1;
 	control->type = TREE_CONTROL_TYPE_LABEL;
 
 	return TREE_OK;
@@ -1530,7 +1556,7 @@ TREE_Result TREE_Control_Label_SetText(TREE_Control* control, TREE_String text, 
 	// set data
 	memcpy(labelData->text, text, textSize);
 
-	// dirty the control so it gets redrawn
+	// mark as dirty to get redrawn
 	control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
 
 	return TREE_OK;
@@ -1555,6 +1581,26 @@ TREE_String TREE_Control_Label_GetText(TREE_Control* control)
 	return labelData->text;
 }
 
+TREE_Result TREE_Control_Label_Refresh(TREE_Control* control)
+{
+	// validate
+	if (!control)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+	if (control->type != TREE_CONTROL_TYPE_LABEL)
+	{
+		return TREE_ERROR_ARG_INVALID;
+	}
+
+	// get data
+	TREE_Control_LabelData* labelData = (TREE_Control_LabelData*)control->data;
+
+	
+
+	return TREE_OK;
+}
+
 TREE_Result TREE_Control_Label_EventHandler(TREE_Event const* event)
 {
 	// validate
@@ -1564,28 +1610,35 @@ TREE_Result TREE_Control_Label_EventHandler(TREE_Event const* event)
 	}
 
 	// get the data
+	TREE_Control* control = event->control;
 	TREE_Control_LabelData* labelData = (TREE_Control_LabelData*)event->control->data;
+	TREE_Result result;
 
 	// handle the event
 	switch (event->type)
 	{
-	case TREE_EVENT_TYPE_DRAW:
+	case TREE_EVENT_TYPE_REFRESH:
 	{
-		// get the event data
-		TREE_EventData_Draw* drawData = (TREE_EventData_Draw*)event->data;
-		TREE_Image* target = drawData->target;
+		// resize image if needed
+		if (control->transform->globalRect.extent.width != control->image->extent.width ||
+			control->transform->globalRect.extent.height != control->image->extent.height)
+		{
+			TREE_Image_Free(control->image);
+			result = TREE_Image_Init(control->image, control->transform->globalRect.extent);
+			if (result)
+			{
+				return result;
+			}
+		}
 
+		// draw onto the image
 		// draw the rect
-		TREE_Transform* transform = &event->control->transform;
+		TREE_Transform* transform = control->transform;
+		TREE_Image* target = control->image;
 		TREE_Pixel pixel;
 		pixel.character = ' ';
 		pixel.colorPair = labelData->normalColor;
-		TREE_Result result = TREE_Image_FillRect(
-			target,
-			transform->globalRect.offset,
-			transform->globalRect.extent,
-			pixel
-		);
+		result = TREE_Image_Clear(target, pixel);
 
 		// capture each line of text
 		TREE_String text = labelData->text;
@@ -1614,11 +1667,12 @@ TREE_Result TREE_Control_Label_EventHandler(TREE_Event const* event)
 			}
 
 			// start at end, shrink until a space for word wrapping
-			TREE_Size potentialLength = MIN(maxLineLength, textLength - index);
-			TREE_Size length = potentialLength;
-			for (TREE_Int j = (TREE_Int)length - 1; j >= 0; j--)
+			TREE_Int potentialLength = (TREE_Int)MIN(maxLineLength, textLength - index);
+			TREE_Int length = potentialLength;
+			for (; length >= 0; length--)
 			{
-				if (isspace(text[index + j]))
+				TREE_Char ch = text[index + length];
+				if (!ch || isspace(ch))
 				{
 					break;
 				}
@@ -1629,11 +1683,15 @@ TREE_Result TREE_Control_Label_EventHandler(TREE_Event const* event)
 			}
 
 			// create line
-			TREE_Char* line = TREE_NEW_ARRAY(TREE_Char, length);
+			TREE_Char* line = TREE_NEW_ARRAY(TREE_Char, length + 1);
 			if (!line)
 			{
 				return TREE_ERROR_ALLOC;
 			}
+
+			// set the line data
+			memcpy(line, &text[index], length * sizeof(TREE_Char));
+			line[length] = '\0'; // null terminator
 
 			// add to lines
 			lines[lineCount] = line;
@@ -1659,7 +1717,7 @@ TREE_Result TREE_Control_Label_EventHandler(TREE_Event const* event)
 		{
 			top = (TREE_Int)(maxLines - lineCount);
 		}
-		
+
 		if (alignment & TREE_ALIGNMENT_LEFT)
 		{
 			offset.x = 0;
@@ -1722,6 +1780,44 @@ TREE_Result TREE_Control_Label_EventHandler(TREE_Event const* event)
 		}
 		TREE_DELETE(lines);
 
+		// check for result: would be an error if broke out of loop early
+		if (result)
+		{
+			return result;
+		}
+
+		break;
+	}
+	case TREE_EVENT_TYPE_DRAW:
+	{
+		// get the event data
+		TREE_EventData_Draw* drawData = (TREE_EventData_Draw*)event->data;
+		TREE_Image* target = drawData->target;
+		TREE_Rect const* dirtyRect = &drawData->dirtyRect;
+
+		// get the intersecting area
+		TREE_Rect intersection = TREE_Rect_GetIntersection(
+			&control->transform->globalRect,
+			dirtyRect
+		);
+
+		// if no intersection, nothing to do
+		if (intersection.extent.width == 0 || intersection.extent.height == 0)
+		{
+			break;
+		}
+
+		// draw just that area
+		TREE_Offset imageOffset;
+		imageOffset.x = intersection.offset.x - control->transform->globalRect.offset.x;
+		imageOffset.y = intersection.offset.y - control->transform->globalRect.offset.y;
+		result = TREE_Image_DrawImage(
+			target,
+			intersection.offset,
+			control->image,
+			imageOffset,
+			intersection.extent
+		);
 		if (result)
 		{
 			return result;
@@ -1802,7 +1898,7 @@ TREE_Result TREE_Application_AddControl(TREE_Application* application, TREE_Cont
 	return TREE_OK;
 }
 
-TREE_Result TREE_Application_DispatchEvent(TREE_Application const* application, TREE_Event const* event)
+TREE_Result TREE_Application_DispatchEvent(TREE_Application* application, TREE_Event const* event)
 {
 	// validate
 	if (!application || !event)
@@ -1811,6 +1907,7 @@ TREE_Result TREE_Application_DispatchEvent(TREE_Application const* application, 
 	}
 	
 	TREE_Event e = *event; // local copy to edit
+	e.application = application; // set the application for the event
 
 	// dispatch the event to the application's event handler, if any
 	if (application->eventHandler)
@@ -1862,6 +1959,8 @@ TREE_Result TREE_Application_Run(TREE_Application* application)
 	application->running = TREE_TRUE;
 
 	TREE_Result result;
+	TREE_Rect dirtyRect;
+	TREE_Bool shouldPresent;
 	while (application->running)
 	{
 		// get the next key
@@ -1879,6 +1978,7 @@ TREE_Result TREE_Application_Run(TREE_Application* application)
 			event.type = TREE_EVENT_TYPE_INPUT_KEY;
 			event.data = &eventData;
 			event.control = NULL;
+			event.application = application;
 
 			// trigger for each event
 			result = TREE_Application_DispatchEvent(application, &event);
@@ -1895,66 +1995,160 @@ TREE_Result TREE_Application_Run(TREE_Application* application)
 			}
 		}
 
-		// draw the controls
+		// update the dirty controls/transforms
 		{
-			// create event data
-			TREE_EventData_Draw eventData;
-			eventData.target = &application->surface->image;
-
-			// create event
+			// for refreshes
 			TREE_Event event;
-			event.type = TREE_EVENT_TYPE_DRAW;
-			event.data = &eventData;
+			event.type = TREE_EVENT_TYPE_REFRESH;
+			event.data = NULL;
 			event.control = NULL;
+			event.application = application;
 
-			// check each control
-			// if it is dirty, refresh it and redraw it
+			dirtyRect.offset.x = (TREE_Int)application->surface->image.extent.width;
+			dirtyRect.offset.y = (TREE_Int)application->surface->image.extent.height;
+			dirtyRect.extent.width = 0;
+			dirtyRect.extent.height = 0;
+
+			TREE_Control* control;
+			TREE_Bool dirty;
+			TREE_Rect rect;
 			for (TREE_Size i = 0; i < application->controlsSize; ++i)
 			{
-				TREE_Control* control = application->controls[i];
-				TREE_Bool redraw = TREE_FALSE;
-				if (control->transform.dirty)
+				control = application->controls[i];
+				dirty = TREE_FALSE;
+
+				// refresh the transform
+				if (control->transform->dirty)
 				{
-					result = TREE_Transform_Refresh(&control->transform);
+					// keep a copy of the old global rect
+					TREE_Rect oldGlobalRect = control->transform->globalRect;
+
+					// refresh the transform
+					result = TREE_Transform_Refresh(control->transform);
 					if (result)
 					{
 						application->running = TREE_FALSE;
 						return result;
 					}
-					control->transform.dirty = TREE_FALSE; // clear dirty flag
 
-					redraw = TREE_TRUE;
+					// get the dirty rect (combination of old and new rects)
+					rect = TREE_Rect_Combine(
+						&oldGlobalRect,
+						&control->transform->globalRect
+					);
+
+					// clear flag
+					control->transform->dirty = TREE_FALSE;
+
+					// update the dirty rect
+					dirty = TREE_TRUE;
 				}
-				if (control->stateFlags & TREE_CONTROL_STATE_FLAGS_DIRTY)
+				else
 				{
-					control->stateFlags &= ~TREE_CONTROL_STATE_FLAGS_DIRTY; // clear dirty flag
-					redraw = TREE_TRUE;
+					// transform did not change, so just use the global rect
+					rect = control->transform->globalRect;
 				}
-				if (redraw)
+
+				// refresh the control
+				if (dirty || (control->stateFlags & TREE_CONTROL_STATE_FLAGS_DIRTY))
 				{
-					event.control = control; // set the control for the event
+					// refresh the control
+					event.control = control;
 					result = TREE_Control_HandleEvent(control, &event);
 					if (result)
 					{
 						application->running = TREE_FALSE;
 						return result;
 					}
+
+					// clear flag
+					control->stateFlags &= ~TREE_CONTROL_STATE_FLAGS_DIRTY;
+
+					// update the dirty rect
+					dirty = TREE_TRUE;
+				}
+
+				// update the dirty rect
+				if (dirty)
+				{
+					dirtyRect = TREE_Rect_Combine(
+						&dirtyRect,
+						&rect
+					);
 				}
 			}
 		}
 
-		// present the surface
-		result = TREE_Surface_Refresh(application->surface);
-		if (result)
+		shouldPresent = TREE_FALSE;
+		// draw the controls using the dirty rect, if there is a dirty rect
+		if(dirtyRect.extent.width != 0 && dirtyRect.extent.height != 0)
 		{
-			application->running = TREE_FALSE;
-			return result;
+			// clear the surface where the dirty rect is
+			TREE_Pixel pixel;
+			pixel.character = ' ';
+			pixel.colorPair = TREE_ColorPair_CreateDefault();
+			result = TREE_Image_FillRect(
+				&application->surface->image,
+				dirtyRect.offset,
+				dirtyRect.extent,
+				pixel
+			);
+			if (result)
+			{
+				application->running = TREE_FALSE;
+				return result;
+			}
+
+			// create event data
+			TREE_EventData_Draw eventData;
+			eventData.target = &application->surface->image;
+			eventData.dirtyRect = dirtyRect;
+
+			// create event
+			TREE_Event event;
+			event.type = TREE_EVENT_TYPE_DRAW;
+			event.data = &eventData;
+			event.control = NULL;
+			event.application = application;
+
+			// check each control: if it is within the dirty rect, redraw it if so
+			for (TREE_Size i = 0; i < application->controlsSize; ++i)
+			{
+				TREE_Control* control = application->controls[i];
+				if (TREE_Rect_IsOverlapping(&dirtyRect, &control->transform->globalRect))
+				{
+					// set the control for the event
+					event.control = control;
+
+					// call the event handler
+					result = TREE_Control_HandleEvent(control, &event);
+					if (result)
+					{
+						application->running = TREE_FALSE;
+						return result;
+					}
+
+					// there was a drawing update
+					shouldPresent = TREE_TRUE;
+				}
+			}
 		}
-		result = TREE_Window_Present(application->surface);
-		if (result)
+
+		// present the surface, if there is an update to show
+		if (shouldPresent)
 		{
-			application->running = TREE_FALSE;
-			return result;
+			result = TREE_Surface_Refresh(application->surface);
+			if (result)
+			{
+				application->running = TREE_FALSE;
+				return result;
+			}
+			result = TREE_Window_Present(application->surface);
+			if (result)
+			{
+				application->running = TREE_FALSE;
+				return result;
+			}
 		}
 	}
 

@@ -18,6 +18,33 @@ TREE_Result ApplicationEventHandler(TREE_Event const* event)
 		}
 		// update label with key pressed
 		TREE_Control* control = g_application->controls[0];
+
+		switch (eventData->key)
+		{
+		case TREE_KEY_LEFT:
+			if (control->transform->localExtent.width > 0)
+			{
+				control->transform->localExtent.width--;
+			}
+			control->transform->dirty = TREE_TRUE;
+			break;
+		case TREE_KEY_RIGHT:
+			control->transform->localExtent.width++;
+			control->transform->dirty = TREE_TRUE;
+			break;
+		case TREE_KEY_UP:
+			if (control->transform->localExtent.height > 0)
+			{
+				control->transform->localExtent.height--;
+			}
+			control->transform->dirty = TREE_TRUE;
+			break;
+		case TREE_KEY_DOWN:
+			control->transform->localExtent.height++;
+			control->transform->dirty = TREE_TRUE;
+			break;
+		}
+
 		TREE_Control_Label_SetText(
 			control,
 			TREE_Key_ToString(eventData->key),
@@ -70,9 +97,9 @@ int main()
 		return 1;
 	}
 
-	control.transform.localOffset = (TREE_Offset){ 2, 2 };
-	control.transform.localExtent = (TREE_Extent){ 10, 3 };
-	result = TREE_Transform_Dirty(&control.transform);
+	control.transform->localOffset = (TREE_Offset){ 2, 2 };
+	control.transform->localExtent = (TREE_Extent){ 10, 3 };
+	result = TREE_Transform_Dirty(control.transform);
 	if (result)
 	{
 		printf("Failed to dirty transform: %s\n", TREE_Result_ToString(result));
