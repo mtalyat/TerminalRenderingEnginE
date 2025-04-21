@@ -628,6 +628,7 @@ typedef struct _TREE_Application
 	TREE_Control** controls;
 	TREE_Size controlsSize;
 	TREE_Size controlsCapacity;
+	TREE_Control* focusedControl;
 
 	TREE_Bool running;
 
@@ -643,6 +644,8 @@ TREE_Result TREE_Application_Init(TREE_Application* application, TREE_Surface* s
 void TREE_Application_Free(TREE_Application* application);
 
 TREE_Result TREE_Application_AddControl(TREE_Application* application, TREE_Control* control);
+
+TREE_Result TREE_Application_SetFocus(TREE_Application* application, TREE_Control* control);
 
 TREE_Result TREE_Application_DispatchEvent(TREE_Application* application, TREE_Event const* event);
 

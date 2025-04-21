@@ -2147,6 +2147,7 @@ TREE_Result TREE_Application_Init(TREE_Application* application, TREE_Surface* s
 	// set data
 	application->controlsCapacity = capacity;
 	application->controlsSize = 0;
+	application->focusedControl = NULL;
 	application->running = TREE_FALSE;
 	result = TREE_Input_Init(&application->input);
 	if (result)
@@ -2175,6 +2176,7 @@ void TREE_Application_Free(TREE_Application* application)
 
 	application->controlsCapacity = 0;
 	application->controlsSize = 0;
+	application->focusedControl = NULL;
 	application->running = TREE_FALSE;
 	TREE_Input_Free(&application->input);
 	application->eventHandler = NULL;
@@ -2196,6 +2198,43 @@ TREE_Result TREE_Application_AddControl(TREE_Application* application, TREE_Cont
 	// add to the application
 	application->controls[application->controlsSize] = control;
 	application->controlsSize++;
+
+	// if no focused control, and this one can be focused, set it as the focused control
+	if (!application->focusedControl && (control->flags & TREE_CONTROL_FLAGS_FOCUSABLE))
+	{
+		TREE_Result result = TREE_Application_SetFocus(application, control);
+		if (result)
+		{
+			return result;
+		}
+	}
+
+	return TREE_OK;
+}
+
+TREE_Result TREE_Application_SetFocus(TREE_Application* application, TREE_Control* control)
+{
+	// validate
+	if (!application)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	// if control already focused, take its focus away
+	if (application->focusedControl)
+	{
+		application->focusedControl->stateFlags &= ~TREE_CONTROL_STATE_FLAGS_FOCUSED & ~TREE_CONTROL_STATE_FLAGS_ACTIVE;
+		application->focusedControl->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+	}
+
+	// set to new control
+	application->focusedControl = control;
+
+	// if new control, give it focus
+	if (control)
+	{
+		control->stateFlags |= TREE_CONTROL_STATE_FLAGS_FOCUSED | TREE_CONTROL_STATE_FLAGS_DIRTY;
+	}
 
 	return TREE_OK;
 }
