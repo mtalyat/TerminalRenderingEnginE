@@ -57,12 +57,10 @@ int main()
 	// create button datas
 #define BUTTON_COUNT 3
 	TREE_Control_ButtonData buttonDatas[BUTTON_COUNT];
-	TREE_Pixel normalPixel = { ' ', TREE_ColorPair_Create(TREE_COLOR_BRIGHT_WHITE, TREE_COLOR_BRIGHT_BLACK) };
-	TREE_Pixel focusedPixel = { ' ', TREE_ColorPair_Create(TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_BRIGHT_WHITE) };
-	TREE_Pixel pressedPixel = { ' ', TREE_ColorPair_Create(TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_WHITE) };
 	for (TREE_Size i = 0; i < BUTTON_COUNT; i++)
 	{
-		result = TREE_Control_ButtonData_Init(&buttonDatas[i], i == 0 ? "Quit" : "Button", normalPixel, focusedPixel, pressedPixel, i == 0 ? Button_Quit : NULL);
+		TREE_Control_ButtonData* buttonData = &buttonDatas[i];
+		result = TREE_Control_ButtonData_Init(buttonData, i == 0 ? "Quit" : "Button", i == 0 ? Button_Quit : NULL);
 		if (result)
 		{
 			printf("Failed to initialize button data %zu: %s\n", i, TREE_Result_ToString(result));

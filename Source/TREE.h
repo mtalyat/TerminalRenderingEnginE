@@ -577,7 +577,7 @@ typedef struct _TREE_Control_LabelData
 	TREE_Pixel normal;
 } TREE_Control_LabelData;
 
-TREE_Result TREE_Control_LabelData_Init(TREE_Control_LabelData* data, TREE_String text, TREE_Alignment alignment, TREE_Pixel normal);
+TREE_Result TREE_Control_LabelData_Init(TREE_Control_LabelData* data, TREE_String text);
 
 void TREE_Control_LabelData_Free(TREE_Control_LabelData* data);
 
@@ -603,7 +603,7 @@ typedef struct _TREE_Control_ButtonData
 	TREE_Function onSubmit;
 } TREE_Control_ButtonData;
 
-TREE_Result TREE_Control_ButtonData_Init(TREE_Control_ButtonData* data, TREE_String text, TREE_Pixel normal, TREE_Pixel focused, TREE_Pixel pressed, TREE_Function onSubmit);
+TREE_Result TREE_Control_ButtonData_Init(TREE_Control_ButtonData* data, TREE_String text, TREE_Function onSubmit);
 
 void TREE_Control_ButtonData_Free(TREE_Control_ButtonData* data);
 

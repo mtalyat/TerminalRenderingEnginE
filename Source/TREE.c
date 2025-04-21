@@ -1689,7 +1689,7 @@ TREE_Result _TREE_Control_Refresh_Text(TREE_Image* target, TREE_Extent extent, T
 	return TREE_OK;
 }
 
-TREE_Result TREE_Control_LabelData_Init(TREE_Control_LabelData* data, TREE_String text, TREE_Alignment alignment, TREE_Pixel normal)
+TREE_Result TREE_Control_LabelData_Init(TREE_Control_LabelData* data, TREE_String text)
 {
 	// validate
 	if (!data || !text)
@@ -1709,8 +1709,9 @@ TREE_Result TREE_Control_LabelData_Init(TREE_Control_LabelData* data, TREE_Strin
 	// set data
 	memcpy(data->text, text, textSize);
 	data->text[textLength] = '\0'; // null terminator
-	data->alignment = alignment;
-	data->normal = normal;
+	data->alignment = TREE_ALIGNMENT_TOPLEFT;
+	data->normal.character = ' ';
+	data->normal.colorPair = TREE_ColorPair_Create(TREE_COLOR_WHITE, TREE_COLOR_BLACK);
 
 	return TREE_OK;
 }
@@ -1897,7 +1898,7 @@ TREE_Result TREE_Control_Label_EventHandler(TREE_Event const* event)
 	return TREE_OK;
 }
 
-TREE_Result TREE_Control_ButtonData_Init(TREE_Control_ButtonData* data, TREE_String text, TREE_Pixel normal, TREE_Pixel focused, TREE_Pixel pressed, TREE_Function onSubmit)
+TREE_Result TREE_Control_ButtonData_Init(TREE_Control_ButtonData* data, TREE_String text, TREE_Function onSubmit)
 {
 	// validate
 	if (!data || !text)
@@ -1917,9 +1918,12 @@ TREE_Result TREE_Control_ButtonData_Init(TREE_Control_ButtonData* data, TREE_Str
 	memcpy(data->text, text, (textLength + 1) * sizeof(TREE_Char)); // +1 for null terminator
 	data->text[textLength] = '\0'; // null terminator
 	data->alignment = TREE_ALIGNMENT_CENTER;
-	data->normal = normal;
-	data->focused = focused;
-	data->pressed = pressed;
+	data->normal.character = ' ';
+	data->normal.colorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_WHITE, TREE_COLOR_BRIGHT_BLACK);
+	data->focused.character = ' ';
+	data->focused.colorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_BRIGHT_WHITE);
+	data->pressed.character = ' ';
+	data->pressed.colorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_WHITE);
 	data->onSubmit = onSubmit;
 
 	return TREE_OK;
