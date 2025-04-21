@@ -9,48 +9,16 @@ TREE_Result ApplicationEventHandler(TREE_Event const* event)
 	switch (event->type)
 	{
 	case TREE_EVENT_TYPE_KEY_DOWN:
-	case TREE_EVENT_TYPE_KEY_HELD:
 	{
+		// get the event data
 		TREE_EventData_Key const* eventData = (TREE_EventData_Key const*)event->data;
+
 		// quit on escape
 		if (eventData->key == TREE_KEY_ESCAPE)
 		{
 			TREE_Application_Quit(g_application);
 		}
-		// update label with key pressed
-		TREE_Control* control = g_application->controls[0];
 
-		switch (eventData->key)
-		{
-		case TREE_KEY_LEFT_ARROW:
-			if (control->transform->localExtent.width > 0)
-			{
-				control->transform->localExtent.width--;
-			}
-			control->transform->dirty = TREE_TRUE;
-			break;
-		case TREE_KEY_RIGHT_ARROW:
-			control->transform->localExtent.width++;
-			control->transform->dirty = TREE_TRUE;
-			break;
-		case TREE_KEY_UP_ARROW:
-			if (control->transform->localExtent.height > 0)
-			{
-				control->transform->localExtent.height--;
-			}
-			control->transform->dirty = TREE_TRUE;
-			break;
-		case TREE_KEY_DOWN_ARROW:
-			control->transform->localExtent.height++;
-			control->transform->dirty = TREE_TRUE;
-			break;
-		}
-
-		TREE_Control_Label_SetText(
-			control,
-			TREE_Key_ToString(eventData->key),
-			TREE_ColorPair_CreateDefault()
-		);
 		break;
 	}
 	}
@@ -74,45 +42,68 @@ int main()
 	// create the application
 	TREE_Application app;
 	g_application = &app; // Store the application globally for the event handler
-	result = TREE_Application_Init(&app, &surface, 1, ApplicationEventHandler);
+	result = TREE_Application_Init(&app, &surface, 10, ApplicationEventHandler);
 	if (result)
 	{
 		printf("Failed to initialize application: %s\n", TREE_Result_ToString(result));
 		return 1;
 	}
-
-	// create the single control
-	TREE_Control_LabelData labelData;
-	result = TREE_Control_LabelData_Init(&labelData, "Hello world!", TREE_ALIGNMENT_TOPLEFT, TREE_ColorPair_Create(TREE_COLOR_BRIGHT_WHITE, TREE_COLOR_RED));
-	if (result)
+	
+	// create button datas
+#define BUTTON_COUNT 3
+	TREE_Control_ButtonData buttonDatas[BUTTON_COUNT];
+	TREE_Pixel normalPixel = { ' ', TREE_ColorPair_Create(TREE_COLOR_BRIGHT_WHITE, TREE_COLOR_BRIGHT_BLACK) };
+	TREE_Pixel focusedPixel = { ' ', TREE_ColorPair_Create(TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_BRIGHT_WHITE) };
+	TREE_Pixel pressedPixel = { ' ', TREE_ColorPair_Create(TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_WHITE) };
+	for (TREE_Size i = 0; i < BUTTON_COUNT; i++)
 	{
-		printf("Failed to initialize label data: %s\n", TREE_Result_ToString(result));
-		return 1;
+		result = TREE_Control_ButtonData_Init(&buttonDatas[i], "Button", normalPixel, focusedPixel, pressedPixel, NULL);
+		if (result)
+		{
+			printf("Failed to initialize button data %zu: %s\n", i, TREE_Result_ToString(result));
+			return 1;
+		}
 	}
 
-	TREE_Control control;
-	result = TREE_Control_Label_Init(&control, NULL, &labelData);
-	if (result)
+	// create buttons
+	TREE_Control buttons[BUTTON_COUNT];
+	for (TREE_Int i = 0; i < BUTTON_COUNT; i++)
 	{
-		printf("Failed to initialize control: %s\n", TREE_Result_ToString(result));
-		return 1;
+		result = TREE_Control_Button_Init(&buttons[i], NULL, &buttonDatas[i]);
+		if (result)
+		{
+			printf("Failed to initialize button %d: %s\n", i, TREE_Result_ToString(result));
+			return 1;
+		}
+
+		// move button
+		TREE_Transform* transform = buttons[i].transform;
+		transform->localOffset.y = 1 + i;
+		transform->localOffset.x = 22 * i;
 	}
 
-	control.transform->localOffset = (TREE_Offset){ 2, 2 };
-	control.transform->localExtent = (TREE_Extent){ 10, 3 };
-	result = TREE_Transform_Dirty(control.transform);
-	if (result)
+	// link buttons together
+	for (TREE_Size i = 0; i < BUTTON_COUNT - 1; i++)
 	{
-		printf("Failed to dirty transform: %s\n", TREE_Result_ToString(result));
-		return 1;
+		TREE_Control* button = &buttons[i];
+		TREE_Control* nextButton = &buttons[i + 1];
+		result = TREE_Control_Link(button, TREE_DIRECTION_EAST, TREE_CONTROL_LINK_DOUBLE, nextButton);
+		if (result)
+		{
+			printf("Failed to link button %zu to button %zu: %s\n", i, i + 1, TREE_Result_ToString(result));
+			return 1;
+		}
 	}
 
-	// add the control to the application
-	result = TREE_Application_AddControl(&app, &control);
-	if (result)
+	// add buttons to application
+	for (TREE_Size i = 0; i < BUTTON_COUNT; i++)
 	{
-		printf("Failed to add control to application: %s\n", TREE_Result_ToString(result));
-		return 1;
+		result = TREE_Application_AddControl(&app, &buttons[i]);
+		if (result)
+		{
+			printf("Failed to add button %zu to application: %s\n", i, TREE_Result_ToString(result));
+			return 1;
+		}
 	}
 
 	// run the application
@@ -124,8 +115,11 @@ int main()
 	}
 
 	// cleanup
-	TREE_Control_Free(&control);
-	TREE_Control_LabelData_Free(&labelData);
+	for (TREE_Size i = 0; i < BUTTON_COUNT; i++)
+	{
+		TREE_Control_Free(&buttons[i]);
+		TREE_Control_ButtonData_Free(&buttonDatas[i]);
+	}
 	TREE_Application_Free(&app);
 	TREE_Surface_Free(&surface);
 

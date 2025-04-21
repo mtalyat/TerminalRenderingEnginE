@@ -16,6 +16,7 @@ typedef unsigned long long TREE_Size;
 typedef void* TREE_Data;
 typedef long TREE_Long;
 typedef long TREE_Time;
+typedef void(*TREE_Function)(void*);
 
 #define TREE_FALSE 0
 #define TREE_TRUE 1
@@ -191,7 +192,7 @@ TREE_Result TREE_Image_Set(TREE_Image* image, TREE_Offset offset, TREE_Char char
 
 TREE_Result TREE_Image_Get(TREE_Image* image, TREE_Offset offset, TREE_Char* character, TREE_ColorPair* colorPair);
 
-TREE_Result TREE_Image_DrawImage(TREE_Image* image, TREE_Offset offset, TREE_Image* other, TREE_Offset otherOffset, TREE_Extent extent);
+TREE_Result TREE_Image_DrawImage(TREE_Image* image, TREE_Offset offset, TREE_Image const* other, TREE_Offset otherOffset, TREE_Extent extent);
 
 TREE_Result TREE_Image_DrawString(TREE_Image* image, TREE_Offset offset, TREE_String string, TREE_ColorPair colorPair);
 
@@ -519,7 +520,8 @@ TREE_Result TREE_Transform_Refresh(TREE_Transform* transform);
 typedef enum _TREE_ControlType
 {
 	TREE_CONTROL_TYPE_NONE,
-	TREE_CONTROL_TYPE_LABEL
+	TREE_CONTROL_TYPE_LABEL,
+	TREE_CONTROL_TYPE_BUTTON,
 } TREE_ControlType;
 
 typedef enum _TREE_ControlFlags
@@ -533,6 +535,7 @@ typedef enum _TREE_ControlStateFlags
 	TREE_CONTROL_STATE_FLAGS_NONE = 0x0,
 	TREE_CONTROL_STATE_FLAGS_DIRTY = 0x1,
 	TREE_CONTROL_STATE_FLAGS_FOCUSED = 0x2,
+	TREE_CONTROL_STATE_FLAGS_ACTIVE = 0x4,
 } TREE_ControlStateFlags;
 
 typedef enum _TREE_ControlLink
@@ -571,10 +574,10 @@ typedef struct _TREE_Control_LabelData
 {
 	TREE_Char* text;
 	TREE_Alignment alignment;
-	TREE_ColorPair normalColor;
+	TREE_Pixel normal;
 } TREE_Control_LabelData;
 
-TREE_Result TREE_Control_LabelData_Init(TREE_Control_LabelData* data, TREE_String text, TREE_Alignment alignment, TREE_ColorPair normalColor);
+TREE_Result TREE_Control_LabelData_Init(TREE_Control_LabelData* data, TREE_String text, TREE_Alignment alignment, TREE_Pixel normal);
 
 void TREE_Control_LabelData_Free(TREE_Control_LabelData* data);
 
@@ -583,8 +586,6 @@ TREE_Result TREE_Control_Label_Init(TREE_Control* control, TREE_Transform* paren
 TREE_Result TREE_Control_Label_SetText(TREE_Control* control, TREE_String text, TREE_ColorPair colorPair);
 
 TREE_String TREE_Control_Label_GetText(TREE_Control* control);
-
-TREE_Result TREE_Control_Label_Refresh(TREE_Control* control);
 
 TREE_Result TREE_Control_Label_EventHandler(TREE_Event const* event);
 
@@ -595,10 +596,24 @@ TREE_Result TREE_Control_Label_EventHandler(TREE_Event const* event);
 typedef struct _TREE_Control_ButtonData
 {
 	TREE_Char* text;
-	TREE_ColorPair normalColor;
-	TREE_ColorPair focusedColor;
-	TREE_ColorPair pressedColor;
+	TREE_Alignment alignment;
+	TREE_Pixel normal;
+	TREE_Pixel focused;
+	TREE_Pixel pressed;
+	TREE_Function onSubmit;
 } TREE_Control_ButtonData;
+
+TREE_Result TREE_Control_ButtonData_Init(TREE_Control_ButtonData* data, TREE_String text, TREE_Pixel normal, TREE_Pixel focused, TREE_Pixel pressed, TREE_Function onSubmit);
+
+void TREE_Control_ButtonData_Free(TREE_Control_ButtonData* data);
+
+TREE_Result TREE_Control_Button_Init(TREE_Control* control, TREE_Transform* parent, TREE_Control_ButtonData* data);
+
+TREE_Result TREE_Control_Button_SetText(TREE_Control* control, TREE_String text, TREE_ColorPair colorPair);
+
+TREE_String TREE_Control_Button_GetText(TREE_Control* control);
+
+TREE_Result TREE_Control_Button_EventHandler(TREE_Event const* event);
 
 ///////////////////////////////////////
 // Control: ?????                    //
