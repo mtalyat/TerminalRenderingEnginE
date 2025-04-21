@@ -2268,8 +2268,7 @@ TREE_Result TREE_Control_TextInputData_Init(TREE_Control_TextInputData* data, TR
 	data->focused.colorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_BRIGHT_WHITE);
 	data->active.character = ' ';
 	data->active.colorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_WHITE);
-	data->cursor.character = '_';
-	data->cursor.colorPair = TREE_ColorPair_Create(TREE_COLOR_WHITE, TREE_COLOR_BRIGHT_BLACK);
+	data->cursor = TREE_ColorPair_Create(TREE_COLOR_WHITE, TREE_COLOR_BRIGHT_BLACK);
 	data->cursorPosition = 0;
 	data->cursorTimer = 0;
 	data->scroll = 0;
@@ -2300,8 +2299,7 @@ void TREE_Control_TextInputData_Free(TREE_Control_TextInputData* data)
 	data->focused.colorPair = TREE_ColorPair_CreateDefault();
 	data->active.character = ' ';
 	data->active.colorPair = TREE_ColorPair_CreateDefault();
-	data->cursor.character = ' ';
-	data->cursor.colorPair = TREE_ColorPair_CreateDefault();
+	data->cursor = TREE_ColorPair_CreateDefault();
 	data->cursorPosition = 0;
 	data->cursorTimer = 0;
 	data->scroll = 0;
@@ -2451,6 +2449,7 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 			{
 				// shift string over
 				memmove(&data->text[data->cursorPosition - 1], &data->text[data->cursorPosition], (textLength - data->cursorPosition) * sizeof(TREE_Char));
+				data->text[textLength - 1] = '\0'; // null terminator
 				control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
 				data->cursorPosition--;
 				data->cursorTimer = 0;
@@ -2462,6 +2461,7 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 			{
 				// shift string over
 				memmove(&data->text[data->cursorPosition], &data->text[data->cursorPosition + 1], (textLength - data->cursorPosition) * sizeof(TREE_Char));
+				data->text[textLength - 1] = '\0'; // null terminator
 				control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
 				data->cursorTimer = 0;
 				CALL_ACTION(data->onChange, control);
@@ -2547,9 +2547,10 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 			{
 				memmove(&data->text[data->cursorPosition + 1], &data->text[data->cursorPosition], (textLength - data->cursorPosition) * sizeof(TREE_Char));
 			}
+			data->text[textLength + 1] = '\0'; // null terminator
 
 			// insert character
-			data->text[data->cursorPosition] = (TREE_Char)key;
+			data->text[data->cursorPosition] = ch;
 			data->cursorPosition++;
 			control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
 			data->cursorTimer = 0;
@@ -2684,13 +2685,26 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 			// draw cursor if active
 			if (active)
 			{
+				// calculate the cursor character
+				TREE_Pixel cursorPixel;
+				cursorPixel.colorPair = data->cursor;
+				if (data->cursorPosition == textLength)
+				{
+					cursorPixel.character = ' ';
+				}
+				else
+				{
+					cursorPixel.character = text[data->cursorPosition];
+				}
+
+				// draw the cursor
 				TREE_Offset cursorOffset;
 				cursorOffset.x = (TREE_Int)(data->cursorPosition % extent->width);
 				cursorOffset.y = (TREE_Int)(data->cursorPosition / extent->width - scroll);
 				result = TREE_Image_Set(
 					control->image,
 					cursorOffset,
-					data->cursor
+					cursorPixel
 				);
 				if (result)
 				{
@@ -2704,10 +2718,10 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 			
 			// find the offset
 			TREE_Size offset = data->scroll;
-			if (data->cursorPosition == textLength)
-			{
-				offset++;
-			}
+			//if (data->cursorPosition == textLength)
+			//{
+			//	offset++;
+			//}
 
 			// get size of text using the offset
 			TREE_Size length = MIN(extent->width, textLength - offset);
@@ -2740,13 +2754,26 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 			// draw cursor if active
 			if (active)
 			{
+				// calculate the cursor character
+				TREE_Pixel cursorPixel;
+				cursorPixel.colorPair = data->cursor;
+				if (data->cursorPosition == textLength)
+				{
+					cursorPixel.character = ' ';
+				}
+				else
+				{
+					cursorPixel.character = text[data->cursorPosition];
+				}
+
+				// draw the cursor
 				TREE_Offset cursorOffset;
 				cursorOffset.x = (TREE_Int)(data->cursorPosition - offset);
 				cursorOffset.y = 0;
 				result = TREE_Image_Set(
 					control->image,
 					cursorOffset,
-					data->cursor
+					cursorPixel
 				);
 				if (result)
 				{

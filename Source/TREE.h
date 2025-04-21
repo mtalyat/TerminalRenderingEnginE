@@ -641,7 +641,7 @@ typedef struct _TREE_Control_TextInputData
 	TREE_Pixel normal;
 	TREE_Pixel focused;
 	TREE_Pixel active;
-	TREE_Pixel cursor;
+	TREE_ColorPair cursor;
 	TREE_Size cursorPosition;
 	TREE_Byte cursorTimer;
 	TREE_Size scroll;
