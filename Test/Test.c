@@ -8,9 +8,10 @@ TREE_Result ApplicationEventHandler(TREE_Event const* event)
 {
 	switch (event->type)
 	{
-	case TREE_EVENT_TYPE_INPUT_KEY:
+	case TREE_EVENT_TYPE_KEY_DOWN:
+	case TREE_EVENT_TYPE_KEY_HELD:
 	{
-		TREE_EventData_InputKey const* eventData = (TREE_EventData_InputKey const*)event->data;
+		TREE_EventData_Key const* eventData = (TREE_EventData_Key const*)event->data;
 		// quit on escape
 		if (eventData->key == TREE_KEY_ESCAPE)
 		{
@@ -21,25 +22,25 @@ TREE_Result ApplicationEventHandler(TREE_Event const* event)
 
 		switch (eventData->key)
 		{
-		case TREE_KEY_LEFT:
+		case TREE_KEY_LEFT_ARROW:
 			if (control->transform->localExtent.width > 0)
 			{
 				control->transform->localExtent.width--;
 			}
 			control->transform->dirty = TREE_TRUE;
 			break;
-		case TREE_KEY_RIGHT:
+		case TREE_KEY_RIGHT_ARROW:
 			control->transform->localExtent.width++;
 			control->transform->dirty = TREE_TRUE;
 			break;
-		case TREE_KEY_UP:
+		case TREE_KEY_UP_ARROW:
 			if (control->transform->localExtent.height > 0)
 			{
 				control->transform->localExtent.height--;
 			}
 			control->transform->dirty = TREE_TRUE;
 			break;
-		case TREE_KEY_DOWN:
+		case TREE_KEY_DOWN_ARROW:
 			control->transform->localExtent.height++;
 			control->transform->dirty = TREE_TRUE;
 			break;

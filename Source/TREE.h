@@ -14,6 +14,8 @@ typedef char TREE_Char;
 typedef TREE_Char const* TREE_String;
 typedef unsigned long long TREE_Size;
 typedef void* TREE_Data;
+typedef long TREE_Long;
+typedef long TREE_Time;
 
 #define TREE_FALSE 0
 #define TREE_TRUE 1
@@ -231,27 +233,28 @@ TREE_Extent TREE_Window_GetExtent();
 
 typedef enum _TREE_Key
 {
-	TREE_KEY_NULL = 0,
+	TREE_KEY_NONE = 0,
 	TREE_KEY_BACKSPACE = 8,
 	TREE_KEY_TAB = 9,
-	TREE_KEY_ENTER = 10,
+	TREE_KEY_ENTER = 13,
+	TREE_KEY_SHIFT = 16,
+	TREE_KEY_CONTROL = 17,
+	TREE_KEY_ALT = 18,
+	TREE_KEY_PAUSE = 19,
+	TREE_KEY_CAPS_LOCK = 20,
 	TREE_KEY_ESCAPE = 27,
 	TREE_KEY_SPACE = 32,
-	TREE_KEY_EXCLAMATION = 33,
-	TREE_KEY_DOUBLE_QUOTE = 34,
-	TREE_KEY_HASH = 35,
-	TREE_KEY_DOLLAR = 36,
-	TREE_KEY_PERCENT = 37,
-	TREE_KEY_AMPERSAND = 38,
-	TREE_KEY_SINGLE_QUOTE = 39,
-	TREE_KEY_LEFT_PARENTHESIS = 40,
-	TREE_KEY_RIGHT_PARENTHESIS = 41,
-	TREE_KEY_ASTERISK = 42,
-	TREE_KEY_PLUS = 43,
-	TREE_KEY_COMMA = 44,
-	TREE_KEY_MINUS = 45,
-	TREE_KEY_PERIOD = 46,
-	TREE_KEY_SLASH = 47,
+	TREE_KEY_PAGE_UP = 33,
+	TREE_KEY_PAGE_DOWN = 34,
+	TREE_KEY_END = 35,
+	TREE_KEY_HOME = 36,
+	TREE_KEY_LEFT_ARROW = 37,
+	TREE_KEY_UP_ARROW = 38,
+	TREE_KEY_RIGHT_ARROW = 39,
+	TREE_KEY_DOWN_ARROW = 40,
+	TREE_KEY_PRINT_SCREEN = 44,
+	TREE_KEY_INSERT = 45,
+	TREE_KEY_DELETE = 46,
 	TREE_KEY_0 = 48,
 	TREE_KEY_1 = 49,
 	TREE_KEY_2 = 50,
@@ -262,13 +265,6 @@ typedef enum _TREE_Key
 	TREE_KEY_7 = 55,
 	TREE_KEY_8 = 56,
 	TREE_KEY_9 = 57,
-	TREE_KEY_COLON = 58,
-	TREE_KEY_SEMICOLON = 59,
-	TREE_KEY_LESS_THAN = 60,
-	TREE_KEY_EQUAL = 61,
-	TREE_KEY_GREATER_THAN = 62,
-	TREE_KEY_QUESTION = 63,
-	TREE_KEY_AT = 64,
 	TREE_KEY_A = 65,
 	TREE_KEY_B = 66,
 	TREE_KEY_C = 67,
@@ -295,94 +291,92 @@ typedef enum _TREE_Key
 	TREE_KEY_X = 88,
 	TREE_KEY_Y = 89,
 	TREE_KEY_Z = 90,
-	TREE_KEY_LEFT_BRACKET = 91,
-	TREE_KEY_BACKSLASH = 92,
-	TREE_KEY_RIGHT_BRACKET = 93,
-	TREE_KEY_CARET = 94,
-	TREE_KEY_UNDERSCORE = 95,
-	TREE_KEY_GRAVE_ACCENT = 96,
-	TREE_KEY_a = 97,
-	TREE_KEY_b = 98,
-	TREE_KEY_c = 99,
-	TREE_KEY_d = 100,
-	TREE_KEY_e = 101,
-	TREE_KEY_f = 102,
-	TREE_KEY_g = 103,
-	TREE_KEY_h = 104,
-	TREE_KEY_i = 105,
-	TREE_KEY_j = 106,
-	TREE_KEY_k = 107,
-	TREE_KEY_l = 108,
-	TREE_KEY_m = 109,
-	TREE_KEY_n = 110,
-	TREE_KEY_o = 111,
-	TREE_KEY_p = 112,
-	TREE_KEY_q = 113,
-	TREE_KEY_r = 114,
-	TREE_KEY_s = 115,
-	TREE_KEY_t = 116,
-	TREE_KEY_u = 117,
-	TREE_KEY_v = 118,
-	TREE_KEY_w = 119,
-	TREE_KEY_x = 120,
-	TREE_KEY_y = 121,
-	TREE_KEY_z = 122,
-	TREE_KEY_LEFT_CURLY_BRACE = 123,
-	TREE_KEY_PIPE = 124,
-	TREE_KEY_RIGHT_CURLY_BRACE = 125,
-	TREE_KEY_TILDE = 126,
-	TREE_KEY_DELETE = 127,
+	TREE_KEY_NUMPAD_0 = 96,
+	TREE_KEY_NUMPAD_1 = 97,
+	TREE_KEY_NUMPAD_2 = 98,
+	TREE_KEY_NUMPAD_3 = 99,
+	TREE_KEY_NUMPAD_4 = 100,
+	TREE_KEY_NUMPAD_5 = 101,
+	TREE_KEY_NUMPAD_6 = 102,
+	TREE_KEY_NUMPAD_7 = 103,
+	TREE_KEY_NUMPAD_8 = 104,
+	TREE_KEY_NUMPAD_9 = 105,
+	TREE_KEY_MULTIPLY = 106,
+	TREE_KEY_ADD = 107,
+	TREE_KEY_SUBTRACT = 109,
+	TREE_KEY_DECIMAL = 110,
+	TREE_KEY_DIVIDE = 111,
+	TREE_KEY_F1 = 112,
+	TREE_KEY_F2 = 113,
+	TREE_KEY_F3 = 114,
+	TREE_KEY_F4 = 115,
+	TREE_KEY_F5 = 116,
+	TREE_KEY_F6 = 117,
+	TREE_KEY_F7 = 118,
+	TREE_KEY_F8 = 119,
+	TREE_KEY_F9 = 120,
+	TREE_KEY_F10 = 121,
+	TREE_KEY_F11 = 122,
+	TREE_KEY_F12 = 123,
+	TREE_KEY_NUM_LOCK = 144,
+	TREE_KEY_SCROLL_LOCK = 145,
+	TREE_KEY_SEMICOLON = 186, // ; and :
+	TREE_KEY_EQUALS = 187, // = and +
+	TREE_KEY_COMMA = 188, // , and <
+	TREE_KEY_MINUS = 189, // - and _
+	TREE_KEY_PERIOD = 190, // . and >
+	TREE_KEY_SLASH = 191, // / and ?
+	TREE_KEY_TILDE = 192, // ~ and `
+	TREE_KEY_LEFT_BRACKET = 219, // [ and {
+	TREE_KEY_BACKSLASH = 220, // \ and |
+	TREE_KEY_RIGHT_BRACKET = 221, // ] and }
+	TREE_KEY_APOSTROPHE = 222, // ' and "
 
-	TREE_KEY_UP = 1'000,
-	TREE_KEY_DOWN = 1'001,
-	TREE_KEY_LEFT = 1'002,
-	TREE_KEY_RIGHT = 1'003,
-	TREE_KEY_PAGE_UP = 1'004,
-	TREE_KEY_PAGE_DOWN = 1'005,
-	TREE_KEY_HOME = 1'006,
-	TREE_KEY_END = 1'007,
-	TREE_KEY_INSERT = 1'008,
-
-	TREE_KEY_F1 = 2'000,
-	TREE_KEY_F2 = 2'001,
-	TREE_KEY_F3 = 2'002,
-	TREE_KEY_F4 = 2'003,
-	TREE_KEY_F5 = 2'004,
-	TREE_KEY_F6 = 2'005,
-	TREE_KEY_F7 = 2'006,
-	TREE_KEY_F8 = 2'007,
-	TREE_KEY_F9 = 2'008,
-	TREE_KEY_F10 = 2'009,
-	TREE_KEY_F11 = 2'010,
-	TREE_KEY_F12 = 2'011,
-
-	TREE_KEY_NUMPAD_0 = 3'000,
-	TREE_KEY_NUMPAD_1 = 3'001,
-	TREE_KEY_NUMPAD_2 = 3'002,
-	TREE_KEY_NUMPAD_3 = 3'003,
-	TREE_KEY_NUMPAD_4 = 3'004,
-	TREE_KEY_NUMPAD_5 = 3'005,
-	TREE_KEY_NUMPAD_6 = 3'006,
-	TREE_KEY_NUMPAD_7 = 3'007,
-	TREE_KEY_NUMPAD_8 = 3'008,
-	TREE_KEY_NUMPAD_9 = 3'009,
-	TREE_KEY_NUMPAD_MULTIPLY = 3'010,
-	TREE_KEY_NUMPAD_ADD = 3'011,
-	TREE_KEY_NUMPAD_SUBTRACT = 3'012,
-	TREE_KEY_NUMPAD_DECIMAL = 3'013,
-	TREE_KEY_NUMPAD_DIVIDE = 3'014,
-	TREE_KEY_NUMPAD_ENTER = 3'015,
+	TREE_KEY_MAX = 222,
+	TREE_KEY_COUNT = 97,
 } TREE_Key;
 
-TREE_Char TREE_Key_ToChar(TREE_Key key);
-
 TREE_String TREE_Key_ToString(TREE_Key key);
+
+///////////////////////////////////////
+// Key Modifier Flags                //
+///////////////////////////////////////
+
+typedef enum TREE_KeyModifierFlags
+{
+	TREE_KEY_MODIFIER_FLAGS_NONE = 0x0,
+	TREE_KEY_MODIFIER_FLAGS_SHIFT = 0x1,
+	TREE_KEY_MODIFIER_FLAGS_CONTROL = 0x2,
+	TREE_KEY_MODIFIER_FLAGS_ALT = 0x4,
+	TREE_KEY_MODIFIER_FLAGS_COMMAND = 0x8,
+	TREE_KEY_MODIFIER_FLAGS_NUM_LOCK = 0x10,
+	TREE_KEY_MODIFIER_FLAGS_SCROLL_LOCK = 0x20,
+	TREE_KEY_MODIFIER_FLAGS_CAPS_LOCK = 0x40,
+} TREE_KeyModifierFlags;
 
 ///////////////////////////////////////
 // Input                             //
 ///////////////////////////////////////
 
-TREE_Key TREE_Input_GetKey();
+typedef enum _TREE_InputState
+{
+	TREE_INPUT_STATE_RELEASED = 0,
+	TREE_INPUT_STATE_HELD = 1,
+	TREE_INPUT_STATE_PRESSED = 2,
+
+	TREE_INPUT_STATE_COOLDOWN = 10, // number of key ticks before key is in "held" state
+} TREE_InputState;
+
+typedef struct _TREE_Input
+{
+	TREE_Key keys[TREE_KEY_COUNT];
+	TREE_Byte states[TREE_KEY_MAX];
+	TREE_KeyModifierFlags modifiers;
+} TREE_Input;
+
+TREE_Result TREE_Input_Init(TREE_Input* input);
+
+void TREE_Input_Free(TREE_Input* input);
 
 ///////////////////////////////////////
 // Direction                         //
@@ -444,11 +438,12 @@ typedef enum _TREE_Alignment
 
 typedef enum _TREE_EventType
 {
-	TREE_EVENT_TYPE_NONE = 000,
-	TREE_EVENT_TYPE_REFRESH = 001,
-	TREE_EVENT_TYPE_DRAW = 002,
-
-	TREE_EVENT_TYPE_INPUT_KEY = 1'000,
+	TREE_EVENT_TYPE_NONE = 0,
+	TREE_EVENT_TYPE_REFRESH = 1,
+	TREE_EVENT_TYPE_DRAW = 2,
+	TREE_EVENT_TYPE_KEY_DOWN = 3,
+	TREE_EVENT_TYPE_KEY_HELD = 4,
+	TREE_EVENT_TYPE_KEY_UP = 5,
 } TREE_EventType;
 
 typedef struct _TREE_Application TREE_Application;
@@ -470,10 +465,11 @@ typedef struct _TREE_EventData_Draw
 	TREE_Rect dirtyRect;
 } TREE_EventData_Draw;
 
-typedef struct _TREE_EventData_InputKey
+typedef struct _TREE_EventData_Key
 {
 	TREE_Key key;
-} TREE_EventData_InputKey;
+	TREE_KeyModifierFlags modifiers;
+} TREE_EventData_Key;
 
 ///////////////////////////////////////
 // Transform                         //
@@ -613,6 +609,8 @@ typedef struct _TREE_Application
 	TREE_Size controlsCapacity;
 
 	TREE_Bool running;
+
+	TREE_Input input;
 
 	TREE_EventHandler eventHandler;
 

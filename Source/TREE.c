@@ -3,6 +3,7 @@
 #include "TREE.h"
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #ifdef _WIN32
 #define TREE_WINDOWS
@@ -829,67 +830,42 @@ TREE_Extent TREE_Window_GetExtent()
 	return extent;
 }
 
-TREE_Char TREE_Key_ToChar(TREE_Key key)
-{
-	if (key >= 128)
-	{
-		return '\0';
-	}
-
-	switch (key)
-	{
-	case TREE_KEY_NULL: return '\0';
-	case TREE_KEY_BACKSPACE: return '\b';
-	case TREE_KEY_TAB: return '\t';
-	case TREE_KEY_ENTER: return '\n';
-	case TREE_KEY_ESCAPE: return '\033';
-	default:
-		return (TREE_Char)key;
-	};
-}
-
 TREE_String TREE_Key_ToString(TREE_Key key)
 {
 	switch (key)
 	{
-	case TREE_KEY_NULL: return "NULL";
-	case TREE_KEY_BACKSPACE: return "BACKSPACE";
-	case TREE_KEY_TAB: return "TAB";
-	case TREE_KEY_ENTER: return "ENTER";
-	case TREE_KEY_ESCAPE: return "ESCAPE";
-	case TREE_KEY_SPACE: return "SPACE";
-	case TREE_KEY_EXCLAMATION: return "EXCLAMATION";
-	case TREE_KEY_DOUBLE_QUOTE: return "DOUBLE QUOTE";
-	case TREE_KEY_HASH: return "HASH";
-	case TREE_KEY_DOLLAR: return "DOLLAR";
-	case TREE_KEY_PERCENT: return "PERCENT";
-	case TREE_KEY_AMPERSAND: return "AMPERSAND";
-	case TREE_KEY_SINGLE_QUOTE: return "SINGLE QUOTE";
-	case TREE_KEY_LEFT_PARENTHESIS: return "LEFT PARENTHESIS";
-	case TREE_KEY_RIGHT_PARENTHESIS: return "RIGHT PARENTHESIS";
-	case TREE_KEY_ASTERISK: return "ASTERISK";
-	case TREE_KEY_PLUS: return "PLUS";
-	case TREE_KEY_COMMA: return "COMMA";
-	case TREE_KEY_MINUS: return "MINUS";
-	case TREE_KEY_PERIOD: return "PERIOD";
-	case TREE_KEY_SLASH: return "SLASH";
-	case TREE_KEY_0: return "ZERO";
-	case TREE_KEY_1: return "ONE";
-	case TREE_KEY_2: return "TWO";
-	case TREE_KEY_3: return "THREE";
-	case TREE_KEY_4: return "FOUR";
-	case TREE_KEY_5: return "FIVE";
-	case TREE_KEY_6: return "SIX";
-	case TREE_KEY_7: return "SEVEN";
-	case TREE_KEY_8: return "EIGHT";
-	case TREE_KEY_9: return "NINE";
-	case TREE_KEY_COLON: return "COLON";
-	case TREE_KEY_SEMICOLON: return "SEMICOLON";
-	case TREE_KEY_LESS_THAN: return "LESS THAN";
-	case TREE_KEY_EQUAL: return "EQUAL";
-	case TREE_KEY_GREATER_THAN: return "GREATER THAN";
-	case TREE_KEY_QUESTION: return "QUESTION";
-	case TREE_KEY_AT: return "AT";
+	case TREE_KEY_NONE: return "None";
+	case TREE_KEY_BACKSPACE: return "Backspace";
+	case TREE_KEY_TAB: return "Tab";
+	case TREE_KEY_ENTER: return "Enter";
+	case TREE_KEY_SHIFT: return "Shift";
+	case TREE_KEY_CONTROL: return "Control";
+	case TREE_KEY_ALT: return "Alt";
+	case TREE_KEY_PAUSE: return "Pause";
+	case TREE_KEY_CAPS_LOCK: return "Caps Lock";
+	case TREE_KEY_ESCAPE: return "Escape";
+	case TREE_KEY_SPACE: return "Space";
+	case TREE_KEY_PAGE_UP: return "Page Up";
+	case TREE_KEY_PAGE_DOWN: return "Page Down";
+	case TREE_KEY_END: return "End";
+	case TREE_KEY_HOME: return "Home";
+	case TREE_KEY_LEFT_ARROW: return "Left Arrow";
+	case TREE_KEY_UP_ARROW: return "Up Arrow";
+	case TREE_KEY_RIGHT_ARROW: return "Right Arrow";
+	case TREE_KEY_DOWN_ARROW: return "Down Arrow";
+	case TREE_KEY_PRINT_SCREEN: return "Print Screen";
+	case TREE_KEY_INSERT: return "Insert";
+	case TREE_KEY_DELETE: return "Delete";
+	case TREE_KEY_0: return "0";
+	case TREE_KEY_1: return "1";
+	case TREE_KEY_2: return "2";
+	case TREE_KEY_3: return "3";
+	case TREE_KEY_4: return "4";
+	case TREE_KEY_5: return "5";
+	case TREE_KEY_6: return "6";
+	case TREE_KEY_7: return "7";
+	case TREE_KEY_8: return "8";
+	case TREE_KEY_9: return "9";
 	case TREE_KEY_A: return "A";
 	case TREE_KEY_B: return "B";
 	case TREE_KEY_C: return "C";
@@ -916,52 +892,21 @@ TREE_String TREE_Key_ToString(TREE_Key key)
 	case TREE_KEY_X: return "X";
 	case TREE_KEY_Y: return "Y";
 	case TREE_KEY_Z: return "Z";
-	case TREE_KEY_LEFT_BRACKET: return "LEFT BRACKET";
-	case TREE_KEY_BACKSLASH: return "BACKSLASH";
-	case TREE_KEY_RIGHT_BRACKET: return "RIGHT BRACKET";
-	case TREE_KEY_CARET: return "CARET";
-	case TREE_KEY_UNDERSCORE: return "UNDERSCORE";
-	case TREE_KEY_GRAVE_ACCENT: return "ACCENT";
-	case TREE_KEY_a: return "a";
-	case TREE_KEY_b: return "b";
-	case TREE_KEY_c: return "c";
-	case TREE_KEY_d: return "d";
-	case TREE_KEY_e: return "e";
-	case TREE_KEY_f: return "f";
-	case TREE_KEY_g: return "g";
-	case TREE_KEY_h: return "h";
-	case TREE_KEY_i: return "i";
-	case TREE_KEY_j: return "j";
-	case TREE_KEY_k: return "k";
-	case TREE_KEY_l: return "l";
-	case TREE_KEY_m: return "m";
-	case TREE_KEY_n: return "n";
-	case TREE_KEY_o: return "o";
-	case TREE_KEY_p: return "p";
-	case TREE_KEY_q: return "q";
-	case TREE_KEY_r: return "r";
-	case TREE_KEY_s: return "s";
-	case TREE_KEY_t: return "t";
-	case TREE_KEY_u: return "u";
-	case TREE_KEY_v: return "v";
-	case TREE_KEY_w: return "w";
-	case TREE_KEY_x: return "x";
-	case TREE_KEY_y: return "y";
-	case TREE_KEY_z: return "z";
-	case TREE_KEY_LEFT_CURLY_BRACE: return "LEFT CURLY BRACE";
-	case TREE_KEY_PIPE: return "PIPE";
-	case TREE_KEY_RIGHT_CURLY_BRACE: return "RIGHT CURLY BRACE";
-	case TREE_KEY_TILDE: return "TILDE";
-	case TREE_KEY_DELETE: return "DELETE";
-	case TREE_KEY_UP: return "UP";
-	case TREE_KEY_DOWN: return "DOWN";
-	case TREE_KEY_LEFT: return "LEFT";
-	case TREE_KEY_RIGHT: return "RIGHT";
-	case TREE_KEY_PAGE_UP: return "PAGE UP";
-	case TREE_KEY_PAGE_DOWN: return "PAGE DOWN";
-	case TREE_KEY_HOME: return "HOME";
-	case TREE_KEY_END: return "END";
-	case TREE_KEY_INSERT: return "INSERT";
+	case TREE_KEY_NUMPAD_0: return "Numpad 0";
+	case TREE_KEY_NUMPAD_1: return "Numpad 1";
+	case TREE_KEY_NUMPAD_2: return "Numpad 2";
+	case TREE_KEY_NUMPAD_3: return "Numpad 3";
+	case TREE_KEY_NUMPAD_4: return "Numpad 4";
+	case TREE_KEY_NUMPAD_5: return "Numpad 5";
+	case TREE_KEY_NUMPAD_6: return "Numpad 6";
+	case TREE_KEY_NUMPAD_7: return "Numpad 7";
+	case TREE_KEY_NUMPAD_8: return "Numpad 8";
+	case TREE_KEY_NUMPAD_9: return "Numpad 9";
+	case TREE_KEY_MULTIPLY: return "Multiply";
+	case TREE_KEY_ADD: return "Add";
+	case TREE_KEY_SUBTRACT: return "Subtract";
+	case TREE_KEY_DECIMAL: return "Decimal";
+	case TREE_KEY_DIVIDE: return "Divide";
 	case TREE_KEY_F1: return "F1";
 	case TREE_KEY_F2: return "F2";
 	case TREE_KEY_F3: return "F3";
@@ -974,70 +919,151 @@ TREE_String TREE_Key_ToString(TREE_Key key)
 	case TREE_KEY_F10: return "F10";
 	case TREE_KEY_F11: return "F11";
 	case TREE_KEY_F12: return "F12";
-	case TREE_KEY_NUMPAD_0: return "NUMPAD 0";
-	case TREE_KEY_NUMPAD_1: return "NUMPAD 1";
-	case TREE_KEY_NUMPAD_2: return "NUMPAD 2";
-	case TREE_KEY_NUMPAD_3: return "NUMPAD 3";
-	case TREE_KEY_NUMPAD_4: return "NUMPAD 4";
-	case TREE_KEY_NUMPAD_5: return "NUMPAD 5";
-	case TREE_KEY_NUMPAD_6: return "NUMPAD 6";
-	case TREE_KEY_NUMPAD_7: return "NUMPAD 7";
-	case TREE_KEY_NUMPAD_8: return "NUMPAD 8";
-	case TREE_KEY_NUMPAD_9: return "NUMPAD 9";
-	case TREE_KEY_NUMPAD_MULTIPLY: return "NUMPAD MULTIPLY";
-	case TREE_KEY_NUMPAD_ADD: return "NUMPAD ADD";
-	case TREE_KEY_NUMPAD_SUBTRACT: return "NUMPAD SUBTRACT";
-	case TREE_KEY_NUMPAD_DECIMAL: return "NUMPAD DECIMAL";
-	case TREE_KEY_NUMPAD_DIVIDE: return "NUMPAD DIVIDE";
-	case TREE_KEY_NUMPAD_ENTER: return"NUMPAD ENTER";
-	default: return "";
-	};
+	case TREE_KEY_NUM_LOCK: return "Num Lock";
+	case TREE_KEY_SCROLL_LOCK: return "Scroll Lock";
+	case TREE_KEY_SEMICOLON: return "Semicolon";
+	case TREE_KEY_EQUALS: return "Equals";
+	case TREE_KEY_COMMA: return "Comma";
+	case TREE_KEY_MINUS: return "Minus";
+	case TREE_KEY_PERIOD: return "Period";
+	case TREE_KEY_SLASH: return "Slash";
+	case TREE_KEY_TILDE: return "Tilde";
+	case TREE_KEY_LEFT_BRACKET: return "Left Bracket";
+	case TREE_KEY_BACKSLASH: return "Backslash";
+	case TREE_KEY_RIGHT_BRACKET: return "Right Bracket";
+	case TREE_KEY_APOSTROPHE: return "Apostrophe";
+	default: return "Unknown";
+	}
 }
 
-TREE_Key TREE_Input_GetKey()
+TREE_Result TREE_Input_Init(TREE_Input* input)
 {
-#ifdef TREE_WINDOWS
-	// check if key pressed
-	if (_kbhit())
+	// validate
+	if (!input)
 	{
-		int ch = _getch();
-		if (ch == 0 || ch == 224)
-		{
-			// special key
-			ch = _getch();
-			switch (ch)
-			{
-			case 72: return TREE_KEY_UP;
-			case 80: return TREE_KEY_DOWN;
-			case 75: return TREE_KEY_LEFT;
-			case 77: return TREE_KEY_RIGHT;
-			case 71: return TREE_KEY_HOME;
-			case 73: return TREE_KEY_PAGE_UP;
-			case 79: return TREE_KEY_END;
-			case 81: return TREE_KEY_PAGE_DOWN;
-			case 82: return TREE_KEY_INSERT;
-			case 83: return TREE_KEY_DELETE;
-
-			default: return TREE_KEY_NULL;
-			}
-		}
-		else
-		{
-			// normal key
-			switch (ch)
-			{
-			case 13: // return key
-				return TREE_KEY_ENTER;
-			}
-			
-			// default
-			return (TREE_Key)ch;
-		}
+		return TREE_ERROR_ARG_NULL;
 	}
-#endif // TREE_WINDOWS
 
-	// no key pressed
-	return TREE_KEY_NULL;
+    // set data  
+    input->keys[0] = TREE_KEY_TAB;  
+    input->keys[1] = TREE_KEY_BACKSPACE;  
+    input->keys[2] = TREE_KEY_SHIFT;  
+    input->keys[3] = TREE_KEY_ENTER;  
+    input->keys[4] = TREE_KEY_CONTROL;  
+    input->keys[5] = TREE_KEY_ALT;  
+    input->keys[6] = TREE_KEY_PAUSE;  
+    input->keys[7] = TREE_KEY_CAPS_LOCK;  
+    input->keys[8] = TREE_KEY_ESCAPE;  
+    input->keys[9] = TREE_KEY_SPACE;  
+    input->keys[10] = TREE_KEY_PAGE_UP;  
+    input->keys[11] = TREE_KEY_PAGE_DOWN;  
+    input->keys[12] = TREE_KEY_END;  
+    input->keys[13] = TREE_KEY_HOME;  
+    input->keys[14] = TREE_KEY_LEFT_ARROW;  
+    input->keys[15] = TREE_KEY_UP_ARROW;  
+    input->keys[16] = TREE_KEY_RIGHT_ARROW;  
+    input->keys[17] = TREE_KEY_DOWN_ARROW;  
+    input->keys[18] = TREE_KEY_PRINT_SCREEN;  
+    input->keys[19] = TREE_KEY_INSERT;  
+    input->keys[20] = TREE_KEY_DELETE;  
+    input->keys[21] = TREE_KEY_0;  
+    input->keys[22] = TREE_KEY_1;  
+    input->keys[23] = TREE_KEY_2;  
+    input->keys[24] = TREE_KEY_3;  
+    input->keys[25] = TREE_KEY_4;  
+    input->keys[26] = TREE_KEY_5;  
+    input->keys[27] = TREE_KEY_6;  
+    input->keys[28] = TREE_KEY_7;  
+    input->keys[29] = TREE_KEY_8;  
+    input->keys[30] = TREE_KEY_9;  
+    input->keys[31] = TREE_KEY_A;  
+    input->keys[32] = TREE_KEY_B;  
+    input->keys[33] = TREE_KEY_C;  
+    input->keys[34] = TREE_KEY_D;  
+    input->keys[35] = TREE_KEY_E;  
+    input->keys[36] = TREE_KEY_F;  
+    input->keys[37] = TREE_KEY_G;  
+    input->keys[38] = TREE_KEY_H;  
+    input->keys[39] = TREE_KEY_I;  
+    input->keys[40] = TREE_KEY_J;  
+    input->keys[41] = TREE_KEY_K;  
+    input->keys[42] = TREE_KEY_L;  
+    input->keys[43] = TREE_KEY_M;  
+    input->keys[44] = TREE_KEY_N;  
+    input->keys[45] = TREE_KEY_O;  
+    input->keys[46] = TREE_KEY_P;  
+    input->keys[47] = TREE_KEY_Q;  
+    input->keys[48] = TREE_KEY_R;  
+    input->keys[49] = TREE_KEY_S;  
+    input->keys[50] = TREE_KEY_T;  
+    input->keys[51] = TREE_KEY_U;  
+    input->keys[52] = TREE_KEY_V;  
+    input->keys[53] = TREE_KEY_W;  
+    input->keys[54] = TREE_KEY_X;  
+    input->keys[55] = TREE_KEY_Y;  
+    input->keys[56] = TREE_KEY_Z;  
+    input->keys[57] = TREE_KEY_F1;  
+    input->keys[58] = TREE_KEY_F2;  
+    input->keys[59] = TREE_KEY_F3;  
+    input->keys[60] = TREE_KEY_F4;  
+    input->keys[61] = TREE_KEY_F5;  
+    input->keys[62] = TREE_KEY_F6;  
+    input->keys[63] = TREE_KEY_F7;  
+    input->keys[64] = TREE_KEY_F8;  
+    input->keys[65] = TREE_KEY_F9;  
+    input->keys[66] = TREE_KEY_F10;  
+    input->keys[67] = TREE_KEY_F11;  
+    input->keys[68] = TREE_KEY_F12;  
+    input->keys[69] = TREE_KEY_NUM_LOCK;  
+    input->keys[70] = TREE_KEY_SCROLL_LOCK;  
+    input->keys[71] = TREE_KEY_NUMPAD_0;  
+    input->keys[72] = TREE_KEY_NUMPAD_1;  
+    input->keys[73] = TREE_KEY_NUMPAD_2;  
+    input->keys[74] = TREE_KEY_NUMPAD_3;  
+    input->keys[75] = TREE_KEY_NUMPAD_4;  
+    input->keys[76] = TREE_KEY_NUMPAD_5;  
+    input->keys[77] = TREE_KEY_NUMPAD_6;  
+    input->keys[78] = TREE_KEY_NUMPAD_7;  
+    input->keys[79] = TREE_KEY_NUMPAD_8;  
+    input->keys[80] = TREE_KEY_NUMPAD_9;  
+    input->keys[81] = TREE_KEY_MULTIPLY;  
+    input->keys[82] = TREE_KEY_ADD;  
+    input->keys[83] = TREE_KEY_SUBTRACT;  
+    input->keys[84] = TREE_KEY_DECIMAL;  
+    input->keys[85] = TREE_KEY_DIVIDE;  
+    input->keys[86] = TREE_KEY_SEMICOLON;  
+    input->keys[87] = TREE_KEY_EQUALS;  
+    input->keys[88] = TREE_KEY_COMMA;  
+    input->keys[89] = TREE_KEY_MINUS;  
+    input->keys[90] = TREE_KEY_PERIOD;  
+    input->keys[91] = TREE_KEY_SLASH;  
+    input->keys[92] = TREE_KEY_TILDE;  
+    input->keys[93] = TREE_KEY_LEFT_BRACKET;  
+    input->keys[94] = TREE_KEY_BACKSLASH;  
+    input->keys[95] = TREE_KEY_RIGHT_BRACKET;  
+    input->keys[96] = TREE_KEY_APOSTROPHE;
+
+	for (TREE_Size i = 0; i < TREE_KEY_MAX; i++)
+	{
+		input->states[i] = TREE_INPUT_STATE_RELEASED;
+	}
+
+	input->modifiers = TREE_KEY_MODIFIER_FLAGS_NONE;
+
+	return TREE_OK;
+}
+
+void TREE_Input_Free(TREE_Input* input)
+{
+	for (TREE_Size i = 0; i < TREE_KEY_COUNT; i++)
+	{
+		input->keys[i] = TREE_KEY_NONE;
+	}
+	for (TREE_Size i = 0; i < TREE_KEY_MAX; i++)
+	{
+		input->states[i] = TREE_INPUT_STATE_RELEASED;
+	}
+	input->modifiers = TREE_KEY_MODIFIER_FLAGS_NONE;
 }
 
 TREE_Direction TREE_Direction_Opposite(TREE_Direction direction)
@@ -1415,7 +1441,7 @@ TREE_Result TREE_Control_Link(TREE_Control* control, TREE_Direction direction, T
 	TREE_Direction opposite = TREE_Direction_Opposite(direction);
 	TREE_Size oppositeIndex = (TREE_Size)opposite - 1;
 	TREE_Control* old = control->adjacent[index];
-	
+
 	// perform linking
 	switch (link)
 	{
@@ -1596,7 +1622,7 @@ TREE_Result TREE_Control_Label_Refresh(TREE_Control* control)
 	// get data
 	TREE_Control_LabelData* labelData = (TREE_Control_LabelData*)control->data;
 
-	
+
 
 	return TREE_OK;
 }
@@ -1843,16 +1869,24 @@ TREE_Result TREE_Application_Init(TREE_Application* application, TREE_Surface* s
 	}
 
 	// allocate data
-	application->controls = (TREE_Control**)malloc(capacity * sizeof(TREE_Control*));
+	application->controls = TREE_NEW_ARRAY(TREE_Control*, capacity);
 	if (!application->controls)
 	{
 		return TREE_ERROR_ALLOC;
 	}
 
+	TREE_Result result;
+
 	// set data
 	application->controlsCapacity = capacity;
 	application->controlsSize = 0;
 	application->running = TREE_FALSE;
+	result = TREE_Input_Init(&application->input);
+	if (result)
+	{
+		TREE_DELETE(application->controls);
+		return result;
+	}
 	application->eventHandler = eventHandler;
 	application->surface = surface;
 
@@ -1875,6 +1909,7 @@ void TREE_Application_Free(TREE_Application* application)
 	application->controlsCapacity = 0;
 	application->controlsSize = 0;
 	application->running = TREE_FALSE;
+	TREE_Input_Free(&application->input);
 	application->eventHandler = NULL;
 	application->surface = NULL;
 }
@@ -1905,7 +1940,7 @@ TREE_Result TREE_Application_DispatchEvent(TREE_Application* application, TREE_E
 	{
 		return TREE_ERROR_ARG_NULL;
 	}
-	
+
 	TREE_Event e = *event; // local copy to edit
 	e.application = application; // set the application for the event
 
@@ -1928,7 +1963,7 @@ TREE_Result TREE_Application_DispatchEvent(TREE_Application* application, TREE_E
 		if (control && control->eventHandler)
 		{
 			// set the control for the event
-			e.control = control; 
+			e.control = control;
 			// call the event handler
 			result = TREE_Control_HandleEvent(control, &e);
 			// if the event handler returns an error, return it
@@ -1961,38 +1996,150 @@ TREE_Result TREE_Application_Run(TREE_Application* application)
 	TREE_Result result;
 	TREE_Rect dirtyRect;
 	TREE_Bool shouldPresent;
+	TREE_Time startTime = clock();
+	TREE_Time currentTime;
+	TREE_Time keyTick = startTime;
+	TREE_Time const keyInterval = CLOCKS_PER_SEC / 20;
 	while (application->running)
 	{
-		// get the next key
-		TREE_Key key = TREE_Input_GetKey();
+		// get current time
+		currentTime = clock();
 
-		// if key pressed, process it
-		if (key != TREE_KEY_NULL)
+		// update key states
 		{
+			// update modifiers
+			TREE_KeyModifierFlags modifiers = TREE_KEY_MODIFIER_FLAGS_NONE;
+#ifdef TREE_WINDOWS
+			if (GetAsyncKeyState(VK_SHIFT) & 0x8000)
+			{
+				modifiers |= TREE_KEY_MODIFIER_FLAGS_SHIFT;
+			}
+			if (GetAsyncKeyState(VK_CONTROL) & 0x8000)
+			{
+				modifiers |= TREE_KEY_MODIFIER_FLAGS_CONTROL;
+			}
+			if (GetAsyncKeyState(VK_MENU) & 0x8000)
+			{
+				modifiers |= TREE_KEY_MODIFIER_FLAGS_ALT;
+			}
+			if (GetAsyncKeyState(VK_LWIN) & 0x8000 || GetAsyncKeyState(VK_RWIN) & 0x8000)
+			{
+				modifiers |= TREE_KEY_MODIFIER_FLAGS_COMMAND;
+			}
+			if (GetKeyState(VK_CAPITAL) & 0x0001)
+			{
+				modifiers |= TREE_KEY_MODIFIER_FLAGS_CAPS_LOCK;
+			}
+			if (GetKeyState(VK_NUMLOCK) & 0x0001)
+			{
+				modifiers |= TREE_KEY_MODIFIER_FLAGS_NUM_LOCK;
+			}
+			if (GetKeyState(VK_SCROLL) & 0x0001)
+			{
+				modifiers |= TREE_KEY_MODIFIER_FLAGS_SCROLL_LOCK;
+			}
+#endif
+			application->input.modifiers = modifiers;
+
 			// create event data
-			TREE_EventData_InputKey eventData;
-			eventData.key = key;
+			TREE_EventData_Key eventData;
+			eventData.key = TREE_KEY_NONE;
+			eventData.modifiers = modifiers;
 
 			// create event
 			TREE_Event event;
-			event.type = TREE_EVENT_TYPE_INPUT_KEY;
+			event.type = TREE_EVENT_TYPE_NONE;
 			event.data = &eventData;
 			event.control = NULL;
 			event.application = application;
 
-			// trigger for each event
-			result = TREE_Application_DispatchEvent(application, &event);
-			if (result)
+			// check if key tick is active
+			TREE_Bool keyTickActive = (currentTime - keyTick) >= keyInterval;
+			if (keyTickActive)
 			{
-				application->running = TREE_FALSE;
-				return result;
+				// if active, reset timer
+				keyTick = currentTime;
 			}
 
-			// if the application is not running, break the loop
-			if (!application->running)
+			// update key states
+#ifdef TREE_WINDOWS
+			for (TREE_Size i = 0; i < TREE_KEY_COUNT; i++)
 			{
-				break;
+				TREE_Key key = application->input.keys[i];
+				// check if being pressed right now
+				TREE_Bool pressed = (GetAsyncKeyState(key) & 0x8000) ? TREE_TRUE : TREE_FALSE;
+
+				// get the key state
+				TREE_InputState state = application->input.states[key];
+
+				// check for changes
+				if (pressed)
+				{
+					if (state == TREE_INPUT_STATE_RELEASED)
+					{
+						// key down
+						application->input.states[key] = TREE_INPUT_STATE_COOLDOWN;
+
+						// trigger key down event
+						event.type = TREE_EVENT_TYPE_KEY_DOWN;
+						eventData.key = key;
+						result = TREE_Application_DispatchEvent(application, &event);
+						if (result)
+						{
+							application->running = TREE_FALSE;
+							return result;
+						}
+					}
+					else if (keyTickActive)
+					{
+						// keep cooling down, if able
+						if (state > TREE_INPUT_STATE_HELD)
+						{
+							state--;
+							application->input.states[key] = state;
+						}
+
+						// held state
+						if (state == TREE_INPUT_STATE_HELD)
+						{
+							// trigger key held event
+							event.type = TREE_EVENT_TYPE_KEY_HELD;
+							eventData.key = key;
+							result = TREE_Application_DispatchEvent(application, &event);
+							if (result)
+							{
+								application->running = TREE_FALSE;
+								return result;
+							}
+						}
+					}
+				}
+				else
+				{
+					if (state)
+					{
+						// key up
+						application->input.states[key] = TREE_INPUT_STATE_RELEASED;
+
+						// trigger key up event
+						event.type = TREE_EVENT_TYPE_KEY_UP;
+						eventData.key = key;
+						result = TREE_Application_DispatchEvent(application, &event);
+						if (result)
+						{
+							application->running = TREE_FALSE;
+							return result;
+						}
+					}
+				}
 			}
+#endif // TREE_WINDOWS
+		}
+
+		// check for quit event
+		if (!application->running)
+		{
+			break;
 		}
 
 		// update the dirty controls/transforms
@@ -2081,7 +2228,7 @@ TREE_Result TREE_Application_Run(TREE_Application* application)
 
 		shouldPresent = TREE_FALSE;
 		// draw the controls using the dirty rect, if there is a dirty rect
-		if(dirtyRect.extent.width != 0 && dirtyRect.extent.height != 0)
+		if (dirtyRect.extent.width != 0 && dirtyRect.extent.height != 0)
 		{
 			// clear the surface where the dirty rect is
 			TREE_Pixel pixel;
