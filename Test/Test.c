@@ -121,6 +121,7 @@ int main()
 		return 1;
 	}
 	textInput.transform->localOffset = (TREE_Offset){ 2, 12 };
+	textInput.transform->localExtent.width = 6;
 
 	// link buttons to text input
 	for (TREE_Size i = 0; i < BUTTON_COUNT; i++)

@@ -2718,10 +2718,10 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 			
 			// find the offset
 			TREE_Size offset = data->scroll;
-			//if (data->cursorPosition == textLength)
-			//{
-			//	offset++;
-			//}
+			if (data->cursorPosition - offset == extent->width)
+			{
+				offset++;
+			}
 
 			// get size of text using the offset
 			TREE_Size length = MIN(extent->width, textLength - offset);
@@ -2744,8 +2744,7 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 				imageOffset,
 				textCopy,
 				pixel->colorPair
-			);
-			TREE_DELETE(textCopy);
+			);			TREE_DELETE(textCopy);
 			if (result)
 			{
 				return result;
