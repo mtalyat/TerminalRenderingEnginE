@@ -1753,7 +1753,7 @@ TREE_Result TREE_Control_Label_Init(TREE_Control* control, TREE_Transform* paren
 	return TREE_OK;
 }
 
-TREE_Result TREE_Control_Label_SetText(TREE_Control* control, TREE_String text, TREE_ColorPair colorPair)
+TREE_Result TREE_Control_Label_SetText(TREE_Control* control, TREE_String text)
 {
 	// validate
 	if (!control || !text)

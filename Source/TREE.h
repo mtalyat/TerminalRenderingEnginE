@@ -583,7 +583,7 @@ void TREE_Control_LabelData_Free(TREE_Control_LabelData* data);
 
 TREE_Result TREE_Control_Label_Init(TREE_Control* control, TREE_Transform* parent, TREE_Control_LabelData* data);
 
-TREE_Result TREE_Control_Label_SetText(TREE_Control* control, TREE_String text, TREE_ColorPair colorPair);
+TREE_Result TREE_Control_Label_SetText(TREE_Control* control, TREE_String text);
 
 TREE_String TREE_Control_Label_GetText(TREE_Control* control);
 
