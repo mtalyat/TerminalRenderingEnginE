@@ -2039,7 +2039,7 @@ TREE_Result TREE_Control_Button_EventHandler(TREE_Event const* event)
 		// get the event data
 		TREE_EventData_Key* keyData = (TREE_EventData_Key*)event->data;
 		TREE_Key key = keyData->key;
-		if (key == TREE_KEY_ENTER)
+		if (key == TREE_KEY_ENTER || key == TREE_KEY_SPACE)
 		{
 			// mark as active and dirty
 			control->stateFlags |= TREE_CONTROL_STATE_FLAGS_ACTIVE | TREE_CONTROL_STATE_FLAGS_DIRTY;
@@ -2057,7 +2057,7 @@ TREE_Result TREE_Control_Button_EventHandler(TREE_Event const* event)
 		// get the event data
 		TREE_EventData_Key* keyData = (TREE_EventData_Key*)event->data;
 		TREE_Key key = keyData->key;
-		if (key == TREE_KEY_ENTER)
+		if (key == TREE_KEY_ENTER || key == TREE_KEY_SPACE)
 		{
 			// mark as inactive and dirty
 			control->stateFlags &= ~TREE_CONTROL_STATE_FLAGS_ACTIVE;
@@ -2249,6 +2249,70 @@ TREE_Result TREE_Application_DispatchEvent(TREE_Application* application, TREE_E
 
 	TREE_Event e = *event; // local copy to edit
 	e.application = application; // set the application for the event
+
+	// handle event on the application level
+	switch (e.type)
+	{
+	case TREE_EVENT_TYPE_KEY_DOWN:
+	case TREE_EVENT_TYPE_KEY_HELD:
+	{
+		// move focus if arrow keys used, if current control is not active
+		if (!application->focusedControl || (application->focusedControl->stateFlags & TREE_CONTROL_STATE_FLAGS_ACTIVE))
+		{
+			break;
+		}
+
+		// movement allowed
+		TREE_EventData_Key* keyData = (TREE_EventData_Key*)e.data;
+		TREE_Key key = keyData->key;
+		
+		// move if move key pressed, and there is a control to move to
+		TREE_Direction direction = TREE_DIRECTION_NONE;
+		switch (key)
+		{
+		case TREE_KEY_UP_ARROW:
+		case TREE_KEY_W:
+			direction = TREE_DIRECTION_NORTH;
+			break;
+		case TREE_KEY_DOWN_ARROW:
+		case TREE_KEY_S:
+			direction = TREE_DIRECTION_SOUTH;
+			break;
+		case TREE_KEY_LEFT_ARROW:
+		case TREE_KEY_A:
+			direction = TREE_DIRECTION_WEST;
+			break;
+		case TREE_KEY_RIGHT_ARROW:
+		case TREE_KEY_D:
+			direction = TREE_DIRECTION_EAST;
+			break;
+		}
+
+		// if no direction, stop
+		if (direction == TREE_DIRECTION_NONE)
+		{
+			break;
+		}
+
+		// get next control
+		TREE_Control* nextControl = application->focusedControl->adjacent[(TREE_Size)direction - 1];
+
+		// if no control, stop
+		if (!nextControl)
+		{
+			break;
+		}
+
+		// focus on that control
+		TREE_Result result = TREE_Application_SetFocus(application, nextControl);
+		if (result)
+		{
+			return result;
+		}
+
+		break;
+	}
+	}
 
 	// dispatch the event to the application's event handler, if any
 	if (application->eventHandler)

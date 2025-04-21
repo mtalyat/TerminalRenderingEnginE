@@ -4,6 +4,11 @@
 
 TREE_Application* g_application = NULL;
 
+void Button_Quit(void* sender)
+{
+	TREE_Application_Quit(g_application);
+}
+
 TREE_Result ApplicationEventHandler(TREE_Event const* event)
 {
 	switch (event->type)
@@ -57,7 +62,7 @@ int main()
 	TREE_Pixel pressedPixel = { ' ', TREE_ColorPair_Create(TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_WHITE) };
 	for (TREE_Size i = 0; i < BUTTON_COUNT; i++)
 	{
-		result = TREE_Control_ButtonData_Init(&buttonDatas[i], "Button", normalPixel, focusedPixel, pressedPixel, NULL);
+		result = TREE_Control_ButtonData_Init(&buttonDatas[i], i == 0 ? "Quit" : "Button", normalPixel, focusedPixel, pressedPixel, i == 0 ? Button_Quit : NULL);
 		if (result)
 		{
 			printf("Failed to initialize button data %zu: %s\n", i, TREE_Result_ToString(result));
