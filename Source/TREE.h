@@ -646,6 +646,10 @@ typedef struct _TREE_Control_TextInputData
 	TREE_Byte cursorTimer;
 	TREE_Size scroll;
 	TREE_ColorPair selection;
+	TREE_Size selectionOrigin;
+	TREE_Size selectionStart;
+	TREE_Size selectionEnd;
+	
 	TREE_Function onChange;
 	TREE_Function onSubmit;
 } TREE_Control_TextInputData;

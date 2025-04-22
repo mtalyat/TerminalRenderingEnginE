@@ -2272,7 +2272,10 @@ TREE_Result TREE_Control_TextInputData_Init(TREE_Control_TextInputData* data, TR
 	data->cursorPosition = 0;
 	data->cursorTimer = 0;
 	data->scroll = 0;
-	data->selection = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_BRIGHT_YELLOW);
+	data->selection = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_WHITE, TREE_COLOR_BRIGHT_BLUE);
+	data->selectionOrigin = 0;
+	data->selectionStart = 0;
+	data->selectionEnd = 0;
 
 	data->onChange = onChange;
 	data->onSubmit = onSubmit;
@@ -2304,6 +2307,9 @@ void TREE_Control_TextInputData_Free(TREE_Control_TextInputData* data)
 	data->cursorTimer = 0;
 	data->scroll = 0;
 	data->selection = TREE_ColorPair_CreateDefault();
+	data->selectionOrigin = 0;
+	data->selectionStart = 0;
+	data->selectionEnd = 0;
 	data->onChange = NULL;
 	data->onSubmit = NULL;
 }
@@ -2436,6 +2442,8 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 		// get text length for calculations
 		TREE_Size textLength = strlen(data->text);
 
+		TREE_Bool cursorMoved = TREE_FALSE;
+
 		// handle key inputs
 		switch (key)
 		{
@@ -2473,6 +2481,7 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 				data->cursorPosition--;
 				control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
 				data->cursorTimer = 0;
+				cursorMoved = TREE_TRUE;
 			}
 			break;
 		case TREE_KEY_RIGHT_ARROW: // move cursor right 1
@@ -2481,6 +2490,7 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 				data->cursorPosition++;
 				control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
 				data->cursorTimer = 0;
+				cursorMoved = TREE_TRUE;
 			}
 			break;
 		case TREE_KEY_UP_ARROW: // move cursor up 1
@@ -2497,6 +2507,7 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 				}
 				control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
 				data->cursorTimer = 0;
+				cursorMoved = TREE_TRUE;
 			}
 			break;
 		case TREE_KEY_DOWN_ARROW: // move cursor down 1
@@ -2513,17 +2524,20 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 				}
 				control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
 				data->cursorTimer = 0;
+				cursorMoved = TREE_TRUE;
 			}
 			break;
 		case TREE_KEY_HOME: // move cursor to start
 			data->cursorPosition = 0;
 			control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
 			data->cursorTimer = 0;
+			cursorMoved = TREE_TRUE;
 			break;
 		case TREE_KEY_END: // move cursor to end
 			data->cursorPosition = textLength;
 			control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
 			data->cursorTimer = 0;
+			cursorMoved = TREE_TRUE;
 			break;
 		default:
 		{
@@ -2557,6 +2571,36 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 			CALL_ACTION(data->onChange, control);
 			break;
 		}
+		}
+
+		// if cursor moved, update the scroll region
+		if(cursorMoved)
+		{
+			// if moved but not holding shift, clear selection
+			if (!(keyData->modifiers & TREE_KEY_MODIFIER_FLAGS_SHIFT))
+			{
+				data->selectionStart = data->cursorPosition;
+				data->selectionEnd = data->cursorPosition;
+			}
+			else
+			{
+				// if holding shift, update the selection
+				
+				// set origin if cursor at origin
+				if (data->selectionStart == data->selectionEnd)
+				{
+					data->selectionOrigin = data->selectionStart;
+				}
+
+				if (data->cursorPosition <= data->selectionOrigin)
+				{
+					data->selectionStart = data->cursorPosition;
+				}
+				if(data->cursorPosition >= data->selectionOrigin)
+				{
+					data->selectionEnd = data->cursorPosition;
+				}
+			}
 		}
 
 		// clamp the scroll to follow the cursor
@@ -2744,15 +2788,52 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 				imageOffset,
 				textCopy,
 				pixel->colorPair
-			);			TREE_DELETE(textCopy);
+			);
+			TREE_DELETE(textCopy);
 			if (result)
 			{
 				return result;
 			}
 
-			// draw cursor if active
+			// if active
 			if (active)
 			{
+				// draw selection, if any, and if visible
+				if (data->selectionStart != data->selectionEnd &&
+					data->selectionEnd > offset &&
+					data->selectionStart < offset + length)
+				{
+					// get the start and end of the selection
+					TREE_Size selectionStart = MAX(data->selectionStart, offset);
+					TREE_Size selectionEnd = MIN(data->selectionEnd, offset + length);
+					TREE_Size selectionLength = selectionEnd - selectionStart;
+
+					// create a copy of the text to draw
+					TREE_Char* selectionText = TREE_NEW_ARRAY(TREE_Char, selectionLength + 1);
+					if (!selectionText)
+					{
+						return TREE_ERROR_ALLOC;
+					}
+					memcpy(selectionText, &text[selectionStart], selectionLength * sizeof(TREE_Char));
+					selectionText[selectionLength] = '\0'; // null terminator
+
+					// draw the selection
+					TREE_Offset selectionOffset;
+					selectionOffset.x = (TREE_Int)(selectionStart - offset);
+					selectionOffset.y = 0;
+					result = TREE_Image_DrawString(
+						control->image,
+						selectionOffset,
+						selectionText,
+						data->selection
+					);
+					if (result)
+					{
+						return result;
+					}
+				}
+
+				// draw cursor
 				// calculate the cursor character
 				TREE_Pixel cursorPixel;
 				cursorPixel.colorPair = data->cursor;
