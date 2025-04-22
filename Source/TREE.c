@@ -3108,14 +3108,22 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 			TREE_Size count = MIN(lineCount, extent->height);
 			TREE_Size scroll = data->scroll;
 
-			// add one to scroll if cursor at end of text, but also beginning of a new line
-			if (data->cursorPosition == textLength && data->cursorPosition % extent->width == 0)
+			if (active)
 			{
-				scroll++;
-				if (count == extent->height)
+				// add one to scroll if cursor at end of text, but also beginning of a new line
+				if (data->cursorPosition == textLength && data->cursorPosition % extent->width == 0)
 				{
-					count--;
+					scroll++;
+					if (count == extent->height)
+					{
+						count--;
+					}
 				}
+			}
+			else
+			{
+				// no scroll when inactive
+				scroll = 0;
 			}
 
 			// draw each line
@@ -3172,9 +3180,17 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 			
 			// find the offset
 			TREE_Size offset = data->scroll;
-			if (data->cursorPosition - offset == extent->width)
+			if (active)
 			{
-				offset++;
+				if (data->cursorPosition - offset == extent->width)
+				{
+					offset++;
+				}
+			}
+			else
+			{
+				// no scroll when inactive
+				offset = 0;
 			}
 
 			// get size of text using the offset
