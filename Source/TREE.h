@@ -67,6 +67,14 @@ TREE_Result TREE_Init();
 void TREE_Free();
 
 ///////////////////////////////////////
+// Clipboard                         //
+///////////////////////////////////////
+
+TREE_Result TREE_Clipboard_SetText(TREE_String text);
+
+TREE_Result TREE_Clipboard_GetText(TREE_Char** text);
+
+///////////////////////////////////////
 // Color and ColorPair               //
 ///////////////////////////////////////
 
@@ -671,6 +679,12 @@ typedef struct _TREE_Control_TextInputData
 TREE_Result TREE_Control_TextInputData_Init(TREE_Control_TextInputData* data, TREE_String text, TREE_Size capacity, TREE_String placeholder, TREE_Control_TextInputType type, TREE_Function onChange, TREE_Function onSubmit);
 
 void TREE_Control_TextInputData_Free(TREE_Control_TextInputData* data);
+
+TREE_Char* TREE_Control_TextInputData_GetSelectedText(TREE_Control_TextInputData* data);
+
+TREE_Result TREE_Control_TextInputData_RemoveSelectedText(TREE_Control_TextInputData* data);
+
+TREE_Result TREE_Control_TextInputData_InsertText(TREE_Control_TextInputData* data, TREE_String text);
 
 TREE_Result TREE_Control_TextInput_Init(TREE_Control* control, TREE_Transform* parent, TREE_Control_TextInputData* data);
 

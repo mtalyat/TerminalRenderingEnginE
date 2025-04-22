@@ -93,6 +93,143 @@ void TREE_Free()
 	TREE_Cursor_SetVisible(TREE_TRUE);
 }
 
+TREE_Result TREE_Clipboard_SetText(TREE_String text)
+{
+	// validate
+	if (!text)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+#ifdef TREE_WINDOWS
+	// open the clipboard
+	if (!OpenClipboard(NULL))
+	{
+		return TREE_ERROR;
+	}
+
+	// clear the clipboard
+	if (!EmptyClipboard())
+	{
+		CloseClipboard();
+		return TREE_ERROR;
+	}
+
+	// allocate global memory
+	size_t textLength = strlen(text) + 1;
+	HGLOBAL hGlobal = GlobalAlloc(GMEM_MOVEABLE, textLength);
+	if (!hGlobal)
+	{
+		CloseClipboard();
+		return TREE_ERROR_ALLOC;
+	}
+
+	// copy the text to the global memory
+	char* pGlobal = (char*)GlobalLock(hGlobal);
+	if (!pGlobal)
+	{
+		GlobalFree(hGlobal);
+		CloseClipboard();
+		return TREE_ERROR;
+	}
+	memcpy(pGlobal, text, textLength);
+	GlobalUnlock(hGlobal);
+
+	// set the clipboard data
+	if (!SetClipboardData(CF_TEXT, hGlobal))
+	{
+		GlobalFree(hGlobal);
+		CloseClipboard();
+		return TREE_ERROR;
+	}
+
+	// close the clipboard
+	if (!CloseClipboard())
+	{
+		GlobalFree(hGlobal);
+		return TREE_ERROR;
+	}
+
+	return TREE_OK;
+#else
+	return TREE_NOT_IMPLEMENTED;
+#endif // TREE_WINDOWS
+}
+
+TREE_Result TREE_Clipboard_GetText(TREE_Char** text)
+{
+	// validate
+	if (!text)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	*text = NULL;
+
+#ifdef TREE_WINDOWS
+	// open the clipboard
+	if (!OpenClipboard(NULL))
+	{
+		return TREE_ERROR;
+	}
+
+	// check if there is text to paste
+	if (!IsClipboardFormatAvailable(CF_TEXT))
+	{
+		CloseClipboard();
+		return TREE_OK;
+	}
+
+	// get the clipboard data
+	HANDLE hData = GetClipboardData(CF_TEXT);
+	if (!hData)
+	{
+		CloseClipboard();
+		return TREE_ERROR;
+	}
+
+	// lock the global memory
+	char* pGlobal = (char*)GlobalLock(hData);
+	if (!pGlobal)
+	{
+		CloseClipboard();
+		return TREE_ERROR;
+	}
+
+	// allocate memory for the text
+	size_t textLength = GlobalSize(hData);
+	*text = (char*)malloc(textLength + 1);
+	if (!*text)
+	{
+		GlobalUnlock(hData);
+		CloseClipboard();
+		return TREE_ERROR_ALLOC;
+	}
+
+	// copy the text to the allocated memory
+	memcpy(*text, pGlobal, textLength);
+	(*text)[textLength] = '\0';
+
+	// unlock the global memory
+	GlobalUnlock(hData);
+
+	// close the clipboard
+	CloseClipboard();
+	//if (!)
+	//{
+	//	free(*text);
+	//	*text = NULL;
+	//	printf("Failed to close clipboard\n");
+	//	printf("Error: %d\n", GetLastError());
+	//	return TREE_ERROR;
+	//}
+
+	return TREE_OK;
+#else
+	return TREE_NOT_IMPLEMENTED;
+#endif // TREE_WINDOWS
+}
+
 TREE_ColorPair TREE_ColorPair_Create(TREE_Color foreground, TREE_Color background)
 {
 	return (foreground & 0xF) << 4 | (background & 0xF);
@@ -2361,6 +2498,92 @@ void TREE_Control_TextInputData_Free(TREE_Control_TextInputData* data)
 	data->onSubmit = NULL;
 }
 
+TREE_Char* TREE_Control_TextInputData_GetSelectedText(TREE_Control_TextInputData* data)
+{
+	// validate
+	if (!data)
+	{
+		return NULL;
+	}
+
+	// if no selection, return NULL
+	if (data->selectionStart == data->selectionEnd)
+	{
+		return NULL;
+	}
+
+	TREE_Size selectionLength = data->selectionEnd - data->selectionStart;
+	TREE_Char* text = TREE_NEW_ARRAY(TREE_Char, selectionLength + 1);
+	if (!text)
+	{
+		return NULL;
+	}
+	memcpy(text, &data->text[data->selectionStart], selectionLength * sizeof(TREE_Char));
+	text[selectionLength] = '\0'; // null terminator
+
+	return text;
+}
+
+TREE_Result TREE_Control_TextInputData_RemoveSelectedText(TREE_Control_TextInputData* data)
+{
+	// validate
+	if (!data)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	// if no selection, do nothing
+	if (data->selectionStart == data->selectionEnd)
+	{
+		return TREE_OK;
+	}
+
+	// remove selection
+	TREE_Size textLength = strlen(data->text);
+	TREE_Size selectionLength = data->selectionEnd - data->selectionStart;
+	memmove(&data->text[data->selectionStart], &data->text[data->selectionEnd], (textLength - data->selectionEnd) * sizeof(TREE_Char));
+	data->text[textLength - selectionLength] = '\0'; // null terminator
+
+	// update cursor position and clear selection
+	data->cursorPosition = data->selectionStart;
+	data->selectionEnd = data->selectionStart;
+	data->selectionOrigin = 0;
+
+	return TREE_OK;
+}
+
+TREE_Result TREE_Control_TextInputData_InsertText(TREE_Control_TextInputData* data, TREE_String text)
+{
+	// validate
+	if (!data || !text)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	// cap the length, if it goes beyond the capacity
+	TREE_Size textLength = strlen(data->text);
+	TREE_Size clipboardLength = strlen(text);
+	if (clipboardLength + textLength > data->capacity)
+	{
+		clipboardLength = data->capacity - textLength;
+	}
+
+	// shift existing text over, if needed
+	if (data->cursorPosition < textLength)
+	{
+		memmove(&data->text[data->cursorPosition + clipboardLength], &data->text[data->cursorPosition], (textLength - data->cursorPosition) * sizeof(TREE_Char));
+	}
+
+	// insert clipboard text
+	memcpy(&data->text[data->cursorPosition], text, clipboardLength * sizeof(TREE_Char));
+	data->text[textLength + clipboardLength] = '\0'; // null terminator
+
+	// move the cursor
+	data->cursorPosition += clipboardLength;
+
+	return TREE_OK;
+}
+
 TREE_Result TREE_Control_TextInput_Init(TREE_Control* control, TREE_Transform* parent, TREE_Control_TextInputData* data)
 {
 	// validate
@@ -2491,6 +2714,12 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 
 		TREE_Bool cursorMoved = TREE_FALSE;
 
+		// reset cursor timer, as long as the input is not a modifier key
+		if (key != TREE_KEY_SHIFT && key != TREE_KEY_ALT && key != TREE_KEY_CONTROL)
+		{
+			data->cursorTimer = 0;
+		}
+
 		// handle key inputs
 		switch (key)
 		{
@@ -2500,25 +2729,45 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 			CALL_ACTION(data->onSubmit, control);
 			break;
 		case TREE_KEY_BACKSPACE: // remove character before cursor
-			if (data->cursorPosition > 0)
+			if (data->selectionStart != data->selectionEnd)
+			{
+				// remove selected text
+				TREE_Result result = TREE_Control_TextInputData_RemoveSelectedText(data);
+				if (result)
+				{
+					return result;
+				}
+				control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+				CALL_ACTION(data->onChange, control);
+			}
+			else if (data->cursorPosition > 0)
 			{
 				// shift string over
 				memmove(&data->text[data->cursorPosition - 1], &data->text[data->cursorPosition], (textLength - data->cursorPosition) * sizeof(TREE_Char));
 				data->text[textLength - 1] = '\0'; // null terminator
-				control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
 				data->cursorPosition--;
-				data->cursorTimer = 0;
+				control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
 				CALL_ACTION(data->onChange, control);
 			}
 			break;
 		case TREE_KEY_DELETE: // remove character at cursor
-			if (data->cursorPosition < textLength)
+			if (data->selectionStart != data->selectionEnd)
+			{
+				// remove selected text
+				TREE_Result result = TREE_Control_TextInputData_RemoveSelectedText(data);
+				if (result)
+				{
+					return result;
+				}
+				control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+				CALL_ACTION(data->onChange, control);
+			}
+			else if (data->cursorPosition < textLength)
 			{
 				// shift string over
 				memmove(&data->text[data->cursorPosition], &data->text[data->cursorPosition + 1], (textLength - data->cursorPosition) * sizeof(TREE_Char));
 				data->text[textLength - 1] = '\0'; // null terminator
 				control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
-				data->cursorTimer = 0;
 				CALL_ACTION(data->onChange, control);
 			}
 			break;
@@ -2527,7 +2776,6 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 			{
 				data->cursorPosition--;
 				control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
-				data->cursorTimer = 0;
 				cursorMoved = TREE_TRUE;
 			}
 			break;
@@ -2536,7 +2784,6 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 			{
 				data->cursorPosition++;
 				control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
-				data->cursorTimer = 0;
 				cursorMoved = TREE_TRUE;
 			}
 			break;
@@ -2553,7 +2800,6 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 					data->cursorPosition = 0;
 				}
 				control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
-				data->cursorTimer = 0;
 				cursorMoved = TREE_TRUE;
 			}
 			break;
@@ -2570,20 +2816,17 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 					data->cursorPosition = textLength;
 				}
 				control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
-				data->cursorTimer = 0;
 				cursorMoved = TREE_TRUE;
 			}
 			break;
 		case TREE_KEY_HOME: // move cursor to start
 			data->cursorPosition = 0;
 			control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
-			data->cursorTimer = 0;
 			cursorMoved = TREE_TRUE;
 			break;
 		case TREE_KEY_END: // move cursor to end
 			data->cursorPosition = textLength;
 			control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
-			data->cursorTimer = 0;
 			cursorMoved = TREE_TRUE;
 			break;
 		default:
@@ -2603,6 +2846,119 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 				break;
 			}
 
+			control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+			data->cursorTimer = 0;
+
+			// check for special inputs
+			TREE_Bool ctrl = (keyData->modifiers & TREE_KEY_MODIFIER_FLAGS_CONTROL) != 0;
+			if (ctrl && key == TREE_KEY_C)
+			{
+				// get selection text
+				TREE_Char* text = TREE_Control_TextInputData_GetSelectedText(data);
+
+				// copy selection to clipboard, if there is something selected
+				if (text)
+				{
+					// set the clipboard text
+					result = TREE_Clipboard_SetText(text);
+					TREE_DELETE(text);
+					if (result)
+					{
+						return result;
+					}
+				}
+				break;
+			}
+			if (ctrl && key == TREE_KEY_V)
+			{				
+				// remove selection, if any
+				result = TREE_Control_TextInputData_RemoveSelectedText(data);
+				if (result)
+				{
+					return result;
+				}
+
+				// paste from clipboard
+				TREE_Char* text = NULL;
+				result = TREE_Clipboard_GetText(&text);
+				if (result)
+				{
+					return result;
+				}
+				TREE_Size textLength = strlen(text);
+
+				// insert clipboard text
+				result = TREE_Control_TextInputData_InsertText(data, text);
+				TREE_DELETE(text);
+				if (result)
+				{
+					return result;
+				}
+
+				// mark as dirty
+				control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+
+				// call onChange
+				CALL_ACTION(data->onChange, control);
+
+				break;
+			}
+			if (ctrl && key == TREE_KEY_X)
+			{
+				// copy selection, and remove it
+				
+				// get selection text
+				TREE_Char* text = TREE_Control_TextInputData_GetSelectedText(data);
+
+				// copy selection to clipboard, if there is something selected
+				if (text)
+				{
+					// set the clipboard text
+					result = TREE_Clipboard_SetText(text);
+					TREE_DELETE(text);
+					if (result)
+					{
+						return result;
+					}
+
+					// remove selected text
+					result = TREE_Control_TextInputData_RemoveSelectedText(data);
+					if (result)
+					{
+						return result;
+					}
+
+					// mark as dirty
+					control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+
+					// call onChange
+					CALL_ACTION(data->onChange, control);
+				}
+				break;
+			}
+			if (ctrl && key == TREE_KEY_A)
+			{
+				// select all text
+				data->selectionOrigin = 0;
+				data->selectionStart = 0;
+				data->selectionEnd = textLength;
+				data->cursorPosition= textLength;
+
+				// mark as dirty
+				control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+
+				break;
+			}
+
+			// type normal character
+
+			// remove selection, if any
+			result = TREE_Control_TextInputData_RemoveSelectedText(data);
+			if (result)
+			{
+				return result;
+			}
+			
 			// shift string over, if needed
 			if (data->cursorPosition < textLength)
 			{
@@ -2613,26 +2969,18 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 			// insert character
 			data->text[data->cursorPosition] = ch;
 			data->cursorPosition++;
-			control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
-			data->cursorTimer = 0;
 			CALL_ACTION(data->onChange, control);
 			break;
 		}
 		}
 
 		// if cursor moved, update the scroll region
-		if(cursorMoved)
+		if (cursorMoved)
 		{
-			// if moved but not holding shift, clear selection
-			if (!(keyData->modifiers & TREE_KEY_MODIFIER_FLAGS_SHIFT))
+			if (keyData->modifiers & TREE_KEY_MODIFIER_FLAGS_SHIFT)
 			{
-				data->selectionStart = data->cursorPosition;
-				data->selectionEnd = data->cursorPosition;
-			}
-			else
-			{
-				// if holding shift, update the selection
-				
+				// if cursor moved, update selection
+
 				// set origin if cursor at origin
 				if (data->selectionStart == data->selectionEnd)
 				{
@@ -2643,12 +2991,26 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 				if (data->cursorPosition <= data->selectionOrigin)
 				{
 					data->selectionStart = data->cursorPosition;
+					data->selectionEnd = data->selectionOrigin;
 				}
-				if(data->cursorPosition >= data->selectionOrigin)
+				if (data->cursorPosition >= data->selectionOrigin)
 				{
 					data->selectionEnd = data->cursorPosition;
+					data->selectionStart = data->selectionOrigin;
 				}
 			}
+			else
+			{
+				// cursor moved, but no shift pressed
+				data->selectionStart = data->cursorPosition;
+				data->selectionEnd = data->cursorPosition;
+			}
+		}
+		else if (data->selectionStart == data->selectionEnd && data->selectionStart != data->cursorPosition)
+		{
+			// cursor moved due to a modification
+			data->selectionStart = data->cursorPosition;
+			data->selectionEnd = data->cursorPosition;
 		}
 
 		// clamp the scroll to follow the cursor
