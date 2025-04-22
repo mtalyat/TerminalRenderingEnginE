@@ -46,6 +46,53 @@ TREE_Char const* TREE_Result_ToString(TREE_Result code)
 	}
 }
 
+#ifdef TREE_WINDOWS
+
+BOOL WINAPI _ConsoleCtrlHandler(DWORD dwCtrlType)
+{
+	switch (dwCtrlType)
+	{
+	case CTRL_C_EVENT:
+	case CTRL_BREAK_EVENT:
+	case CTRL_CLOSE_EVENT:
+	case CTRL_LOGOFF_EVENT:
+	case CTRL_SHUTDOWN_EVENT:
+		return TRUE;
+	default:
+		return FALSE;
+	}
+}
+
+#endif // TREE_WINDOWS
+
+TREE_Result TREE_Init()
+{
+	TREE_Result result;
+
+#ifdef TREE_WINDOWS
+	// handle CTRL +C, etc.
+	if (!SetConsoleCtrlHandler(_ConsoleCtrlHandler, TRUE))
+	{
+		return TREE_ERROR;
+	}
+#endif
+
+	// hide cursor
+	result = TREE_Cursor_SetVisible(TREE_FALSE);
+	if (result)
+	{
+		return result;
+	}
+
+	return TREE_OK;
+}
+
+void TREE_Free()
+{
+	// show cursor
+	TREE_Cursor_SetVisible(TREE_TRUE);
+}
+
 TREE_ColorPair TREE_ColorPair_Create(TREE_Color foreground, TREE_Color background)
 {
 	return (foreground & 0xF) << 4 | (background & 0xF);
@@ -2592,6 +2639,7 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 					data->selectionOrigin = data->selectionStart;
 				}
 
+				// update selection
 				if (data->cursorPosition <= data->selectionOrigin)
 				{
 					data->selectionStart = data->cursorPosition;

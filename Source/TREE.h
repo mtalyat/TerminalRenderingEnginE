@@ -30,7 +30,7 @@ typedef void(*TREE_Function)(void*);
 #define TREE_COPY_ARRAY(dest, src, type, count) memcpy(dest, src, (count) * sizeof(type))
 
 ///////////////////////////////////////
-// Error Handling                    //
+// Result                            //
 ///////////////////////////////////////
 
 typedef enum _TREE_Result
@@ -51,6 +51,20 @@ typedef enum _TREE_Result
 } TREE_Result;
 
 TREE_String TREE_Result_ToString(TREE_Result code);
+
+///////////////////////////////////////
+// TREE                              //
+///////////////////////////////////////
+
+/// <summary>
+/// Initializes the TREE library.
+/// </summary>
+TREE_Result TREE_Init();
+
+/// <summary>
+/// Closes the TREE library.
+/// </summary>
+void TREE_Free();
 
 ///////////////////////////////////////
 // Color and ColorPair               //

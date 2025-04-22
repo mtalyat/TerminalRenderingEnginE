@@ -29,6 +29,13 @@ int main()
 {
 	TREE_Result result;
 
+	result = TREE_Init();
+	if (result)
+	{
+		printf("Failed to initialize TREE: %s\n", TREE_Result_ToString(result));
+		return 1;
+	}
+
 	// create the surface to draw to
 	TREE_Surface surface;
 	result = TREE_Surface_Init(&surface, TREE_Window_GetExtent());
@@ -167,6 +174,7 @@ int main()
 	}
 	TREE_Application_Free(&app);
 	TREE_Surface_Free(&surface);
+	TREE_Free();
 
 	printf("Application ran successfully!\n");
 
