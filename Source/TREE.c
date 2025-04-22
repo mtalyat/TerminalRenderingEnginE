@@ -1202,15 +1202,22 @@ TREE_Char TREE_Key_ToChar(TREE_Key key, TREE_KeyModifierFlags modifiers)
 	}
 
 	// handle special characters and symbols
-	if (key >= TREE_KEY_SEMICOLON && key <= TREE_KEY_APOSTROPHE)
+	if (key >= TREE_KEY_SEMICOLON && key <= TREE_KEY_TILDE)
 	{
 		static const TREE_Char normalChars[] = {
-			';', '=', ',', '-', '.', '/', '`', '[', '\\', ']', '\'', // Normal characters
+			';', '=', ',', '-', '.', '/', '`'
 		};
 		static const TREE_Char shiftedChars[] = {
-			':', '+', '<', '_', '>', '?', '~', '{', '|', '}', '"'  // Shifted characters
+			':', '+', '<', '_', '>', '?', '~'
 		};
 		TREE_Size index = key - TREE_KEY_SEMICOLON;
+		return isShiftPressed ? shiftedChars[index] : normalChars[index];
+	}
+	if (key >= TREE_KEY_LEFT_BRACKET && key <= TREE_KEY_APOSTROPHE)
+	{
+		static const TREE_Char normalChars[] = { '[', '\\', ']', '\'', };
+		static const TREE_Char shiftedChars[] = { '{', '|', '}', '"', };
+		TREE_Size index = key - TREE_KEY_LEFT_BRACKET;
 		return isShiftPressed ? shiftedChars[index] : normalChars[index];
 	}
 
@@ -1222,6 +1229,11 @@ TREE_Char TREE_Key_ToChar(TREE_Key key, TREE_KeyModifierFlags modifiers)
 		{
 			return (TREE_Char)(key - TREE_KEY_NUMPAD_0 + '0'); // Convert to corresponding number
 		}
+	}
+	if (key >= TREE_KEY_MULTIPLY && key <= TREE_KEY_DIVIDE)
+	{
+		static const TREE_Char numpadSymbols[] = { '*', '+', ' ', '-', '.', '/'};
+		return numpadSymbols[key - TREE_KEY_MULTIPLY];
 	}
 
 	// handle other keys
