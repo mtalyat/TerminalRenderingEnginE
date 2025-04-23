@@ -86,7 +86,7 @@ int main()
 
 	// create text input data
 	TREE_Control_TextInputData textInputData;
-	result = TREE_Control_TextInputData_Init(&textInputData, "This is some example text!", 256, "Enter text", TREE_CONTROL_TEXT_INPUT_TYPE_PATH, NULL, NULL);
+	result = TREE_Control_TextInputData_Init(&textInputData, "\nThis is some example text!\nYes!\n\nNo!\nOk!\n\n", 256, "Enter text", TREE_CONTROL_TEXT_INPUT_TYPE_NORMAL, NULL, NULL);
 	if (result)
 	{
 		printf("Failed to initialize text input data: %s\n", TREE_Result_ToString(result));
@@ -102,7 +102,7 @@ int main()
 		return 1;
 	}
 	textInput.transform->localOffset = (TREE_Offset){ 2, 12 };
-	textInput.transform->localExtent.width = 30;
+	textInput.transform->localExtent.width = 90;
 
 	// link button to text input
 	result = TREE_Control_Link(&quitButton, TREE_DIRECTION_SOUTH, TREE_CONTROL_LINK_DOUBLE, &textInput);
