@@ -324,6 +324,27 @@ TREE_Bool TREE_File_Exists(TREE_String path)
 	return TREE_FALSE;
 }
 
+TREE_Result TREE_File_Absolute(TREE_String path, TREE_Char** absolutePath, TREE_Size absolutePathBufferSize)
+{
+	// validate
+	if (!path || !absolutePath)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	// get full path
+#ifdef TREE_WINDOWS
+	// get the absolute path
+	if (_fullpath(*absolutePath, path, absolutePathBufferSize) == NULL)
+	{
+		return TREE_ERROR;
+	}
+	return TREE_OK;
+#else
+	return TREE_NOT_IMPLEMENTED;
+#endif // TREE_WINDOWS
+}
+
 TREE_Size TREE_File_Size(TREE_String path)
 {
 	// validate

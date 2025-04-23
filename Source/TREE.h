@@ -132,6 +132,8 @@ typedef enum _TREE_FileTypeFlags
 
 TREE_Bool TREE_File_Exists(TREE_String path);
 
+TREE_Result TREE_File_Absolute(TREE_String path, TREE_Char** absolutePath, TREE_Size absolutePathBufferSize);
+
 TREE_Size TREE_File_Size(TREE_String path);
 
 TREE_Result TREE_File_Read(TREE_String path, TREE_Char* text, TREE_Size size);

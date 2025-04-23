@@ -29,26 +29,6 @@ int main()
 {
 	TREE_Result result;
 
-	TREE_String path = "C:\\Users\\mitch\\source\\repos\\TerminalRenderingEnginE\\Test";
-	TREE_Char** files = NULL;
-	TREE_Size fileCount;
-	result = TREE_Directory_Enumerate(path, &files, &fileCount, TREE_FILE_TYPE_FLAGS_NONE);
-	if (result)
-	{
-		printf("Failed to enumerate directory: %s\n", TREE_Result_ToString(result));
-		return 1;
-	}
-
-	// print the files
-	for (TREE_Size i = 0; i < fileCount; ++i)
-	{
-		printf("%s\n", files[i]);
-		free(files[i]);
-	}
-	free(files);
-
-	return 0;
-
 	result = TREE_Init();
 	if (result)
 	{
