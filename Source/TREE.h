@@ -118,6 +118,43 @@ TREE_String TREE_Color_GetBackgroundString(TREE_Color color);
 TREE_String TREE_Color_GetResetString();
 
 ///////////////////////////////////////
+// File                              //
+///////////////////////////////////////
+
+typedef enum _TREE_FileTypeFlags
+{
+	TREE_FILE_TYPE_FLAGS_NONE = 0x0,
+	TREE_FILE_TYPE_FLAGS_FILE = 0x1,
+	TREE_FILE_TYPE_FLAGS_DIRECTORY = 0x2,
+	TREE_FILE_TYPE_FLAGS_HIDDEN = 0x4,
+	TREE_FILE_TYPE_FLAGS_ALL = 0x7,
+} TREE_FileTypeFlags;
+
+TREE_Bool TREE_File_Exists(TREE_String path);
+
+TREE_Size TREE_File_Size(TREE_String path);
+
+TREE_Result TREE_File_Read(TREE_String path, TREE_Char* text, TREE_Size size);
+
+TREE_Result TREE_File_Write(TREE_String path, TREE_String text);
+
+TREE_Result TREE_File_Create(TREE_String path);
+
+TREE_Result TREE_File_Delete(TREE_String path);
+
+///////////////////////////////////////
+// Directory                         //
+///////////////////////////////////////
+
+TREE_Bool TREE_Directory_Exists(TREE_String path);
+
+TREE_Result TREE_Directory_Create(TREE_String path);
+
+TREE_Result TREE_Directory_Delete(TREE_String path);
+
+TREE_Result TREE_Directory_Enumerate(TREE_String path, TREE_Char*** files, TREE_Size* count, TREE_FileTypeFlags flags);
+
+///////////////////////////////////////
 // Offset                            //
 ///////////////////////////////////////
 

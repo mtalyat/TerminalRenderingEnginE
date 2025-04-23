@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <sys/stat.h>
 
 #ifdef _WIN32
 #define TREE_WINDOWS
@@ -303,6 +304,358 @@ TREE_String TREE_Color_GetBackgroundString(TREE_Color color)
 TREE_String TREE_Color_GetResetString()
 {
 	return "\033[000m";
+}
+
+TREE_Bool TREE_File_Exists(TREE_String path)
+{
+	// validate
+	if (!path)
+	{
+		return TREE_FALSE;
+	}
+
+	// check if the path is a directory
+	struct stat buffer;
+	if (stat(path, &buffer) == 0 && (buffer.st_mode & S_IFREG))
+	{
+		return TREE_TRUE;
+	}
+
+	return TREE_FALSE;
+}
+
+TREE_Size TREE_File_Size(TREE_String path)
+{
+	// validate
+	if (!TREE_File_Exists(path))
+	{
+		return 0;
+	}
+
+	// open the file
+	FILE* file = fopen(path, "rb");
+	if (!file)
+	{
+		return 0;
+	}
+
+	// seek to the end of the file to get size
+	fseek(file, 0, SEEK_END);
+	TREE_Size size = ftell(file);
+	fclose(file);
+	if (size == -1)
+	{
+		return 0;
+	}
+
+	return size;
+}
+
+TREE_Result TREE_File_Read(TREE_String path, TREE_Char* text, TREE_Size size)
+{
+	// validate
+	if (!path || !text)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	// check if file exists
+	if (!TREE_File_Exists(path))
+	{
+		return TREE_ERROR_ARG_INVALID;
+	}
+
+	// open the file
+	FILE* file = fopen(path, "rb");
+	if (!file)
+	{
+		return TREE_ERROR;
+	}
+
+	// get the size of the file
+	fseek(file, 0, SEEK_END);
+	TREE_Size fileSize = ftell(file);
+	if (fileSize == 0)
+	{
+		fclose(file);
+		return TREE_ERROR;
+	}
+	fseek(file, 0, SEEK_SET);
+
+	// read the minimum between count and size, if a size given
+	TREE_Size readSize = size > fileSize ? fileSize : size;
+
+	// read the file into memory
+	fread(text, sizeof(TREE_Char), readSize, file);
+	text[readSize] = '\0';
+
+	fclose(file);
+
+	return TREE_OK;
+}
+
+TREE_Result TREE_File_Write(TREE_String path, TREE_String text)
+{
+	// validate
+	if (!path || !text)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	// open the file
+	FILE* file = fopen(path, "wb");
+	if (!file)
+	{
+		return TREE_ERROR;
+	}
+
+	// write the text to the file
+	fwrite(text, sizeof(TREE_Char), strlen(text), file);
+	fclose(file);
+
+	return TREE_OK;
+}
+
+TREE_Result TREE_File_Create(TREE_String path)
+{
+	// validate
+	if (!path)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	// create the file
+	FILE* file = fopen(path, "wb");
+	if (!file)
+	{
+		return TREE_ERROR;
+	}
+
+	// close the file
+	fclose(file);
+
+	return TREE_OK;
+}
+
+TREE_Result TREE_File_Delete(TREE_String path)
+{
+	// validate
+	if (!path)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	// check if file exists
+	if (!TREE_File_Exists(path))
+	{
+		return TREE_ERROR_ARG_INVALID;
+	}
+
+	// delete the file
+	if (remove(path) != 0)
+	{
+		return TREE_ERROR;
+	}
+
+	return TREE_OK;
+}
+
+TREE_Bool TREE_Directory_Exists(TREE_String path)
+{
+	// validate
+	if (!path)
+	{
+		return TREE_FALSE;
+	}
+
+	// check if the path is a directory
+	struct stat buffer;
+	if (stat(path, &buffer) == 0 && (buffer.st_mode & S_IFDIR))
+	{
+		return TREE_TRUE;
+	}
+
+	return TREE_FALSE;
+}
+
+TREE_Result TREE_Directory_Create(TREE_String path)
+{
+#ifdef TREE_WINDOWS
+	if (!CreateDirectoryA(path, NULL))
+	{
+		if (GetLastError() != ERROR_ALREADY_EXISTS)
+		{
+			return TREE_ERROR;
+		}
+	}
+	return TREE_OK;
+#else
+	return TREE_NOT_IMPLEMENTED;
+#endif // TREE_WINDOWS
+}
+
+TREE_Result TREE_Directory_Delete(TREE_String path)
+{
+	// validate
+	if (!path)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	// check if directory exists
+	if (!TREE_Directory_Exists(path))
+	{
+		return TREE_ERROR_ARG_INVALID;
+	}
+
+#ifdef TREE_WINDOWS
+	if (!RemoveDirectoryA(path))
+	{
+		return TREE_ERROR;
+	}
+	return TREE_OK;
+#else
+	return TREE_NOT_IMPLEMENTED;
+#endif // TREE_WINDOWS
+}
+
+TREE_Bool _TREE_Directory_Filter(TREE_String name, TREE_Bool isDirectory, TREE_FileTypeFlags flags)
+{
+	// ignore "." and ".."
+	if (strcmp(name, ".") == 0 ||
+		strcmp(name, "..") == 0)
+	{
+		return TREE_FALSE;
+	}
+
+	// filter out files, directories, etc. based on flags
+	// directories
+	if (!(flags & TREE_FILE_TYPE_FLAGS_DIRECTORY) && isDirectory)
+	{
+		return TREE_FALSE;
+	}
+	// files
+	if (!(flags & TREE_FILE_TYPE_FLAGS_FILE) && !isDirectory)
+	{
+		return TREE_FALSE;
+	}
+	// hidden files or directories
+	if (!(flags & TREE_FILE_TYPE_FLAGS_HIDDEN) && (isDirectory && name[0] == '.'))
+	{
+		return TREE_FALSE;
+	}
+
+	return TREE_TRUE;
+}
+
+TREE_Result TREE_Directory_Enumerate(TREE_String path, TREE_Char*** files, TREE_Size* count, TREE_FileTypeFlags flags)  
+{  
+   // validate  
+   if (!path || !files || !count)  
+   {  
+       return TREE_ERROR_ARG_NULL;  
+   }  
+   if (*files)  
+   {  
+       return TREE_ERROR_ARG_INVALID;  
+   }  
+
+   // if no flags given, default to files and directories  
+   if (flags == TREE_FILE_TYPE_FLAGS_NONE)  
+   {  
+       flags = TREE_FILE_TYPE_FLAGS_FILE | TREE_FILE_TYPE_FLAGS_DIRECTORY;  
+   }  
+
+   // check if directory exists  
+   if (!TREE_Directory_Exists(path))  
+   {  
+       return TREE_ERROR_ARG_INVALID;  
+   }  
+
+#ifdef TREE_WINDOWS  
+   char searchPath[MAX_PATH];  
+   snprintf(searchPath, sizeof(searchPath), "%s/*", path);  
+
+   // get number of files  
+   TREE_Size fileCount = 0;  
+   {  
+       WIN32_FIND_DATAA findData;  
+       HANDLE hFind = FindFirstFileA(searchPath, &findData);  
+       if (hFind == INVALID_HANDLE_VALUE)  
+       {  
+           return TREE_ERROR;  
+       }  
+       do {  
+           if (!_TREE_Directory_Filter(findData.cFileName, findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY, flags))  
+           {  
+               continue;  
+           }  
+           fileCount++;  
+       } while (FindNextFileA(hFind, &findData));  
+       FindClose(hFind);  
+   }  
+
+   // allocate memory for the file names  
+   *files = (TREE_Char**)malloc(fileCount * sizeof(TREE_Char*));  
+   if (!*files)  
+   {  
+       return TREE_ERROR_ALLOC;  
+   }  
+
+   // iterate through the files again and store the names  
+   WIN32_FIND_DATAA findData;  
+   HANDLE hFind = FindFirstFileA(searchPath, &findData);  
+   if (hFind == INVALID_HANDLE_VALUE)  
+   {  
+       free(*files);  
+       *files = NULL;  
+       return TREE_ERROR;  
+   }  
+
+   TREE_Size i = 0;  
+   do {
+	   TREE_Bool isDirectory = findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY;
+       if (!_TREE_Directory_Filter(findData.cFileName, isDirectory, flags))  
+       {  
+           continue;  
+       }
+
+       // Allocate memory for the new file name  
+       TREE_Size fileNameSize = strlen(findData.cFileName) + 1;
+	   // if directory, add 1 for / at end
+	   if (isDirectory)
+	   {
+		   fileNameSize++;
+	   }
+       TREE_Char* fileName = (TREE_Char*)malloc(fileNameSize);  
+       if (!fileName) {  
+           for (TREE_Size j = 0; j < i; j++) {  
+               free((*files)[j]);  
+           }
+           free(*files);  
+           *files = NULL;  
+           FindClose(hFind);  
+           return TREE_ERROR_ALLOC;  
+       }  
+       memcpy(fileName, findData.cFileName, fileNameSize);
+	   // if directory, add / at end
+	   if (isDirectory)
+	   {
+		   fileName[fileNameSize - 2] = '/';
+		   fileName[fileNameSize - 1] = '\0';
+	   }
+
+       // add the file name to the array  
+       (*files)[i] = fileName;
+       i++;  
+   } while (FindNextFileA(hFind, &findData));  
+
+   FindClose(hFind);  
+   *count = fileCount;  
+   return TREE_OK;  
+#else  
+   return TREE_NOT_IMPLEMENTED;  
+#endif // TREE_WINDOWS  
 }
 
 TREE_Bool TREE_Rect_IsOverlapping(TREE_Rect const* rectA, TREE_Rect const* rectB)
@@ -1232,7 +1585,7 @@ TREE_Char TREE_Key_ToChar(TREE_Key key, TREE_KeyModifierFlags modifiers)
 	}
 	if (key >= TREE_KEY_MULTIPLY && key <= TREE_KEY_DIVIDE)
 	{
-		static const TREE_Char numpadSymbols[] = { '*', '+', ' ', '-', '.', '/'};
+		static const TREE_Char numpadSymbols[] = { '*', '+', ' ', '-', '.', '/' };
 		return numpadSymbols[key - TREE_KEY_MULTIPLY];
 	}
 
@@ -1256,104 +1609,104 @@ TREE_Result TREE_Input_Init(TREE_Input* input)
 		return TREE_ERROR_ARG_NULL;
 	}
 
-    // set data  
-    input->keys[0] = TREE_KEY_TAB;  
-    input->keys[1] = TREE_KEY_BACKSPACE;  
-    input->keys[2] = TREE_KEY_SHIFT;  
-    input->keys[3] = TREE_KEY_ENTER;  
-    input->keys[4] = TREE_KEY_CONTROL;  
-    input->keys[5] = TREE_KEY_ALT;  
-    input->keys[6] = TREE_KEY_PAUSE;  
-    input->keys[7] = TREE_KEY_CAPS_LOCK;  
-    input->keys[8] = TREE_KEY_ESCAPE;  
-    input->keys[9] = TREE_KEY_SPACE;  
-    input->keys[10] = TREE_KEY_PAGE_UP;  
-    input->keys[11] = TREE_KEY_PAGE_DOWN;  
-    input->keys[12] = TREE_KEY_END;  
-    input->keys[13] = TREE_KEY_HOME;  
-    input->keys[14] = TREE_KEY_LEFT_ARROW;  
-    input->keys[15] = TREE_KEY_UP_ARROW;  
-    input->keys[16] = TREE_KEY_RIGHT_ARROW;  
-    input->keys[17] = TREE_KEY_DOWN_ARROW;  
-    input->keys[18] = TREE_KEY_PRINT_SCREEN;  
-    input->keys[19] = TREE_KEY_INSERT;  
-    input->keys[20] = TREE_KEY_DELETE;  
-    input->keys[21] = TREE_KEY_0;  
-    input->keys[22] = TREE_KEY_1;  
-    input->keys[23] = TREE_KEY_2;  
-    input->keys[24] = TREE_KEY_3;  
-    input->keys[25] = TREE_KEY_4;  
-    input->keys[26] = TREE_KEY_5;  
-    input->keys[27] = TREE_KEY_6;  
-    input->keys[28] = TREE_KEY_7;  
-    input->keys[29] = TREE_KEY_8;  
-    input->keys[30] = TREE_KEY_9;  
-    input->keys[31] = TREE_KEY_A;  
-    input->keys[32] = TREE_KEY_B;  
-    input->keys[33] = TREE_KEY_C;  
-    input->keys[34] = TREE_KEY_D;  
-    input->keys[35] = TREE_KEY_E;  
-    input->keys[36] = TREE_KEY_F;  
-    input->keys[37] = TREE_KEY_G;  
-    input->keys[38] = TREE_KEY_H;  
-    input->keys[39] = TREE_KEY_I;  
-    input->keys[40] = TREE_KEY_J;  
-    input->keys[41] = TREE_KEY_K;  
-    input->keys[42] = TREE_KEY_L;  
-    input->keys[43] = TREE_KEY_M;  
-    input->keys[44] = TREE_KEY_N;  
-    input->keys[45] = TREE_KEY_O;  
-    input->keys[46] = TREE_KEY_P;  
-    input->keys[47] = TREE_KEY_Q;  
-    input->keys[48] = TREE_KEY_R;  
-    input->keys[49] = TREE_KEY_S;  
-    input->keys[50] = TREE_KEY_T;  
-    input->keys[51] = TREE_KEY_U;  
-    input->keys[52] = TREE_KEY_V;  
-    input->keys[53] = TREE_KEY_W;  
-    input->keys[54] = TREE_KEY_X;  
-    input->keys[55] = TREE_KEY_Y;  
-    input->keys[56] = TREE_KEY_Z;  
-    input->keys[57] = TREE_KEY_F1;  
-    input->keys[58] = TREE_KEY_F2;  
-    input->keys[59] = TREE_KEY_F3;  
-    input->keys[60] = TREE_KEY_F4;  
-    input->keys[61] = TREE_KEY_F5;  
-    input->keys[62] = TREE_KEY_F6;  
-    input->keys[63] = TREE_KEY_F7;  
-    input->keys[64] = TREE_KEY_F8;  
-    input->keys[65] = TREE_KEY_F9;  
-    input->keys[66] = TREE_KEY_F10;  
-    input->keys[67] = TREE_KEY_F11;  
-    input->keys[68] = TREE_KEY_F12;  
-    input->keys[69] = TREE_KEY_NUM_LOCK;  
-    input->keys[70] = TREE_KEY_SCROLL_LOCK;  
-    input->keys[71] = TREE_KEY_NUMPAD_0;  
-    input->keys[72] = TREE_KEY_NUMPAD_1;  
-    input->keys[73] = TREE_KEY_NUMPAD_2;  
-    input->keys[74] = TREE_KEY_NUMPAD_3;  
-    input->keys[75] = TREE_KEY_NUMPAD_4;  
-    input->keys[76] = TREE_KEY_NUMPAD_5;  
-    input->keys[77] = TREE_KEY_NUMPAD_6;  
-    input->keys[78] = TREE_KEY_NUMPAD_7;  
-    input->keys[79] = TREE_KEY_NUMPAD_8;  
-    input->keys[80] = TREE_KEY_NUMPAD_9;  
-    input->keys[81] = TREE_KEY_MULTIPLY;  
-    input->keys[82] = TREE_KEY_ADD;  
-    input->keys[83] = TREE_KEY_SUBTRACT;  
-    input->keys[84] = TREE_KEY_DECIMAL;  
-    input->keys[85] = TREE_KEY_DIVIDE;  
-    input->keys[86] = TREE_KEY_SEMICOLON;  
-    input->keys[87] = TREE_KEY_EQUALS;  
-    input->keys[88] = TREE_KEY_COMMA;  
-    input->keys[89] = TREE_KEY_MINUS;  
-    input->keys[90] = TREE_KEY_PERIOD;  
-    input->keys[91] = TREE_KEY_SLASH;  
-    input->keys[92] = TREE_KEY_TILDE;  
-    input->keys[93] = TREE_KEY_LEFT_BRACKET;  
-    input->keys[94] = TREE_KEY_BACKSLASH;  
-    input->keys[95] = TREE_KEY_RIGHT_BRACKET;  
-    input->keys[96] = TREE_KEY_APOSTROPHE;
+	// set data  
+	input->keys[0] = TREE_KEY_TAB;
+	input->keys[1] = TREE_KEY_BACKSPACE;
+	input->keys[2] = TREE_KEY_SHIFT;
+	input->keys[3] = TREE_KEY_ENTER;
+	input->keys[4] = TREE_KEY_CONTROL;
+	input->keys[5] = TREE_KEY_ALT;
+	input->keys[6] = TREE_KEY_PAUSE;
+	input->keys[7] = TREE_KEY_CAPS_LOCK;
+	input->keys[8] = TREE_KEY_ESCAPE;
+	input->keys[9] = TREE_KEY_SPACE;
+	input->keys[10] = TREE_KEY_PAGE_UP;
+	input->keys[11] = TREE_KEY_PAGE_DOWN;
+	input->keys[12] = TREE_KEY_END;
+	input->keys[13] = TREE_KEY_HOME;
+	input->keys[14] = TREE_KEY_LEFT_ARROW;
+	input->keys[15] = TREE_KEY_UP_ARROW;
+	input->keys[16] = TREE_KEY_RIGHT_ARROW;
+	input->keys[17] = TREE_KEY_DOWN_ARROW;
+	input->keys[18] = TREE_KEY_PRINT_SCREEN;
+	input->keys[19] = TREE_KEY_INSERT;
+	input->keys[20] = TREE_KEY_DELETE;
+	input->keys[21] = TREE_KEY_0;
+	input->keys[22] = TREE_KEY_1;
+	input->keys[23] = TREE_KEY_2;
+	input->keys[24] = TREE_KEY_3;
+	input->keys[25] = TREE_KEY_4;
+	input->keys[26] = TREE_KEY_5;
+	input->keys[27] = TREE_KEY_6;
+	input->keys[28] = TREE_KEY_7;
+	input->keys[29] = TREE_KEY_8;
+	input->keys[30] = TREE_KEY_9;
+	input->keys[31] = TREE_KEY_A;
+	input->keys[32] = TREE_KEY_B;
+	input->keys[33] = TREE_KEY_C;
+	input->keys[34] = TREE_KEY_D;
+	input->keys[35] = TREE_KEY_E;
+	input->keys[36] = TREE_KEY_F;
+	input->keys[37] = TREE_KEY_G;
+	input->keys[38] = TREE_KEY_H;
+	input->keys[39] = TREE_KEY_I;
+	input->keys[40] = TREE_KEY_J;
+	input->keys[41] = TREE_KEY_K;
+	input->keys[42] = TREE_KEY_L;
+	input->keys[43] = TREE_KEY_M;
+	input->keys[44] = TREE_KEY_N;
+	input->keys[45] = TREE_KEY_O;
+	input->keys[46] = TREE_KEY_P;
+	input->keys[47] = TREE_KEY_Q;
+	input->keys[48] = TREE_KEY_R;
+	input->keys[49] = TREE_KEY_S;
+	input->keys[50] = TREE_KEY_T;
+	input->keys[51] = TREE_KEY_U;
+	input->keys[52] = TREE_KEY_V;
+	input->keys[53] = TREE_KEY_W;
+	input->keys[54] = TREE_KEY_X;
+	input->keys[55] = TREE_KEY_Y;
+	input->keys[56] = TREE_KEY_Z;
+	input->keys[57] = TREE_KEY_F1;
+	input->keys[58] = TREE_KEY_F2;
+	input->keys[59] = TREE_KEY_F3;
+	input->keys[60] = TREE_KEY_F4;
+	input->keys[61] = TREE_KEY_F5;
+	input->keys[62] = TREE_KEY_F6;
+	input->keys[63] = TREE_KEY_F7;
+	input->keys[64] = TREE_KEY_F8;
+	input->keys[65] = TREE_KEY_F9;
+	input->keys[66] = TREE_KEY_F10;
+	input->keys[67] = TREE_KEY_F11;
+	input->keys[68] = TREE_KEY_F12;
+	input->keys[69] = TREE_KEY_NUM_LOCK;
+	input->keys[70] = TREE_KEY_SCROLL_LOCK;
+	input->keys[71] = TREE_KEY_NUMPAD_0;
+	input->keys[72] = TREE_KEY_NUMPAD_1;
+	input->keys[73] = TREE_KEY_NUMPAD_2;
+	input->keys[74] = TREE_KEY_NUMPAD_3;
+	input->keys[75] = TREE_KEY_NUMPAD_4;
+	input->keys[76] = TREE_KEY_NUMPAD_5;
+	input->keys[77] = TREE_KEY_NUMPAD_6;
+	input->keys[78] = TREE_KEY_NUMPAD_7;
+	input->keys[79] = TREE_KEY_NUMPAD_8;
+	input->keys[80] = TREE_KEY_NUMPAD_9;
+	input->keys[81] = TREE_KEY_MULTIPLY;
+	input->keys[82] = TREE_KEY_ADD;
+	input->keys[83] = TREE_KEY_SUBTRACT;
+	input->keys[84] = TREE_KEY_DECIMAL;
+	input->keys[85] = TREE_KEY_DIVIDE;
+	input->keys[86] = TREE_KEY_SEMICOLON;
+	input->keys[87] = TREE_KEY_EQUALS;
+	input->keys[88] = TREE_KEY_COMMA;
+	input->keys[89] = TREE_KEY_MINUS;
+	input->keys[90] = TREE_KEY_PERIOD;
+	input->keys[91] = TREE_KEY_SLASH;
+	input->keys[92] = TREE_KEY_TILDE;
+	input->keys[93] = TREE_KEY_LEFT_BRACKET;
+	input->keys[94] = TREE_KEY_BACKSLASH;
+	input->keys[95] = TREE_KEY_RIGHT_BRACKET;
+	input->keys[96] = TREE_KEY_APOSTROPHE;
 
 	for (TREE_Size i = 0; i < TREE_KEY_MAX; i++)
 	{
@@ -2465,13 +2818,14 @@ TREE_Result TREE_Control_TextInputData_Init(TREE_Control_TextInputData* data, TR
 	data->active.character = ' ';
 	data->active.colorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_WHITE);
 	data->cursor = TREE_ColorPair_Create(TREE_COLOR_WHITE, TREE_COLOR_BRIGHT_BLACK);
-	data->cursorPosition = 0;
+	// set cursor position to end of starting text
+	data->cursorPosition = textLength;
 	data->cursorTimer = 0;
 	data->scroll = 0;
 	data->selection = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_WHITE, TREE_COLOR_BRIGHT_BLUE);
 	data->selectionOrigin = 0;
-	data->selectionStart = 0;
-	data->selectionEnd = 0;
+	data->selectionStart = textLength;
+	data->selectionEnd = textLength;
 
 	data->onChange = onChange;
 	data->onSubmit = onSubmit;
@@ -2602,10 +2956,6 @@ TREE_Result TREE_Control_TextInput_Init(TREE_Control* control, TREE_Transform* p
 	if (!control || !data)
 	{
 		return TREE_ERROR_ARG_NULL;
-	}
-	if (data->type == TREE_CONTROL_TYPE_TEXT_INPUT)
-	{
-		return TREE_ERROR_ARG_INVALID;
 	}
 
 	// initialize control
@@ -2863,6 +3213,14 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 
 			// check for special inputs
 			TREE_Bool ctrl = (keyData->modifiers & TREE_KEY_MODIFIER_FLAGS_CONTROL) != 0;
+			if (key == TREE_KEY_ENTER && !multiline)
+			{
+				// if singleline, treat enter as a submit
+				control->stateFlags &= ~TREE_CONTROL_STATE_FLAGS_ACTIVE;
+				control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+				CALL_ACTION(data->onSubmit, control);
+				break;
+			}
 			if (ctrl && key == TREE_KEY_C)
 			{
 				// get selection text
@@ -2882,7 +3240,7 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 				break;
 			}
 			if (ctrl && key == TREE_KEY_V)
-			{				
+			{
 				// remove selection, if any
 				result = TREE_Control_TextInputData_RemoveSelectedText(data);
 				if (result)
@@ -2918,7 +3276,7 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 			if (ctrl && key == TREE_KEY_X)
 			{
 				// copy selection, and remove it
-				
+
 				// get selection text
 				TREE_Char* text = TREE_Control_TextInputData_GetSelectedText(data);
 
@@ -2954,7 +3312,7 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 				data->selectionOrigin = 0;
 				data->selectionStart = 0;
 				data->selectionEnd = textLength;
-				data->cursorPosition= textLength;
+				data->cursorPosition = textLength;
 
 				// mark as dirty
 				control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
@@ -2970,7 +3328,7 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 			{
 				return result;
 			}
-			
+
 			// shift string over, if needed
 			if (data->cursorPosition < textLength)
 			{
@@ -3042,7 +3400,7 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 		else
 		{
 			// scroll is left and right on singleline
-			if(data->scroll + extent->width < data->cursorPosition)
+			if (data->scroll + extent->width < data->cursorPosition)
 			{
 				data->scroll = data->cursorPosition - extent->width;
 			}
@@ -3189,7 +3547,7 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 		else
 		{
 			// single line
-			
+
 			// find the offset
 			TREE_Size offset = data->scroll;
 			if (active)
@@ -3474,7 +3832,7 @@ TREE_Result TREE_Application_DispatchEvent(TREE_Application* application, TREE_E
 		// movement allowed
 		TREE_EventData_Key* keyData = (TREE_EventData_Key*)e.data;
 		TREE_Key key = keyData->key;
-		
+
 		// move if move key pressed, and there is a control to move to
 		TREE_Direction direction = TREE_DIRECTION_NONE;
 		switch (key)
