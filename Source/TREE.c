@@ -3090,6 +3090,11 @@ TREE_String TREE_Control_TextInput_GetText(TREE_Control* control)
 	return textInputData->text;
 }
 
+TREE_Bool _TREE_IsCharSafe(TREE_Char ch)
+{
+	return ch >= 32 && ch <= 126;
+}
+
 TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 {
 	// validate
@@ -3270,7 +3275,7 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 			TREE_Char ch = TREE_Key_ToChar(key, keyData->modifiers);
 
 			// if invalid, ignore it
-			if (ch == 0)
+			if (!_TREE_IsCharSafe(ch))
 			{
 				break;
 			}
@@ -3642,6 +3647,17 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 			memcpy(textCopy, &text[offset], length * sizeof(TREE_Char));
 			textCopy[length] = '\0'; // null terminator
 
+			// only render safe chars
+			TREE_Char ch;
+			for (TREE_Size i = 0; i < length; i++)
+			{
+				ch = textCopy[i];
+				if (!_TREE_IsCharSafe(ch))
+				{
+					textCopy[i] = ' ';
+				}
+			}
+
 			// draw the text
 			TREE_Offset imageOffset;
 			imageOffset.x = 0;
@@ -3680,6 +3696,16 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 					memcpy(selectionText, &text[selectionStart], selectionLength * sizeof(TREE_Char));
 					selectionText[selectionLength] = '\0'; // null terminator
 
+					// only render safe chars
+					for (TREE_Size i = 0; i < length; i++)
+					{
+						ch = selectionText[i];
+						if (!_TREE_IsCharSafe(ch))
+						{
+							selectionText[i] = ' ';
+						}
+					}
+
 					// draw the selection
 					TREE_Offset selectionOffset;
 					selectionOffset.x = (TREE_Int)(selectionStart - offset);
@@ -3700,7 +3726,7 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 				// calculate the cursor character
 				TREE_Pixel cursorPixel;
 				cursorPixel.colorPair = data->cursor;
-				if (data->cursorPosition == textLength)
+				if (data->cursorPosition == textLength || !_TREE_IsCharSafe(text[data->cursorPosition]))
 				{
 					cursorPixel.character = ' ';
 				}
