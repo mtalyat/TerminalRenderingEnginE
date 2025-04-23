@@ -3095,6 +3095,18 @@ TREE_Bool _TREE_IsCharSafe(TREE_Char ch)
 	return ch >= 32 && ch <= 126;
 }
 
+void _TREE_MakeSafe(TREE_Char* text, TREE_Size size)
+{
+	// make the text safe
+	for (TREE_Size i = 0; i < size; i++)
+	{
+		if (!_TREE_IsCharSafe(text[i]))
+		{
+			text[i] = ' ';
+		}
+	}
+}
+
 TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 {
 	// validate
@@ -3571,13 +3583,18 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 			// draw each line
 			for (TREE_Size i = 0; i < count; i++)
 			{
+				// replace unsafe characters
+				TREE_Char* line = lines[data->scroll + i];
+				TREE_Size lineLength = strlen(line);
+				_TREE_MakeSafe(line, lineLength);
+
 				TREE_Offset offset;
 				offset.x = 0;
 				offset.y = (TREE_Int)i;
 				result = TREE_Image_DrawString(
 					control->image,
 					offset,
-					lines[data->scroll + i],
+					line,
 					pixel->colorPair
 				);
 				if (result)
@@ -3592,7 +3609,7 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 				// calculate the cursor character
 				TREE_Pixel cursorPixel;
 				cursorPixel.colorPair = data->cursor;
-				if (data->cursorPosition == textLength)
+				if (data->cursorPosition == textLength || !_TREE_IsCharSafe(text[data->cursorPosition]))
 				{
 					cursorPixel.character = ' ';
 				}
@@ -3648,15 +3665,7 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 			textCopy[length] = '\0'; // null terminator
 
 			// only render safe chars
-			TREE_Char ch;
-			for (TREE_Size i = 0; i < length; i++)
-			{
-				ch = textCopy[i];
-				if (!_TREE_IsCharSafe(ch))
-				{
-					textCopy[i] = ' ';
-				}
-			}
+			_TREE_MakeSafe(textCopy, length);
 
 			// draw the text
 			TREE_Offset imageOffset;
@@ -3697,14 +3706,7 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 					selectionText[selectionLength] = '\0'; // null terminator
 
 					// only render safe chars
-					for (TREE_Size i = 0; i < length; i++)
-					{
-						ch = selectionText[i];
-						if (!_TREE_IsCharSafe(ch))
-						{
-							selectionText[i] = ' ';
-						}
-					}
+					_TREE_MakeSafe(selectionText, selectionLength);
 
 					// draw the selection
 					TREE_Offset selectionOffset;

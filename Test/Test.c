@@ -103,6 +103,7 @@ int main()
 	}
 	textInput.transform->localOffset = (TREE_Offset){ 2, 12 };
 	textInput.transform->localExtent.width = 90;
+	textInput.transform->localExtent.height = 10;
 
 	// link button to text input
 	result = TREE_Control_Link(&quitButton, TREE_DIRECTION_SOUTH, TREE_CONTROL_LINK_DOUBLE, &textInput);
