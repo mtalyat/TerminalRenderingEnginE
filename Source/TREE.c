@@ -2224,73 +2224,130 @@ TREE_Result TREE_Control_HandleEvent(TREE_Control* control, TREE_Event const* ev
 	return TREE_OK;
 }
 
-TREE_Char** _TREE_WordWrap(TREE_String text, TREE_Size width, TREE_Size* lineCount)
+TREE_Size _TREE_WordWrap(TREE_String text, TREE_Size width, TREE_Char*** result, TREE_Size lineCount)
 {
 	// validate
-	if (!text || width == 0 || !lineCount)
+	if (!text || width == 0)
 	{
-		return NULL;
+		return 0;
 	}
 
-	// allocate lines
-	TREE_Size textLength = strlen(text);
-	TREE_Size maxLines = textLength / width + 1;
-	TREE_Char** lines = TREE_NEW_ARRAY(TREE_Char*, maxLines);
-	if (!lines)
+	// allocate lines, if count given
+	TREE_Char** lines = NULL;
+	if (result && lineCount > 0)
 	{
-		return NULL;
+		lines = TREE_NEW_ARRAY(TREE_Char*, lineCount);
+		if (!lines)
+		{
+			return 0;
+		}
 	}
-	// capture each line of text
-	TREE_Size index = 0;
+
+	// get number of lines
 	TREE_Size count = 0;
-	for (TREE_Size i = 0; i < maxLines && index < textLength; i++)
+	TREE_Size lastSpace = 0;
+	TREE_Size lastLine = 0;
+	TREE_Size textLength = strlen(text);
+	TREE_Char ch;
+	for (TREE_Size i = 0; i < textLength; i++)
 	{
-		// skip any spaces at the beginning
-		while (text[index] == ' ')
-		{
-			index++;
-		}
+		ch = text[i];
 
-		// if at the end
-		if (index >= textLength)
+		if (ch == '\n')
 		{
-			break;
-		}
+			// normal line end
 
-		// start at end, shrink until a space for word wrapping
-		TREE_Int potentialLength = (TREE_Int)MIN(width, textLength - index);
-		TREE_Int length = potentialLength;
-		for (; length >= 0; length--)
-		{
-			TREE_Char ch = text[index + length];
-			if (!ch || isspace(ch))
+			// add to lines
+			if (lines)
 			{
-				break;
+				TREE_Size lineLength = i - lastLine + 1;
+				lines[count] = TREE_NEW_ARRAY(TREE_Char, lineLength + 1);
+				if (!lines[count])
+				{
+					for (TREE_Size j = 0; j < count; j++)
+					{
+						TREE_DELETE(lines[j]);
+					}
+					TREE_DELETE(lines);
+					return 0;
+				}
+				memcpy(lines[count], &text[lastLine], lineLength);
+				lines[count][lineLength] = '\0'; // null terminator
 			}
-		}
 
-		if (length < 0)
+			// update markers
+			count++;
+			lastLine = i + 1;
+			lastSpace = lastLine;
+		}
+		else if (i - lastLine + 1 > width)
 		{
-			length = potentialLength;
-		}
+			// reached max line width
 
-		lines[i] = TREE_NEW_ARRAY(TREE_Char, length + 1);
-		if (!lines[i])
+			// go back to last space, if it is not the last line
+			if (lastSpace != lastLine)
+			{
+				i = lastSpace;
+			}
+
+			// add to lines
+			if (lines)
+			{
+				TREE_Size lineLength = i - lastLine + 1;
+				lines[count] = TREE_NEW_ARRAY(TREE_Char, lineLength + 1);
+				if (!lines[count])
+				{
+					for (TREE_Size j = 0; j < count; j++)
+					{
+						TREE_DELETE(lines[j]);
+					}
+					TREE_DELETE(lines);
+					return 0;
+				}
+				memcpy(lines[count], &text[lastLine], lineLength);
+				lines[count][lineLength] = '\0'; // null terminator
+			}
+
+			// update markers
+			count++;
+			lastLine = i + 1;
+			lastSpace = lastLine;
+		}
+		else if (isspace(ch))
 		{
-			return NULL;
+			// space found
+			lastSpace = i;
 		}
-
-		// set the line data
-		memcpy(lines[i], &text[index], length * sizeof(TREE_Char));
-		lines[i][length] = '\0'; // null terminator
-
-		count++;
-
-		// increment index
-		index += length;
 	}
-	*lineCount = count;
-	return lines;
+
+	// add last line
+	if (lastLine < textLength)
+	{
+		// add to lines
+		if (lines)
+		{
+			TREE_Size lineLength = textLength - lastLine + 1;
+			lines[count] = TREE_NEW_ARRAY(TREE_Char, lineLength + 1);
+			if (!lines[count])
+			{
+				for (TREE_Size j = 0; j < count; j++)
+				{
+					TREE_DELETE(lines[j]);
+				}
+				TREE_DELETE(lines);
+				return 0;
+			}
+			memcpy(lines[count], &text[lastLine], lineLength);
+			lines[count][lineLength] = '\0'; // null terminator
+		}
+		count++;
+	}
+
+	if (result)
+	{
+		*result = lines;
+	}
+	return count;
 }
 
 TREE_Result _TREE_Control_Refresh_Text(TREE_Image* target, TREE_Extent extent, TREE_String text, TREE_Alignment alignment, TREE_Pixel design)
@@ -2312,9 +2369,18 @@ TREE_Result _TREE_Control_Refresh_Text(TREE_Image* target, TREE_Extent extent, T
 	// draw onto the image
 	// draw the rect
 	result = TREE_Image_Clear(target, design);
+	if (result)
+	{
+		return result;
+	}
 
-	TREE_Size lineCount;
-	TREE_Char** lines = _TREE_WordWrap(text, extent.width, &lineCount);
+	TREE_Char** lines;
+	TREE_Size lineCount = _TREE_WordWrap(text, extent.width, NULL, 0);
+	_TREE_WordWrap(text, extent.width, &lines, lineCount);
+	if (!lines)
+	{
+		return result;
+	}
 
 	// draw each line, using the alignment to determine the position within the rect
 	TREE_Int top;
@@ -3555,8 +3621,13 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 			// multiline
 
 			// word wrap the text
-			TREE_Size lineCount;
-			TREE_Char** lines = _TREE_WordWrap(text, extent->width, &lineCount);
+			TREE_Char** lines;
+			TREE_Size lineCount = _TREE_WordWrap(text, extent->width, NULL, 0);
+			_TREE_WordWrap(text, extent->width, &lines, lineCount);
+			if (!lines)
+			{
+				return TREE_ERROR;
+			}
 
 			// draw the lines based on the scroll
 			TREE_Size count = MIN(lineCount, extent->height);
