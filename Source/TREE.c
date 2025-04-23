@@ -349,8 +349,13 @@ TREE_String TREE_Path_Parent(TREE_String path)
 	TREE_Char* lastSlash = strrchr(path, '/');
 	if (!lastSlash)
 	{
-		// no parent
-		return NULL;
+		// try the last backslash instead
+		lastSlash = strrchr(path, '\\');
+		if (!lastSlash)
+		{
+			// no parent
+			return NULL;
+		}
 	}
 
 	// allocate memory for the parent path
