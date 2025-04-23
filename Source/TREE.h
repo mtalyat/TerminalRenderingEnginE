@@ -118,6 +118,14 @@ TREE_String TREE_Color_GetBackgroundString(TREE_Color color);
 TREE_String TREE_Color_GetResetString();
 
 ///////////////////////////////////////
+// Path                              //
+///////////////////////////////////////
+
+TREE_String TREE_Path_Absolute(TREE_String path);
+
+TREE_String TREE_Path_Parent(TREE_String path);
+
+///////////////////////////////////////
 // File                              //
 ///////////////////////////////////////
 
@@ -131,8 +139,6 @@ typedef enum _TREE_FileTypeFlags
 } TREE_FileTypeFlags;
 
 TREE_Bool TREE_File_Exists(TREE_String path);
-
-TREE_Result TREE_File_Absolute(TREE_String path, TREE_Char** absolutePath, TREE_Size absolutePathBufferSize);
 
 TREE_Size TREE_File_Size(TREE_String path);
 

@@ -306,6 +306,68 @@ TREE_String TREE_Color_GetResetString()
 	return "\033[000m";
 }
 
+TREE_String TREE_Path_Absolute(TREE_String path)
+{
+	// validate
+	if (!path)
+	{
+		return NULL;
+	}
+
+	// get full path
+#ifdef TREE_WINDOWS
+	// get the absolute path
+	TREE_Char buffer[MAX_PATH];
+	if (_fullpath(buffer, path, sizeof(buffer)) == NULL)
+	{
+		return NULL;
+	}
+	// allocate memory for the string
+	TREE_Size absoluteSize = strlen(buffer) + 1;
+	TREE_Char* absolutePath = (TREE_Char*)malloc(absoluteSize);
+	if (!absolutePath)
+	{
+		return NULL;
+	}
+	// copy the string
+	memcpy(absolutePath, buffer, absoluteSize);
+	return absolutePath;
+#else
+	return NULL;
+#endif // TREE_WINDOWS
+}
+
+TREE_String TREE_Path_Parent(TREE_String path)
+{
+	// validate
+	if (!path)
+	{
+		return NULL;
+	}
+
+	// find the last slash
+	TREE_Char* lastSlash = strrchr(path, '/');
+	if (!lastSlash)
+	{
+		// no parent
+		return NULL;
+	}
+
+	// allocate memory for the parent path
+	TREE_Size parentSize = lastSlash - path + 1;
+	TREE_Char* parentPath = (TREE_Char*)malloc(parentSize);
+	if (!parentPath)
+	{
+		return NULL;
+	}
+
+	// copy the parent path
+	memcpy(parentPath, path, parentSize - 1);
+	parentPath[parentSize - 1] = '\0';
+
+	return parentPath;
+}
+
 TREE_Bool TREE_File_Exists(TREE_String path)
 {
 	// validate
@@ -322,27 +384,6 @@ TREE_Bool TREE_File_Exists(TREE_String path)
 	}
 
 	return TREE_FALSE;
-}
-
-TREE_Result TREE_File_Absolute(TREE_String path, TREE_Char** absolutePath, TREE_Size absolutePathBufferSize)
-{
-	// validate
-	if (!path || !absolutePath)
-	{
-		return TREE_ERROR_ARG_NULL;
-	}
-
-	// get full path
-#ifdef TREE_WINDOWS
-	// get the absolute path
-	if (_fullpath(*absolutePath, path, absolutePathBufferSize) == NULL)
-	{
-		return TREE_ERROR;
-	}
-	return TREE_OK;
-#else
-	return TREE_NOT_IMPLEMENTED;
-#endif // TREE_WINDOWS
 }
 
 TREE_Size TREE_File_Size(TREE_String path)
