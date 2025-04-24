@@ -76,13 +76,25 @@ int main()
 	transform->localOffset.y = 1;
 	transform->localOffset.x = 1;
 
-	// add button
-	result = TREE_Application_AddControl(&app, &quitButton);
+	// create single line text box
+	TREE_Control_TextInputData textInputData;
+	result = TREE_Control_TextInputData_Init(&textInputData, "Enter text here", 30, "Placeholder", TREE_CONTROL_TEXT_INPUT_TYPE_NORMAL, NULL, NULL);
 	if (result)
 	{
-		printf("Failed to add quit button to application: %s\n", TREE_Result_ToString(result));
+		printf("Failed to initialize text input data: %s\n", TREE_Result_ToString(result));
 		return 1;
 	}
+
+	// create text input
+	TREE_Control textInput;
+	result = TREE_Control_TextInput_Init(&textInput, NULL, &textInputData);
+	if (result)
+	{
+		printf("Failed to initialize text input: %s\n", TREE_Result_ToString(result));
+		return 1;
+	}
+	textInput.transform->localOffset.x = 50;
+	textInput.transform->localOffset.y = 1;
 
 	// create list data
 	TREE_String options[] = {
@@ -93,8 +105,52 @@ int main()
 		"Option 21", "Option 22", "Option 23", "Option 24", "Option 25",
 		"Option 26", "Option 27", "Option 28", "Option 29", "Option 30"
 	};
-	TREE_Control_DropdownData dropDatas[3];
 
+	// create list data
+	TREE_Control_ListData listData;
+	result = TREE_Control_ListData_Init(&listData, TREE_CONTROL_LIST_FLAGS_MULTISELECT, options, 30, NULL, NULL);
+	if (result)
+	{
+		printf("Failed to initialize list data: %s\n", TREE_Result_ToString(result));
+		return 1;
+	}
+
+	// create list
+	TREE_Control listControl;
+	result = TREE_Control_List_Init(&listControl, NULL, &listData);
+	if (result)
+	{
+		printf("Failed to initialize list control: %s\n", TREE_Result_ToString(result));
+		return 1;
+	}
+	listControl.transform->localOffset.x = 1;
+	listControl.transform->localOffset.y = 6;
+	listControl.transform->localExtent.height = 20;
+
+	// create multi line text box
+	TREE_Control_TextInputData multiLineTextInputData;
+	result = TREE_Control_TextInputData_Init(&multiLineTextInputData, "Enter multi-line text here", 30, "Placeholder", TREE_CONTROL_TEXT_INPUT_TYPE_NORMAL, NULL, NULL);
+	if (result)
+	{
+		printf("Failed to initialize multi-line text input data: %s\n", TREE_Result_ToString(result));
+		return 1;
+	}
+
+	// create multi-line text input
+	TREE_Control multiLineTextInput;
+	result = TREE_Control_TextInput_Init(&multiLineTextInput, NULL, &multiLineTextInputData);
+	if (result)
+	{
+		printf("Failed to initialize multi-line text input: %s\n", TREE_Result_ToString(result));
+		return 1;
+	}
+	multiLineTextInput.transform->localOffset.x = 50;
+	multiLineTextInput.transform->localOffset.y = 6;
+	multiLineTextInput.transform->localExtent.height = 20;
+	multiLineTextInput.transform->localExtent.width = 30;
+
+	// create dropdown datas
+	TREE_Control_DropdownData dropDatas[3];
 	for (TREE_Size i = 0; i < 3; i++)
 	{
 		result = TREE_Control_DropdownData_Init(&dropDatas[i], options, 30, 0, 0, NULL);
@@ -120,6 +176,12 @@ int main()
 	}
 
 	// link controls
+	result = TREE_Control_Link(&listControl, TREE_DIRECTION_NORTH, TREE_CONTROL_LINK_DOUBLE, &quitButton);
+	if (result)
+	{
+		printf("Failed to link controls: %s\n", TREE_Result_ToString(result));
+		return 1;
+	}
 	result = TREE_Control_Link(&quitButton, TREE_DIRECTION_EAST, TREE_CONTROL_LINK_DOUBLE, dropControls);
 	if (result)
 	{
@@ -131,9 +193,38 @@ int main()
 		TREE_Control* control = &dropControls[i];
 		TREE_Control* nextControl = &dropControls[(i + 1) % 3];
 		result = TREE_Control_Link(control, TREE_DIRECTION_SOUTH, TREE_CONTROL_LINK_DOUBLE, nextControl);
+		if (result)
+		{
+			printf("Failed to link controls: %s\n", TREE_Result_ToString(result));
+			return 1;
+		}
+	}
+	result = TREE_Control_Link(&dropControls[0], TREE_DIRECTION_EAST, TREE_CONTROL_LINK_DOUBLE, &textInput);
+	if (result)
+	{
+		printf("Failed to link controls: %s\n", TREE_Result_ToString(result));
+		return 1;
+	}
+	result = TREE_Control_Link(&textInput, TREE_DIRECTION_SOUTH, TREE_CONTROL_LINK_DOUBLE, &multiLineTextInput);
+	if (result)
+	{
+		printf("Failed to link controls: %s\n", TREE_Result_ToString(result));
+		return 1;
 	}
 
-	// add to application
+	// add controls to application
+	result = TREE_Application_AddControl(&app, &quitButton);
+	if (result)
+	{
+		printf("Failed to add quit button to application: %s\n", TREE_Result_ToString(result));
+		return 1;
+	}
+	result = TREE_Application_AddControl(&app, &listControl);
+	if (result)
+	{
+		printf("Failed to add list control to application: %s\n", TREE_Result_ToString(result));
+		return 1;
+	}
 	for (TREE_Size i = 0; i < 3; i++)
 	{
 		result = TREE_Application_AddControl(&app, &dropControls[i]);
@@ -142,6 +233,18 @@ int main()
 			printf("Failed to add dropdown to application: %s\n", TREE_Result_ToString(result));
 			return 1;
 		}
+	}
+	result = TREE_Application_AddControl(&app, &textInput);
+	if (result)
+	{
+		printf("Failed to add text input to application: %s\n", TREE_Result_ToString(result));
+		return 1;
+	}
+	result = TREE_Application_AddControl(&app, &multiLineTextInput);
+	if (result)
+	{
+		printf("Failed to add multi-line text input to application: %s\n", TREE_Result_ToString(result));
+		return 1;
 	}
 
 	// run the application

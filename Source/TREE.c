@@ -4316,11 +4316,11 @@ TREE_Result TREE_Control_Scrollbar_Draw(TREE_Image* target, TREE_Offset scrollba
 		scrollbarPixel.character = data->bottom;
 		if (vertical)
 		{
-			offset.y = scrollbarOffset.y + (TREE_Int)(extent.height - 1);
+			offset.y = scrollbarOffset.y + (TREE_Int)(scrollbarExtent.height - 1);
 		}
 		else
 		{
-			offset.x = scrollbarOffset.x + (TREE_Int)(extent.width - 1);
+			offset.x = scrollbarOffset.x + (TREE_Int)(scrollbarExtent.width - 1);
 		}
 
 		result = TREE_Image_Set(
@@ -4765,8 +4765,8 @@ TREE_Result _TREE_Control_List_Draw(TREE_Image* target, TREE_Offset controlOffse
 
 			// draw option text
 			TREE_Offset offset;
-			offset.x = controlOffset.x;
-			offset.y = controlOffset.y + (TREE_Int)i;
+			offset.x = 0;
+			offset.y = (TREE_Int)i;
 			result = TREE_Image_DrawString(
 				target,
 				offset,
@@ -4792,8 +4792,8 @@ TREE_Result _TREE_Control_List_Draw(TREE_Image* target, TREE_Offset controlOffse
 		if (fillerLength)
 		{
 			TREE_Offset offset;
-			offset.x = controlOffset.x + (TREE_Int)fillerOffset;
-			offset.y = controlOffset.y + (TREE_Int)i;
+			offset.x = (TREE_Int)fillerOffset;
+			offset.y = (TREE_Int)i;
 			TREE_Extent extent;
 			extent.width = (TREE_UInt)fillerLength;
 			extent.height = 1;
@@ -4820,8 +4820,8 @@ TREE_Result _TREE_Control_List_Draw(TREE_Image* target, TREE_Offset controlOffse
 
 		// get the scrollbar offset
 		TREE_Offset scrollbarOffset;
-		scrollbarOffset.x = controlOffset.x + (TREE_Int)optionsWidth;
-		scrollbarOffset.y = controlOffset.y;
+		scrollbarOffset.x = (TREE_Int)optionsWidth;
+		scrollbarOffset.y = 0;
 
 		// draw the scrollbar
 		result = TREE_Control_Scrollbar_Draw(
