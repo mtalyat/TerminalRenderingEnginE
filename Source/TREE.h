@@ -611,6 +611,7 @@ typedef enum _TREE_ControlType
 	TREE_CONTROL_TYPE_BUTTON,
 	TREE_CONTROL_TYPE_TEXT_INPUT,
 	TREE_CONTROL_TYPE_DROPDOWN,
+	TREE_CONTROL_TYPE_LIST,
 } TREE_ControlType;
 
 typedef enum _TREE_ControlFlags
@@ -784,6 +785,81 @@ TREE_Result TREE_Control_DropdownData_SetOptions(TREE_Control_DropdownData* data
 TREE_Result TREE_Control_Dropdown_Init(TREE_Control* control, TREE_Transform* parent, TREE_Control_DropdownData* data);
 
 TREE_Result TREE_Control_Dropdown_EventHandler(TREE_Event const* event);
+
+///////////////////////////////////////
+// Control: Scrollbar                //
+///////////////////////////////////////
+
+typedef enum _TREE_Control_ScrollbarType
+{
+	TREE_CONTROL_SCROLLBAR_TYPE_NONE, // never show
+	TREE_CONTROL_SCROLLBAR_TYPE_STATIC, // always show
+	TREE_CONTROL_SCROLLBAR_TYPE_DYNAMIC, // show when needed
+} TREE_Control_ScrollbarType;
+
+typedef struct _TREE_Control_ScrollbarData
+{
+	TREE_Control_ScrollbarType type;
+	TREE_Byte showEnds; // draw top and bottom if true
+	TREE_Char top; // top char of scroll area
+	TREE_Char bottom; // bottom char of scroll area
+	TREE_Char line; // scroll area
+	TREE_Char bar; // scroll bar
+} TREE_Control_ScrollbarData;
+
+TREE_Result TREE_Control_Scrollbar_Draw(TREE_Image* target, TREE_Offset offset, TREE_Extent extent, TREE_Control_ScrollbarData* data, TREE_Size scroll, TREE_Size maxScroll, TREE_ColorPair colorPair);
+
+///////////////////////////////////////
+// Control: List                     //
+///////////////////////////////////////
+
+typedef enum _TREE_Control_ListFlags
+{
+	TREE_CONTROL_LIST_FLAGS_NONE = 0x0,
+	TREE_CONTROL_LIST_FLAGS_MULTISELECT = 0x1
+} TREE_Control_ListFlags;
+
+typedef struct _TREE_Control_ListData
+{
+	TREE_Control_ListFlags flags;
+	TREE_Char** options;
+	TREE_Size optionsSize;
+	TREE_Size selectedIndex;
+	TREE_Byte* selectedIndices; // only for multiselect, otherwise NULL
+	TREE_Size hoverIndex;
+	TREE_Size scroll;
+	TREE_Control_ScrollbarData scrollbar;
+	TREE_Pixel normalSelected;
+	TREE_Pixel normalUnselected;
+	TREE_ColorPair normalScrollbarColorPair;
+	TREE_Pixel focusedSelected;
+	TREE_Pixel focusedUnselected;
+	TREE_ColorPair focusedScrollbarColorPair;
+	TREE_Pixel activeSelected;
+	TREE_Pixel activeUnselected;
+	TREE_ColorPair activeScrollbarColorPair;
+	TREE_Pixel hoveredSelected;
+	TREE_Pixel hoveredUnselected;
+
+	TREE_Function onChange; // when selection changes
+	TREE_Function onSubmit; // when editing done
+} TREE_Control_ListData;
+
+TREE_Result TREE_Control_ListData_Init(TREE_Control_ListData* data, TREE_Control_ListFlags flags, TREE_String* options, TREE_Size optionsSize, TREE_Function onChange, TREE_Function onSubmit);
+
+void TREE_Control_ListData_Free(TREE_Control_ListData* data);
+
+TREE_Result TREE_Control_ListData_SetOptions(TREE_Control_ListData* data, TREE_String* options, TREE_Size optionsSize);
+
+TREE_Result TREE_Control_ListData_SetSelected(TREE_Control_ListData* data, TREE_Size index, TREE_Bool selected);
+
+TREE_Result TREE_Control_ListData_GetSelected(TREE_Control_ListData* data, TREE_Size** indices, TREE_Size* indexCount);
+
+TREE_Bool TREE_Control_ListData_IsSelected(TREE_Control* control, TREE_Size index);
+
+TREE_Result TREE_Control_List_Init(TREE_Control* control, TREE_Transform* parent, TREE_Control_ListData* data);
+
+TREE_Result TREE_Control_List_EventHandler(TREE_Event const* event);
 
 ///////////////////////////////////////
 // Application                       //
