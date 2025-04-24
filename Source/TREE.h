@@ -778,6 +778,8 @@ typedef struct _TREE_Control_ScrollbarData
 	TREE_Char bar; // scroll bar
 } TREE_Control_ScrollbarData;
 
+TREE_Result TREE_Control_ScrollbarData_Init(TREE_Control_ScrollbarData* data, TREE_Control_ScrollbarType type, TREE_Bool vertical);
+
 TREE_Result TREE_Control_Scrollbar_Draw(TREE_Image* target, TREE_Offset offset, TREE_Extent extent, TREE_Control_ScrollbarData* data, TREE_Size scroll, TREE_Size maxScroll, TREE_ColorPair colorPair);
 
 ///////////////////////////////////////

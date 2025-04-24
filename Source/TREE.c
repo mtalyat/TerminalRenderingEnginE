@@ -615,109 +615,109 @@ TREE_Bool _TREE_Directory_Filter(TREE_String name, TREE_Bool isDirectory, TREE_F
 	return TREE_TRUE;
 }
 
-TREE_Result TREE_Directory_Enumerate(TREE_String path, TREE_Char*** files, TREE_Size* count, TREE_FileTypeFlags flags)  
-{  
-   // validate  
-   if (!path || !files || !count)  
-   {  
-       return TREE_ERROR_ARG_NULL;  
-   }  
-   if (*files)  
-   {  
-       return TREE_ERROR_ARG_INVALID;  
-   }  
+TREE_Result TREE_Directory_Enumerate(TREE_String path, TREE_Char*** files, TREE_Size* count, TREE_FileTypeFlags flags)
+{
+	// validate  
+	if (!path || !files || !count)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+	if (*files)
+	{
+		return TREE_ERROR_ARG_INVALID;
+	}
 
-   // if no flags given, default to files and directories  
-   if (flags == TREE_FILE_TYPE_FLAGS_NONE)  
-   {  
-       flags = TREE_FILE_TYPE_FLAGS_FILE | TREE_FILE_TYPE_FLAGS_DIRECTORY;  
-   }  
+	// if no flags given, default to files and directories  
+	if (flags == TREE_FILE_TYPE_FLAGS_NONE)
+	{
+		flags = TREE_FILE_TYPE_FLAGS_FILE | TREE_FILE_TYPE_FLAGS_DIRECTORY;
+	}
 
-   // check if directory exists  
-   if (!TREE_Directory_Exists(path))  
-   {  
-       return TREE_ERROR_ARG_INVALID;  
-   }  
+	// check if directory exists  
+	if (!TREE_Directory_Exists(path))
+	{
+		return TREE_ERROR_ARG_INVALID;
+	}
 
 #ifdef TREE_WINDOWS  
-   char searchPath[MAX_PATH];  
-   snprintf(searchPath, sizeof(searchPath), "%s/*", path);  
+	char searchPath[MAX_PATH];
+	snprintf(searchPath, sizeof(searchPath), "%s/*", path);
 
-   // get number of files  
-   TREE_Size fileCount = 0;  
-   {  
-       WIN32_FIND_DATAA findData;  
-       HANDLE hFind = FindFirstFileA(searchPath, &findData);  
-       if (hFind == INVALID_HANDLE_VALUE)  
-       {  
-           return TREE_ERROR;  
-       }  
-       do {  
-           if (!_TREE_Directory_Filter(findData.cFileName, findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY, flags))  
-           {  
-               continue;  
-           }  
-           fileCount++;  
-       } while (FindNextFileA(hFind, &findData));  
-       FindClose(hFind);  
-   }  
+	// get number of files  
+	TREE_Size fileCount = 0;
+	{
+		WIN32_FIND_DATAA findData;
+		HANDLE hFind = FindFirstFileA(searchPath, &findData);
+		if (hFind == INVALID_HANDLE_VALUE)
+		{
+			return TREE_ERROR;
+		}
+		do {
+			if (!_TREE_Directory_Filter(findData.cFileName, findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY, flags))
+			{
+				continue;
+			}
+			fileCount++;
+		} while (FindNextFileA(hFind, &findData));
+		FindClose(hFind);
+	}
 
-   // allocate memory for the file names  
-   *files = (TREE_Char**)malloc(fileCount * sizeof(TREE_Char*));  
-   if (!*files)  
-   {  
-       return TREE_ERROR_ALLOC;  
-   }  
+	// allocate memory for the file names  
+	*files = (TREE_Char**)malloc(fileCount * sizeof(TREE_Char*));
+	if (!*files)
+	{
+		return TREE_ERROR_ALLOC;
+	}
 
-   // iterate through the files again and store the names  
-   WIN32_FIND_DATAA findData;  
-   HANDLE hFind = FindFirstFileA(searchPath, &findData);  
-   if (hFind == INVALID_HANDLE_VALUE)  
-   {  
-       free(*files);  
-       *files = NULL;  
-       return TREE_ERROR;  
-   }  
+	// iterate through the files again and store the names  
+	WIN32_FIND_DATAA findData;
+	HANDLE hFind = FindFirstFileA(searchPath, &findData);
+	if (hFind == INVALID_HANDLE_VALUE)
+	{
+		free(*files);
+		*files = NULL;
+		return TREE_ERROR;
+	}
 
-   TREE_Size i = 0;  
-   do {
-	   TREE_Bool isDirectory = findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY;
-       if (!_TREE_Directory_Filter(findData.cFileName, isDirectory, flags))  
-       {  
-           continue;  
-       }
+	TREE_Size i = 0;
+	do {
+		TREE_Bool isDirectory = findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY;
+		if (!_TREE_Directory_Filter(findData.cFileName, isDirectory, flags))
+		{
+			continue;
+		}
 
-       // Allocate memory for the new file name  
-       TREE_Size fileNameSize = strlen(findData.cFileName) + 1;
-	   // if directory, add 1 for / at end
-	   if (isDirectory)
-	   {
-		   fileNameSize++;
-	   }
-       TREE_Char* fileName = (TREE_Char*)malloc(fileNameSize);  
-       if (!fileName) {  
-		   TREE_DELETE_ARRAY(*files, i);
-           FindClose(hFind);  
-           return TREE_ERROR_ALLOC;  
-       }  
-       memcpy(fileName, findData.cFileName, fileNameSize);
-	   // if directory, add / at end
-	   if (isDirectory)
-	   {
-		   fileName[fileNameSize - 2] = '/';
-		   fileName[fileNameSize - 1] = '\0';
-	   }
+		// Allocate memory for the new file name  
+		TREE_Size fileNameSize = strlen(findData.cFileName) + 1;
+		// if directory, add 1 for / at end
+		if (isDirectory)
+		{
+			fileNameSize++;
+		}
+		TREE_Char* fileName = (TREE_Char*)malloc(fileNameSize);
+		if (!fileName) {
+			TREE_DELETE_ARRAY(*files, i);
+			FindClose(hFind);
+			return TREE_ERROR_ALLOC;
+		}
+		memcpy(fileName, findData.cFileName, fileNameSize);
+		// if directory, add / at end
+		if (isDirectory)
+		{
+			fileName[fileNameSize - 2] = '/';
+			fileName[fileNameSize - 1] = '\0';
+		}
 
-       // add the file name to the array  
-       (*files)[i] = fileName;
-       i++;  
-   } while (FindNextFileA(hFind, &findData));  
+		// add the file name to the array  
+		(*files)[i] = fileName;
+		i++;
+	} while (FindNextFileA(hFind, &findData));
 
-   FindClose(hFind);  
-   *count = fileCount;  
-   return TREE_OK;  
+	FindClose(hFind);
+	*count = fileCount;
+	return TREE_OK;
 #else  
-   return TREE_NOT_IMPLEMENTED;  
+	return TREE_NOT_IMPLEMENTED;
 #endif // TREE_WINDOWS  
 }
 
@@ -3971,7 +3971,7 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 			// multiline
 
 			// get word wrap data
-			
+
 			TREE_Char** lines;
 			TREE_Size lineCount;
 			TREE_Size* lineOffsets;
@@ -4208,6 +4208,34 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 	return TREE_OK;
 }
 
+TREE_Result TREE_Control_ScrollbarData_Init(TREE_Control_ScrollbarData* data, TREE_Control_ScrollbarType type, TREE_Bool vertical)
+{
+	// validate
+	if (!data)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	// set data
+	data->type = type;
+	if (vertical)
+	{
+		data->top = '^';
+		data->bottom = 'v';
+		data->line = '|';
+	}
+	else
+	{
+		data->top = '<';
+		data->bottom = '>';
+		data->line = '-';
+	}
+	data->bar = '#';
+	data->showEnds = TREE_TRUE;
+
+	return TREE_OK;
+}
+
 TREE_Result TREE_Control_Scrollbar_Draw(TREE_Image* target, TREE_Offset scrollbarOffset, TREE_Extent scrollbarExtent, TREE_Control_ScrollbarData* data, TREE_Size scroll, TREE_Size maxScroll, TREE_ColorPair colorPair)
 {
 	// validate
@@ -4355,7 +4383,7 @@ TREE_Result TREE_Control_DropdownData_Init(TREE_Control_DropdownData* data, TREE
 	data->optionsSize = optionsSize;
 	data->selectedIndex = selectedIndex;
 	data->hoverIndex = selectedIndex;
-	
+
 	data->normal.character = ' ';
 	data->normal.colorPair = TREE_ColorPair_Create(TREE_COLOR_BLACK, TREE_COLOR_BRIGHT_BLACK);
 	data->focused.character = ' ';
@@ -4574,13 +4602,12 @@ TREE_Result TREE_Control_ListData_Init(TREE_Control_ListData* data, TREE_Control
 	data->hoveredSelected.colorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_WHITE, TREE_COLOR_BRIGHT_BLUE);
 	data->hoveredUnselected.character = ' ';
 	data->hoveredUnselected.colorPair = TREE_ColorPair_Create(TREE_COLOR_BLACK, TREE_COLOR_BRIGHT_WHITE);
-	
-	data->scrollbar.type = TREE_CONTROL_SCROLLBAR_TYPE_DYNAMIC;
-	data->scrollbar.showEnds = TREE_TRUE;
-	data->scrollbar.top = '^';
-	data->scrollbar.bottom = 'v';
-	data->scrollbar.line = '|';
-	data->scrollbar.bar = '#';
+
+	result = TREE_Control_ScrollbarData_Init(&data->scrollbar, TREE_CONTROL_SCROLLBAR_TYPE_DYNAMIC, TREE_TRUE);
+	if (result)
+	{
+		return result;
+	}
 
 	data->onChange = onChange;
 	data->onSubmit = onSubmit;
