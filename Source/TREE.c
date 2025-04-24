@@ -4201,6 +4201,205 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 	return TREE_OK;
 }
 
+TREE_Result TREE_Control_DropdownData_Init(TREE_Control_DropdownData* data, TREE_String* options, TREE_Size optionsSize, TREE_Size selectedIndex, TREE_Function onSubmit)
+{
+	// validate
+	if (!data || !options)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+	if (!optionsSize)
+	{
+		return TREE_ERROR_ARG_INVALID;
+	}
+
+	TREE_Result result = TREE_Control_DropdownData_SetOptions(data, options, optionsSize);
+	if (result)
+	{
+		return result;
+	}
+
+	// set data
+	data->optionsSize = optionsSize;
+	data->selectedIndex = selectedIndex;
+	data->hoverIndex = selectedIndex;
+	
+	data->normal.character = ' ';
+	data->normal.colorPair = TREE_ColorPair_Create(TREE_COLOR_BLACK, TREE_COLOR_BRIGHT_BLACK);
+	data->focused.character = ' ';
+	data->focused.colorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_BRIGHT_WHITE);
+	data->active.character = ' ';
+	data->active.colorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_WHITE);
+	data->selected.character = ' ';
+	data->selected.colorPair = TREE_ColorPair_Create(TREE_COLOR_BLACK, TREE_COLOR_BRIGHT_WHITE);
+	data->unselected.character = '/';
+	data->unselected.colorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_WHITE);
+
+	data->onSubmit = onSubmit;
+
+	return TREE_OK;
+}
+
+void TREE_Control_DropdownData_Free(TREE_Control_DropdownData* data)
+{
+	if (!data)
+	{
+		return;
+	}
+	// free the options
+	TREE_DELETE_ARRAY(data->options, data->optionsSize);
+	data->optionsSize = 0;
+	data->selectedIndex = 0;
+	data->hoverIndex = 0;
+	data->normal.character = ' ';
+	data->normal.colorPair = TREE_ColorPair_CreateDefault();
+	data->focused.character = ' ';
+	data->focused.colorPair = TREE_ColorPair_CreateDefault();
+	data->active.character = ' ';
+	data->active.colorPair = TREE_ColorPair_CreateDefault();
+	data->selected.character = ' ';
+	data->selected.colorPair = TREE_ColorPair_CreateDefault();
+	data->unselected.character = '/';
+	data->unselected.colorPair = TREE_ColorPair_CreateDefault();
+	data->onSubmit = NULL;
+}
+
+TREE_Result TREE_Control_DropdownData_SetOptions(TREE_Control_DropdownData* data, TREE_String* options, TREE_Size optionsSize)
+{
+	// validate
+	if (!data || !options)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	// if old options, free them
+	if (data->options)
+	{
+		TREE_DELETE_ARRAY(data->options, data->optionsSize);
+	}
+
+	// allocate and copy over options
+	data->options = TREE_NEW_ARRAY(TREE_Char*, optionsSize);
+	if (!data->options)
+	{
+		return TREE_ERROR_ALLOC;
+	}
+	for (TREE_Size i = 0; i < optionsSize; i++)
+	{
+		TREE_String oldOption = options[i];
+		TREE_Size oldOptionSize = strlen(oldOption);
+		TREE_Char* option = TREE_NEW_ARRAY(TREE_Char, oldOptionSize + 1);
+		if (!option)
+		{
+			TREE_DELETE_ARRAY(data->options, i);
+			return TREE_ERROR_ALLOC;
+		}
+		memcpy(option, oldOption, oldOptionSize * sizeof(TREE_Char));
+		option[oldOptionSize] = '\0'; // null terminator
+	}
+
+	return TREE_OK;
+}
+
+TREE_Result TREE_Control_Dropdown_Init(TREE_Control* control, TREE_Transform* parent, TREE_Control_DropdownData* data)
+{
+	// validate
+	if (!control || !parent || !data)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	// control init
+	TREE_Result result = TREE_Control_Init(control, parent, TREE_Control_Dropdown_EventHandler, data);
+	if (result)
+	{
+		return result;
+	}
+
+	// set data
+	control->type = TREE_CONTROL_TYPE_DROPDOWN;
+	control->flags = TREE_CONTROL_FLAGS_FOCUSABLE;
+	control->transform->localExtent.width = 22;
+	control->transform->localExtent.height = 1;
+
+	return TREE_OK;
+}
+
+TREE_Result TREE_Control_Dropdown_EventHandler(TREE_Event const* event)
+{
+	// validate
+	if (!event || !event->control)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+	if (event->control->type != TREE_CONTROL_TYPE_DROPDOWN)
+	{
+		return TREE_ERROR_ARG_INVALID;
+	}
+
+	TREE_Control* control = event->control;
+	TREE_Control_DropdownData* data = (TREE_Control_DropdownData*)control->data;
+
+	switch (event->type)
+	{
+	case TREE_EVENT_TYPE_KEY_DOWN:
+	{
+		// ignore if not focused
+		if (!(control->stateFlags & TREE_CONTROL_STATE_FLAGS_FOCUSED))
+		{
+			break;
+		}
+
+		// get the event data
+		TREE_EventData_Key* keyData = (TREE_EventData_Key*)event->data;
+		TREE_Key key = keyData->key;
+
+		// if not active, do nothing
+		if (!(control->stateFlags & TREE_CONTROL_STATE_FLAGS_ACTIVE))
+		{
+			// if not active but a submit key is pressed, become active
+			if (key == TREE_KEY_ENTER || key == TREE_KEY_SPACE)
+			{
+				control->stateFlags |= TREE_CONTROL_STATE_FLAGS_ACTIVE | TREE_CONTROL_STATE_FLAGS_DIRTY;
+			}
+			break;
+		}
+
+		// handle key events
+		switch (key)
+		{
+		case TREE_KEY_UP_ARROW: // move to previous option
+			if (data->hoverIndex > 0)
+			{
+				data->hoverIndex--;
+				control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+			}
+			break;
+		case TREE_KEY_DOWN_ARROW: // move to next option
+			if (data->hoverIndex < data->optionsSize - 1)
+			{
+				data->hoverIndex++;
+				control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+			}
+			break;
+		case TREE_KEY_ENTER: // submit
+			data->selectedIndex = data->hoverIndex;
+			control->stateFlags &= ~TREE_CONTROL_STATE_FLAGS_ACTIVE;
+			control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+			CALL_ACTION(data->onSubmit, control);
+		case TREE_KEY_ESCAPE: // cancel
+			control->stateFlags &= ~TREE_CONTROL_STATE_FLAGS_ACTIVE;
+			control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+			break;
+		}
+
+		break;
+	}
+	}
+
+	return TREE_OK;
+}
+
 TREE_Result TREE_Application_Init(TREE_Application* application, TREE_Surface* surface, TREE_Size capacity, TREE_EventHandler eventHandler)
 {
 	// validate

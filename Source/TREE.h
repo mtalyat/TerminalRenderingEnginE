@@ -610,6 +610,7 @@ typedef enum _TREE_ControlType
 	TREE_CONTROL_TYPE_LABEL,
 	TREE_CONTROL_TYPE_BUTTON,
 	TREE_CONTROL_TYPE_TEXT_INPUT,
+	TREE_CONTROL_TYPE_DROPDOWN,
 } TREE_ControlType;
 
 typedef enum _TREE_ControlFlags
@@ -754,6 +755,35 @@ TREE_Result TREE_Control_TextInput_SetText(TREE_Control* control, TREE_String te
 TREE_String TREE_Control_TextInput_GetText(TREE_Control* control);
 
 TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event);
+
+///////////////////////////////////////
+// Control: Dropdown                 //
+///////////////////////////////////////
+
+typedef struct _TREE_Control_DropdownData
+{
+	TREE_Char** options;
+	TREE_Size optionsSize;
+	TREE_Size selectedIndex;
+	TREE_Size hoverIndex;
+	TREE_Pixel normal;
+	TREE_Pixel focused;
+	TREE_Pixel active;
+	TREE_Pixel selected;
+	TREE_Pixel unselected;
+
+	TREE_Function onSubmit;
+} TREE_Control_DropdownData;
+
+TREE_Result TREE_Control_DropdownData_Init(TREE_Control_DropdownData* data, TREE_String* options, TREE_Size optionsSize, TREE_Size selectedIndex, TREE_Function onSubmit);
+
+void TREE_Control_DropdownData_Free(TREE_Control_DropdownData* data);
+
+TREE_Result TREE_Control_DropdownData_SetOptions(TREE_Control_DropdownData* data, TREE_String* options, TREE_Size optionsSize);
+
+TREE_Result TREE_Control_Dropdown_Init(TREE_Control* control, TREE_Transform* parent, TREE_Control_DropdownData* data);
+
+TREE_Result TREE_Control_Dropdown_EventHandler(TREE_Event const* event);
 
 ///////////////////////////////////////
 // Application                       //
