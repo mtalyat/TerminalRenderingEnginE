@@ -3305,6 +3305,25 @@ void _TREE_MakeSafe(TREE_Char* text, TREE_Size size)
 	}
 }
 
+TREE_Char* _TREE_MakeSafeCopy(TREE_Char* text, TREE_Size size)
+{
+	// allocate new text
+	TREE_Char* newText = TREE_NEW_ARRAY(TREE_Char, size + 1);
+	if (!newText)
+	{
+		return NULL;
+	}
+
+	// copy the text
+	memcpy(newText, text, size * sizeof(TREE_Char));
+	newText[size] = '\0'; // null terminator
+
+	// make it safe
+	_TREE_MakeSafe(newText, size);
+
+	return newText;
+}
+
 TREE_Size _TREE_SeekDifferentCharType(TREE_Char* text, TREE_Size textLength, TREE_Size index)
 {
 	TREE_CharType type = TREE_Char_GetType(text[index]);
@@ -4605,19 +4624,14 @@ TREE_Result TREE_Control_ListData_GetSelected(TREE_Control_ListData* data, TREE_
 	return TREE_OK;
 }
 
-TREE_Bool TREE_Control_ListData_IsSelected(TREE_Control* control, TREE_Size index)
+TREE_Bool TREE_Control_ListData_IsSelected(TREE_Control_ListData* data, TREE_Size index)
 {
 	// validate
-	if (!control || !control->data)
-	{
-		return TREE_FALSE;
-	}
-	if (control->type != TREE_CONTROL_TYPE_LIST)
+	if (!data)
 	{
 		return TREE_FALSE;
 	}
 
-	TREE_Control_ListData* data = (TREE_Control_ListData*)control->data;
 	if (index >= data->optionsSize)
 	{
 		return TREE_FALSE;
@@ -4655,6 +4669,175 @@ TREE_Result TREE_Control_List_Init(TREE_Control* control, TREE_Transform* parent
 	control->flags = TREE_CONTROL_FLAGS_FOCUSABLE;
 	control->transform->localExtent.width = 16;
 	control->transform->localExtent.height = 10;
+
+	return TREE_OK;
+}
+
+TREE_Result _TREE_Control_List_Draw(TREE_Image* target, TREE_Offset controlOffset, TREE_Extent controlExtent, TREE_ControlStateFlags stateFlags, TREE_Control_ListData* data)
+{
+	TREE_Result result;
+	TREE_Bool active = (stateFlags & TREE_CONTROL_STATE_FLAGS_ACTIVE);
+
+	// determine pixels from state
+	TREE_Pixel const* unselectedPixel = &data->normalUnselected;
+	TREE_Pixel const* selectedPixel = &data->normalSelected;
+	TREE_ColorPair scrollbarColorPair = data->normalScrollbarColorPair;
+	if (active)
+	{
+		unselectedPixel = &data->activeUnselected;
+		selectedPixel = &data->activeSelected;
+		scrollbarColorPair = data->activeScrollbarColorPair;
+	}
+	else if (stateFlags & TREE_CONTROL_STATE_FLAGS_FOCUSED)
+	{
+		unselectedPixel = &data->focusedUnselected;
+		selectedPixel = &data->focusedSelected;
+		scrollbarColorPair = data->focusedScrollbarColorPair;
+	}
+
+	// determine if there is a scrollbar
+	TREE_Size scrollbar = 0;
+	switch (data->scrollbar.type)
+	{
+	case TREE_CONTROL_SCROLLBAR_TYPE_NONE:
+		scrollbar = 0;
+		break;
+	case TREE_CONTROL_SCROLLBAR_TYPE_STATIC:
+		scrollbar = 1;
+		break;
+	case TREE_CONTROL_SCROLLBAR_TYPE_DYNAMIC:
+		scrollbar = (controlExtent.height < data->optionsSize) ? 1 : 0;
+		break;
+	}
+
+	// get width of options
+	TREE_Size optionsWidth = controlExtent.width - scrollbar;
+
+	// draw the options
+	TREE_Size count = controlExtent.height;
+	TREE_Size scroll = data->scroll;
+	TREE_Size index;
+	for (TREE_Size i = 0; i < count; i++)
+	{
+		index = scroll + i;
+
+		TREE_Size fillerOffset;
+		TREE_Size fillerLength;
+		TREE_Pixel const* pixel;
+
+		if (index < data->optionsSize)
+		{
+			// draw option
+			// get option and info about it
+			TREE_Char* option = data->options[scroll + i];
+			TREE_Size optionLength = strlen(option);
+			TREE_Size optionWidth = MIN(optionsWidth, optionLength);
+			fillerOffset = optionWidth;
+			fillerLength = optionsWidth - optionWidth;
+			TREE_Bool selected = TREE_Control_ListData_IsSelected(data, scroll + i);
+
+			// copy the option
+			TREE_Char* optionCopy = _TREE_MakeSafeCopy(option, optionWidth);
+
+			// get pixel to use for drawing
+			if (active && data->hoverIndex == scroll + i)
+			{
+				if (selected)
+				{
+					pixel = &data->hoveredSelected;
+				}
+				else
+				{
+					pixel = &data->hoveredUnselected;
+				}
+			}
+			else
+			{
+				if (selected)
+				{
+					pixel = selectedPixel;
+				}
+				else
+				{
+					pixel = unselectedPixel;
+				}
+			}
+
+			// draw option text
+			TREE_Offset offset;
+			offset.x = controlOffset.x;
+			offset.y = controlOffset.y + (TREE_Int)i;
+			result = TREE_Image_DrawString(
+				target,
+				offset,
+				optionCopy,
+				pixel->colorPair
+			);
+			if (result)
+			{
+				return result;
+			}
+
+			free(optionCopy);
+		}
+		else
+		{
+			// no option to draw
+			fillerOffset = 0;
+			fillerLength = optionsWidth;
+			pixel = unselectedPixel;
+		}
+
+		// draw filler
+		if (fillerLength)
+		{
+			TREE_Offset offset;
+			offset.x = controlOffset.x + (TREE_Int)fillerOffset;
+			offset.y = controlOffset.y + (TREE_Int)i;
+			TREE_Extent extent;
+			extent.width = (TREE_UInt)fillerLength;
+			extent.height = 1;
+			result = TREE_Image_FillRect(
+				target,
+				offset,
+				extent,
+				*pixel
+			);
+			if (result)
+			{
+				return result;
+			}
+		}
+	}
+
+	// draw the scrollbar
+	if (scrollbar)
+	{
+		// get the scrollbar extent
+		TREE_Extent scrollbarExtent;
+		scrollbarExtent.width = 1;
+		scrollbarExtent.height = controlExtent.height;
+
+		// get the scrollbar offset
+		TREE_Offset scrollbarOffset;
+		scrollbarOffset.x = controlOffset.x + (TREE_Int)optionsWidth;
+		scrollbarOffset.y = controlOffset.y;
+
+		// draw the scrollbar
+		result = TREE_Control_Scrollbar_Draw(
+			target,
+			scrollbarOffset,
+			scrollbarExtent,
+			&data->scrollbar,
+			data->scroll,
+			data->optionsSize - controlExtent.height,
+			scrollbarColorPair
+		);
+		if (result)
+		{
+			return result;
+		}
+	}
 
 	return TREE_OK;
 }
@@ -4786,181 +4969,23 @@ TREE_Result TREE_Control_List_EventHandler(TREE_Event const* event)
 	}
 	case TREE_EVENT_TYPE_REFRESH:
 	{
-		TREE_Bool active = (control->stateFlags & TREE_CONTROL_STATE_FLAGS_ACTIVE);
-
 		// resize the image if needed
-		result = TREE_Image_Resize(control->image, control->transform->globalRect.extent);
+		TREE_Result result = TREE_Image_Resize(control->image, control->transform->globalRect.extent);
 		if (result)
 		{
 			return result;
 		}
 
-		// determine pixels from state
-		TREE_Pixel const* unselectedPixel = &data->normalUnselected;
-		TREE_Pixel const* selectedPixel = &data->normalSelected;
-		TREE_ColorPair scrollbarColorPair = data->normalScrollbarColorPair;
-		if (active)
+		// draw the list
+		result = _TREE_Control_List_Draw(
+			control->image,
+			control->transform->globalRect.offset,
+			control->transform->globalRect.extent,
+			control->stateFlags,
+			data);
+		if (result)
 		{
-			unselectedPixel = &data->activeUnselected;
-			selectedPixel = &data->activeSelected;
-			scrollbarColorPair = data->activeScrollbarColorPair;
-		}
-		else if (control->stateFlags & TREE_CONTROL_STATE_FLAGS_FOCUSED)
-		{
-			unselectedPixel = &data->focusedUnselected;
-			selectedPixel = &data->focusedSelected;
-			scrollbarColorPair = data->focusedScrollbarColorPair;
-		}
-
-		// determine if there is a scrollbar
-		TREE_Size scrollbar = 0;
-		switch (data->scrollbar.type)
-		{
-		case TREE_CONTROL_SCROLLBAR_TYPE_NONE:
-			scrollbar = 0;
-			break;
-		case TREE_CONTROL_SCROLLBAR_TYPE_STATIC:
-			scrollbar = 1;
-			break;
-		case TREE_CONTROL_SCROLLBAR_TYPE_DYNAMIC:
-			scrollbar = (control->transform->localExtent.height < data->optionsSize) ? 1 : 0;
-			break;
-		}
-
-		// get width of options
-		TREE_Size optionsWidth = control->transform->localExtent.width - scrollbar;
-
-		// draw the options
-		TREE_Size count = control->transform->localExtent.height;
-		TREE_Size scroll = data->scroll;
-		TREE_Size index;
-		for (TREE_Size i = 0; i < count; i++)
-		{
-			index = scroll + i;
-
-			TREE_Size fillerOffset;
-			TREE_Size fillerLength;
-			TREE_Pixel const* pixel;
-
-			if (index < data->optionsSize)
-			{
-				// draw option
-				// get option and info about it
-				TREE_Char* option = data->options[scroll + i];
-				TREE_Size optionLength = strlen(option);
-				TREE_Size optionWidth = MIN(optionsWidth, optionLength);
-				fillerOffset = optionWidth;
-				fillerLength = optionsWidth - optionWidth;
-				TREE_Bool selected = TREE_Control_ListData_IsSelected(control, scroll + i);
-
-				// copy the option
-				TREE_Char* optionCopy = TREE_NEW_ARRAY(TREE_Char, optionWidth + 1);
-				if (!optionCopy)
-				{
-					return TREE_ERROR_ALLOC;
-				}
-				memcpy(optionCopy, option, optionWidth * sizeof(TREE_Char));
-				optionCopy[optionWidth] = '\0'; // null terminator
-				_TREE_MakeSafe(optionCopy, optionWidth);
-
-				// get pixel to use for drawing
-				if (active && data->hoverIndex == scroll + i)
-				{
-					if (selected)
-					{
-						pixel = &data->hoveredSelected;
-					}
-					else
-					{
-						pixel = &data->hoveredUnselected;
-					}
-				}
-				else
-				{
-					if (selected)
-					{
-						pixel = selectedPixel;
-					}
-					else
-					{
-						pixel = unselectedPixel;
-					}
-				}
-
-				// draw option text
-				TREE_Offset offset;
-				offset.x = 0;
-				offset.y = (TREE_Int)i;
-				result = TREE_Image_DrawString(
-					control->image,
-					offset,
-					optionCopy,
-					pixel->colorPair
-				);
-				if (result)
-				{
-					return result;
-				}
-
-				free(optionCopy);
-			}
-			else
-			{
-				// no option to draw
-				fillerOffset = 0;
-				fillerLength = optionsWidth;
-				pixel = unselectedPixel;
-			}
-
-			// draw filler
-			if (fillerLength)
-			{
-				TREE_Offset offset;
-				offset.x = (TREE_Int)fillerOffset;
-				offset.y = (TREE_Int)i;
-				TREE_Extent extent;
-				extent.width = (TREE_UInt)fillerLength;
-				extent.height = 1;
-				result = TREE_Image_FillRect(
-					control->image,
-					offset,
-					extent,
-					*pixel
-				);
-				if (result)
-				{
-					return result;
-				}
-			}
-		}
-
-		// draw the scrollbar
-		if (scrollbar)
-		{
-			// get the scrollbar extent
-			TREE_Extent scrollbarExtent;
-			scrollbarExtent.width = 1;
-			scrollbarExtent.height = control->transform->localExtent.height;
-
-			// get the scrollbar offset
-			TREE_Offset scrollbarOffset;
-			scrollbarOffset.x = (TREE_Int)optionsWidth - 1;
-			scrollbarOffset.y = 0;
-
-			// draw the scrollbar
-			result = TREE_Control_Scrollbar_Draw(
-				control->image,
-				scrollbarOffset,
-				scrollbarExtent,
-				&data->scrollbar,
-				data->scroll,
-				data->optionsSize - control->transform->localExtent.height,
-				scrollbarColorPair
-			);
-			if (result)
-			{
-				return result;
-			}
+			return result;
 		}
 
 		break;
@@ -4990,7 +5015,7 @@ TREE_Result TREE_Control_List_EventHandler(TREE_Event const* event)
 	return TREE_OK;
 }
 
-TREE_Result TREE_Control_DropdownData_Init(TREE_Control_DropdownData* data, TREE_String* options, TREE_Size optionsSize, TREE_Size selectedIndex, TREE_Function onSubmit)
+TREE_Result TREE_Control_DropdownData_Init(TREE_Control_DropdownData* data, TREE_String* options, TREE_Size optionsSize, TREE_Size selectedIndex, TREE_Int drop, TREE_Function onSubmit)
 {
 	// validate
 	if (!data || !options)
@@ -5002,6 +5027,8 @@ TREE_Result TREE_Control_DropdownData_Init(TREE_Control_DropdownData* data, TREE
 		return TREE_ERROR_ARG_INVALID;
 	}
 
+	data->options = NULL;
+	data->optionsSize = 0;
 	TREE_Result result = TREE_Control_DropdownData_SetOptions(data, options, optionsSize);
 	if (result)
 	{
@@ -5009,20 +5036,32 @@ TREE_Result TREE_Control_DropdownData_Init(TREE_Control_DropdownData* data, TREE
 	}
 
 	// set data
-	data->optionsSize = optionsSize;
 	data->selectedIndex = selectedIndex;
 	data->hoverIndex = selectedIndex;
+	data->scroll = 0;
+	data->origin.x = 0;
+	data->origin.y = 0;
+	data->dropType = drop == 0 ? TREE_CONTROL_DROPDOWN_TYPE_DYNAMIC : TREE_CONTROL_DROPDOWN_TYPE_STATIC;
+	data->drop = drop;
 
 	data->normal.character = ' ';
 	data->normal.colorPair = TREE_ColorPair_Create(TREE_COLOR_BLACK, TREE_COLOR_BRIGHT_BLACK);
+
 	data->focused.character = ' ';
 	data->focused.colorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_BRIGHT_WHITE);
+
 	data->active.character = ' ';
 	data->active.colorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_WHITE);
+
 	data->selected.character = ' ';
-	data->selected.colorPair = TREE_ColorPair_Create(TREE_COLOR_BLACK, TREE_COLOR_BRIGHT_WHITE);
-	data->unselected.character = '/';
-	data->unselected.colorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_WHITE);
+	data->selected.colorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_WHITE, TREE_COLOR_BLUE);
+	data->unselected.character = ' ';
+	data->unselected.colorPair = TREE_ColorPair_Create(TREE_COLOR_BLACK, TREE_COLOR_WHITE);
+
+	data->hoveredSelected.character = ' ';
+	data->hoveredSelected.colorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_WHITE, TREE_COLOR_BRIGHT_BLUE);
+	data->hoveredUnselected.character = ' ';
+	data->hoveredUnselected.colorPair = TREE_ColorPair_Create(TREE_COLOR_BLACK, TREE_COLOR_BRIGHT_WHITE);
 
 	data->onSubmit = onSubmit;
 
@@ -5085,7 +5124,14 @@ TREE_Result TREE_Control_DropdownData_SetOptions(TREE_Control_DropdownData* data
 		}
 		memcpy(option, oldOption, oldOptionSize * sizeof(TREE_Char));
 		option[oldOptionSize] = '\0'; // null terminator
+		data->options[i] = option;
 	}
+	data->optionsSize = optionsSize;
+
+	// reset selection
+	data->selectedIndex = 0;
+	data->hoverIndex = 0;
+	data->scroll = 0;
 
 	return TREE_OK;
 }
@@ -5093,7 +5139,7 @@ TREE_Result TREE_Control_DropdownData_SetOptions(TREE_Control_DropdownData* data
 TREE_Result TREE_Control_Dropdown_Init(TREE_Control* control, TREE_Transform* parent, TREE_Control_DropdownData* data)
 {
 	// validate
-	if (!control || !parent || !data)
+	if (!control || !data)
 	{
 		return TREE_ERROR_ARG_NULL;
 	}
@@ -5126,12 +5172,14 @@ TREE_Result TREE_Control_Dropdown_EventHandler(TREE_Event const* event)
 		return TREE_ERROR_ARG_INVALID;
 	}
 
+	TREE_Result result;
 	TREE_Control* control = event->control;
 	TREE_Control_DropdownData* data = (TREE_Control_DropdownData*)control->data;
 
 	switch (event->type)
 	{
 	case TREE_EVENT_TYPE_KEY_DOWN:
+	case TREE_EVENT_TYPE_KEY_HELD:
 	{
 		// ignore if not focused
 		if (!(control->stateFlags & TREE_CONTROL_STATE_FLAGS_FOCUSED))
@@ -5150,9 +5198,64 @@ TREE_Result TREE_Control_Dropdown_EventHandler(TREE_Event const* event)
 			if (key == TREE_KEY_ENTER || key == TREE_KEY_SPACE)
 			{
 				control->stateFlags |= TREE_CONTROL_STATE_FLAGS_ACTIVE | TREE_CONTROL_STATE_FLAGS_DIRTY;
+
+				// set origin
+				data->origin = control->transform->localOffset;
+
+				// calulate drop size if needed
+				if (data->dropType == TREE_CONTROL_DROPDOWN_TYPE_DYNAMIC)
+				{
+					// get window size
+					TREE_Offset dropdownOffset = control->transform->globalRect.offset;
+					TREE_Extent windowExtent = TREE_Window_GetExtent();
+
+					// get space above and below the dropdown
+					TREE_Int optionsCount = (TREE_Int)data->optionsSize;
+					TREE_Int belowSpace = (TREE_Int)windowExtent.height - dropdownOffset.y;
+					TREE_Int aboveSpace = (TREE_Int)dropdownOffset.y;
+
+					// if can fit down, go down
+					// if not, go up
+					// if cannot fit in either, pick larger one
+					if (optionsCount < belowSpace)
+					{
+						// go down
+						data->drop = optionsCount;
+					}
+					else if (optionsCount < aboveSpace)
+					{
+						// go up
+						data->drop = -optionsCount;
+					}
+					else
+					{
+						// go bigger direction, cap at space size
+						if (aboveSpace > belowSpace)
+						{
+							data->drop = -aboveSpace;
+						}
+						else
+						{
+							data->drop = belowSpace;
+						}
+					}
+				}
+
+				// move transform (if needed) to account for dropdown
+				if (data->drop < 0)
+				{
+					control->transform->localOffset.y += data->drop;
+				}
+
+				// resize transform as well
+				TREE_UInt dropSize = (TREE_UInt)(data->drop > 0 ? data->drop : -data->drop);
+				control->transform->localExtent.height = dropSize;
+				control->transform->dirty = TREE_TRUE;
 			}
 			break;
 		}
+
+		TREE_Bool cursorMoved = TREE_FALSE;
 
 		// handle key events
 		switch (key)
@@ -5162,6 +5265,7 @@ TREE_Result TREE_Control_Dropdown_EventHandler(TREE_Event const* event)
 			{
 				data->hoverIndex--;
 				control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+				cursorMoved = TREE_TRUE;
 			}
 			break;
 		case TREE_KEY_DOWN_ARROW: // move to next option
@@ -5169,17 +5273,270 @@ TREE_Result TREE_Control_Dropdown_EventHandler(TREE_Event const* event)
 			{
 				data->hoverIndex++;
 				control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+				cursorMoved = TREE_TRUE;
 			}
 			break;
+		case TREE_KEY_HOME: // move to first option
+			if (data->hoverIndex != 0)
+			{
+				data->hoverIndex = 0;
+				control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+				cursorMoved = TREE_TRUE;
+			}
+			break;
+		case TREE_KEY_END: // move to last option
+			if (data->hoverIndex != data->optionsSize - 1)
+			{
+				data->hoverIndex = data->optionsSize - 1;
+				control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+				cursorMoved = TREE_TRUE;
+			}
+			break;
+		case TREE_KEY_PAGE_UP: // move up a page
+			if (data->hoverIndex > control->transform->localExtent.height)
+			{
+				data->hoverIndex -= control->transform->localExtent.height;
+			}
+			else
+			{
+				data->hoverIndex = 0;
+			}
+			control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+			cursorMoved = TREE_TRUE;
+			break;
+		case TREE_KEY_PAGE_DOWN: // move down a page
+			if (data->hoverIndex < data->optionsSize - control->transform->localExtent.height)
+			{
+				data->hoverIndex += control->transform->localExtent.height;
+			}
+			else
+			{
+				data->hoverIndex = data->optionsSize - 1;
+			}
+			control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+			cursorMoved = TREE_TRUE;
+			break;
 		case TREE_KEY_ENTER: // submit
+		{
+			// move back to origin
+			control->transform->localOffset = data->origin;
+
+			// shrink transform
+			control->transform->localExtent.height = 1;
+			control->transform->dirty = TREE_TRUE;
+
 			data->selectedIndex = data->hoverIndex;
 			control->stateFlags &= ~TREE_CONTROL_STATE_FLAGS_ACTIVE;
 			control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
 			CALL_ACTION(data->onSubmit, control);
+			break;
+		}
 		case TREE_KEY_ESCAPE: // cancel
+		{
+			// move back to origin
+			control->transform->localOffset = data->origin;
+
+			// shrink transform
+			control->transform->localExtent.height = 1;
+			control->transform->dirty = TREE_TRUE;
+
+			data->hoverIndex = data->selectedIndex;
 			control->stateFlags &= ~TREE_CONTROL_STATE_FLAGS_ACTIVE;
 			control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
 			break;
+		}
+		}
+
+		// update scroll
+		if (cursorMoved)
+		{
+			data->scroll = _TREE_ClampScroll(data->scroll, data->hoverIndex, control->transform->localExtent.height - 1);
+		}
+
+		break;
+	}
+	case TREE_EVENT_TYPE_REFRESH:
+	{
+		TREE_Bool active = (control->stateFlags & TREE_CONTROL_STATE_FLAGS_ACTIVE);
+		
+		// resize if needed
+		result = TREE_Image_Resize(control->image, control->transform->globalRect.extent);
+		if (result)
+		{
+			return result;
+		}
+
+		// get pixel from state
+		TREE_Pixel const* pixel;
+		if (active)
+		{
+			pixel = &data->active;
+		}
+		else if (control->stateFlags & TREE_CONTROL_STATE_FLAGS_FOCUSED)
+		{
+			pixel = &data->focused;
+		}
+		else
+		{
+			pixel = &data->normal;
+		}
+
+		// get the selected option
+		TREE_Extent extent = control->transform->globalRect.extent;
+		TREE_Size optionsWidth = extent.width - 2;
+		TREE_Size fillerOffset;
+		TREE_Size fillerWidth;
+		TREE_Offset offset;
+		if (data->optionsSize)
+		{
+			TREE_Char* option = data->options[data->selectedIndex];
+			TREE_Size optionLength = strlen(option);
+			TREE_Size optionWidth = MIN(optionsWidth, optionLength);
+			TREE_Char* optionCopy = _TREE_MakeSafeCopy(option, optionWidth);
+			if (!optionCopy)
+			{
+				return TREE_ERROR_ALLOC;
+			}
+
+			// draw the option
+			offset.x = 0;
+			offset.y = data->drop < 0 ? extent.height - 1 : 0;
+			result = TREE_Image_DrawString(
+				control->image,
+				offset,
+				optionCopy,
+				pixel->colorPair
+			);
+			free(optionCopy);
+			if (result)
+			{
+				return result;
+			}
+
+			fillerOffset = optionWidth;
+			fillerWidth = optionsWidth - optionWidth;
+		}
+		else
+		{
+			fillerOffset = 0;
+			fillerWidth = optionsWidth;
+		}
+
+		// draw the filler, if any
+		if (fillerWidth)
+		{
+			offset.x = (TREE_Int)fillerOffset;
+			offset.y = 0;
+			TREE_Extent extent;
+			extent.width = (TREE_UInt)fillerWidth;
+			extent.height = 1;
+			result = TREE_Image_FillRect(
+				control->image,
+				offset,
+				extent,
+				*pixel
+			);
+			if (result)
+			{
+				return result;
+			}
+		}
+
+		// draw the dropdown separator
+		TREE_Pixel arrowPixel;
+		arrowPixel.character = '|';
+		arrowPixel.colorPair = pixel->colorPair;
+		offset.x = (TREE_Int)optionsWidth;
+		offset.y = 0;
+		result = TREE_Image_Set(
+			control->image,
+			offset,
+			arrowPixel
+		);
+		if (result)
+		{
+			return result;
+		}
+
+		// draw the dropdown arrow
+		arrowPixel.character = active ? '^' : 'v';
+		offset.x = (TREE_Int)optionsWidth + 1;
+		offset.y = 0;
+		result = TREE_Image_Set(
+			control->image,
+			offset,
+			arrowPixel
+		);
+		if (result)
+		{
+			return result;
+		}
+
+		// if active, draw the dropdown
+		if (active)
+		{
+			// populate a list data structure using the dropdown's data
+			TREE_Control_ListData listData;
+			listData.flags = TREE_CONTROL_LIST_FLAGS_NONE;
+			listData.options = data->options;
+			listData.optionsSize = data->optionsSize;
+			listData.selectedIndex = data->selectedIndex;
+			listData.selectedIndices = NULL;
+			listData.hoverIndex = data->hoverIndex;
+			listData.scroll = data->scroll;
+			result = TREE_Control_ScrollbarData_Init(
+				&listData.scrollbar,
+				TREE_CONTROL_SCROLLBAR_TYPE_DYNAMIC,
+				TREE_TRUE
+			);
+			listData.activeSelected = data->selected;
+			listData.activeUnselected = data->unselected;
+			listData.activeScrollbarColorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_BRIGHT_WHITE);
+			listData.hoveredSelected = data->hoveredSelected;
+			listData.hoveredUnselected = data->hoveredUnselected;
+			listData.onChange = NULL;
+			listData.onSubmit = NULL;
+
+			// draw the list where the dropdown is
+			TREE_Int adjustment = data->drop < 0 ? 0 : 1;
+			TREE_Offset listOffset;
+			listOffset.x = 0;
+			listOffset.y = adjustment;
+			TREE_Extent listExtent = extent;
+			listExtent.height -= 1;
+			result = _TREE_Control_List_Draw(
+				control->image,
+				listOffset,
+				listExtent,
+				control->stateFlags,
+				&listData
+			);
+			if (result)
+			{
+				TREE_Control_ListData_Free(&listData);
+				return result;
+			}
+		}
+
+		break;
+	}
+	case TREE_EVENT_TYPE_DRAW:
+	{
+		// get the event data
+		TREE_EventData_Draw* drawData = (TREE_EventData_Draw*)event->data;
+		TREE_Image* target = drawData->target;
+		TREE_Rect const* dirtyRect = &drawData->dirtyRect;
+
+		// draw the control
+		TREE_Result result = _TREE_Control_Draw(
+			target,
+			dirtyRect,
+			&control->transform->globalRect,
+			control->image
+		);
+		if (result)
+		{
+			return result;
 		}
 
 		break;

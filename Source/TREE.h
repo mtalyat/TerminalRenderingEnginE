@@ -828,7 +828,7 @@ TREE_Result TREE_Control_ListData_SetSelected(TREE_Control_ListData* data, TREE_
 
 TREE_Result TREE_Control_ListData_GetSelected(TREE_Control_ListData* data, TREE_Size** indices, TREE_Size* indexCount);
 
-TREE_Bool TREE_Control_ListData_IsSelected(TREE_Control* control, TREE_Size index);
+TREE_Bool TREE_Control_ListData_IsSelected(TREE_Control_ListData* data, TREE_Size index);
 
 TREE_Result TREE_Control_List_Init(TREE_Control* control, TREE_Transform* parent, TREE_Control_ListData* data);
 
@@ -838,22 +838,35 @@ TREE_Result TREE_Control_List_EventHandler(TREE_Event const* event);
 // Control: Dropdown                 //
 ///////////////////////////////////////
 
+typedef enum _TREE_Control_DropdownType
+{
+	TREE_CONTROL_DROPDOWN_TYPE_STATIC,
+	TREE_CONTROL_DROPDOWN_TYPE_DYNAMIC,
+} TREE_Control_DropdownType;
+
 typedef struct _TREE_Control_DropdownData
 {
 	TREE_Char** options;
 	TREE_Size optionsSize;
 	TREE_Size selectedIndex;
 	TREE_Size hoverIndex;
+	TREE_Size scroll;
+	TREE_Offset origin;
+	TREE_Control_DropdownType dropType; // if static, use set drop value, otherwise calculate it automatically
+	TREE_Int drop; // extent of the dropdown, when active: positive for down, negative for up
+
 	TREE_Pixel normal;
 	TREE_Pixel focused;
 	TREE_Pixel active;
 	TREE_Pixel selected;
 	TREE_Pixel unselected;
+	TREE_Pixel hoveredSelected;
+	TREE_Pixel hoveredUnselected;
 
 	TREE_Function onSubmit;
 } TREE_Control_DropdownData;
 
-TREE_Result TREE_Control_DropdownData_Init(TREE_Control_DropdownData* data, TREE_String* options, TREE_Size optionsSize, TREE_Size selectedIndex, TREE_Function onSubmit);
+TREE_Result TREE_Control_DropdownData_Init(TREE_Control_DropdownData* data, TREE_String* options, TREE_Size optionsSize, TREE_Size selectedIndex, TREE_Int drop, TREE_Function onSubmit);
 
 void TREE_Control_DropdownData_Free(TREE_Control_DropdownData* data);
 

@@ -54,7 +54,7 @@ int main()
 		printf("Failed to initialize application: %s\n", TREE_Result_ToString(result));
 		return 1;
 	}
-	
+
 	// create button data
 	TREE_Control_ButtonData quitButtonData;
 	result = TREE_Control_ButtonData_Init(&quitButtonData, "Quit", Button_Quit);
@@ -85,35 +85,35 @@ int main()
 	}
 
 	// create list data
-    TREE_String options[] = { 
-					"Option 1", "Option 2", "Option 3", "Option 4", "Option 5", 
-					"Option 6", "Option 7", "Option 8", "Option 9", "Option 10", 
-					"Option 11", "Option 12", "Option 13", "Option 14", "Option 15", 
-					"Option 16", "Option 17", "Option 18", "Option 19", "Option 20" 
-    };
-	TREE_Control_ListData listData;
-	result = TREE_Control_ListData_Init(&listData, TREE_CONTROL_LIST_FLAGS_MULTISELECT, options, 20, NULL, NULL);
+	TREE_String options[] = {
+		"Option 1", "Option 2", "Option 3", "Option 4", "Option 5",
+		"Option 6", "Option 7", "Option 8", "Option 9", "Option 10",
+		"Option 11", "Option 12", "Option 13", "Option 14", "Option 15",
+		"Option 16", "Option 17", "Option 18", "Option 19", "Option 20",
+		"Option 21", "Option 22", "Option 23", "Option 24", "Option 25",
+		"Option 26", "Option 27", "Option 28", "Option 29", "Option 30"
+	};
+	TREE_Control_DropdownData dropData;
+	result = TREE_Control_DropdownData_Init(&dropData, options, 30, 0, 0, NULL);
 	if (result)
 	{
-		printf("Failed to initialize list data: %s\n", TREE_Result_ToString(result));
+		printf("Failed to initialize dropdown data: %s\n", TREE_Result_ToString(result));
 		return 1;
 	}
-	listData.scrollbar.type = TREE_CONTROL_SCROLLBAR_TYPE_STATIC;
 
-	// create list
-	TREE_Control listControl;
-	result = TREE_Control_List_Init(&listControl, NULL, &listData);
+	// create dropdown
+	TREE_Control dropControl;
+	result = TREE_Control_Dropdown_Init(&dropControl, NULL, &dropData);
 	if (result)
 	{
-		printf("Failed to initialize list control: %s\n", TREE_Result_ToString(result));
+		printf("Failed to initialize dropdown: %s\n", TREE_Result_ToString(result));
 		return 1;
 	}
-	listControl.transform->localOffset.x = 5;
-	listControl.transform->localOffset.y = 5;
-	listControl.transform->localExtent.height = 15;
+	dropControl.transform->localOffset.x = 23;
+	dropControl.transform->localOffset.y = 3;
 
 	// link controls
-	result = TREE_Control_Link(&quitButton, TREE_DIRECTION_SOUTH, TREE_CONTROL_LINK_DOUBLE, &listControl);
+	result = TREE_Control_Link(&quitButton, TREE_DIRECTION_EAST, TREE_CONTROL_LINK_DOUBLE, &dropControl);
 	if (result)
 	{
 		printf("Failed to link controls: %s\n", TREE_Result_ToString(result));
@@ -121,7 +121,7 @@ int main()
 	}
 
 	// add text input to application
-	result = TREE_Application_AddControl(&app, &listControl);
+	result = TREE_Application_AddControl(&app, &dropControl);
 	if (result)
 	{
 		printf("Failed to add text input to application: %s\n", TREE_Result_ToString(result));
@@ -138,8 +138,8 @@ int main()
 
 	// cleanup
 	TREE_Control_Free(&quitButton);
-	TREE_Control_Free(&listControl);
-	TREE_Control_ListData_Free(&listData);
+	TREE_Control_Free(&dropControl);
+	TREE_Control_DropdownData_Free(&dropData);
 	TREE_Control_ButtonData_Free(&quitButtonData);
 	TREE_Application_Free(&app);
 	TREE_Surface_Free(&surface);
