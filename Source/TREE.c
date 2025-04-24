@@ -5212,7 +5212,7 @@ TREE_Result TREE_Control_Dropdown_EventHandler(TREE_Event const* event)
 					// get space above and below the dropdown
 					TREE_Int optionsCount = (TREE_Int)data->optionsSize;
 					TREE_Int belowSpace = (TREE_Int)windowExtent.height - dropdownOffset.y;
-					TREE_Int aboveSpace = (TREE_Int)dropdownOffset.y;
+					TREE_Int aboveSpace = (TREE_Int)dropdownOffset.y + 1;
 
 					// if can fit down, go down
 					// if not, go up
@@ -5244,7 +5244,7 @@ TREE_Result TREE_Control_Dropdown_EventHandler(TREE_Event const* event)
 				// move transform (if needed) to account for dropdown
 				if (data->drop < 0)
 				{
-					control->transform->localOffset.y += data->drop;
+					control->transform->localOffset.y += data->drop + 1;
 				}
 
 				// resize transform as well
@@ -5387,6 +5387,7 @@ TREE_Result TREE_Control_Dropdown_EventHandler(TREE_Event const* event)
 		TREE_Size fillerOffset;
 		TREE_Size fillerWidth;
 		TREE_Offset offset;
+		TREE_Int mainOffset = data->drop < 0 ? extent.height - 1 : 0;
 		if (data->optionsSize)
 		{
 			TREE_Char* option = data->options[data->selectedIndex];
@@ -5400,7 +5401,7 @@ TREE_Result TREE_Control_Dropdown_EventHandler(TREE_Event const* event)
 
 			// draw the option
 			offset.x = 0;
-			offset.y = data->drop < 0 ? extent.height - 1 : 0;
+			offset.y = mainOffset;
 			result = TREE_Image_DrawString(
 				control->image,
 				offset,
@@ -5426,7 +5427,7 @@ TREE_Result TREE_Control_Dropdown_EventHandler(TREE_Event const* event)
 		if (fillerWidth)
 		{
 			offset.x = (TREE_Int)fillerOffset;
-			offset.y = 0;
+			offset.y = mainOffset;
 			TREE_Extent extent;
 			extent.width = (TREE_UInt)fillerWidth;
 			extent.height = 1;
@@ -5447,7 +5448,7 @@ TREE_Result TREE_Control_Dropdown_EventHandler(TREE_Event const* event)
 		arrowPixel.character = '|';
 		arrowPixel.colorPair = pixel->colorPair;
 		offset.x = (TREE_Int)optionsWidth;
-		offset.y = 0;
+		offset.y = mainOffset;
 		result = TREE_Image_Set(
 			control->image,
 			offset,
@@ -5461,7 +5462,7 @@ TREE_Result TREE_Control_Dropdown_EventHandler(TREE_Event const* event)
 		// draw the dropdown arrow
 		arrowPixel.character = active ? '^' : 'v';
 		offset.x = (TREE_Int)optionsWidth + 1;
-		offset.y = 0;
+		offset.y = mainOffset;
 		result = TREE_Image_Set(
 			control->image,
 			offset,

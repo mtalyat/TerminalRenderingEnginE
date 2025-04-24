@@ -93,39 +93,55 @@ int main()
 		"Option 21", "Option 22", "Option 23", "Option 24", "Option 25",
 		"Option 26", "Option 27", "Option 28", "Option 29", "Option 30"
 	};
-	TREE_Control_DropdownData dropData;
-	result = TREE_Control_DropdownData_Init(&dropData, options, 30, 0, 0, NULL);
-	if (result)
+	TREE_Control_DropdownData dropDatas[3];
+
+	for (TREE_Size i = 0; i < 3; i++)
 	{
-		printf("Failed to initialize dropdown data: %s\n", TREE_Result_ToString(result));
-		return 1;
+		result = TREE_Control_DropdownData_Init(&dropDatas[i], options, 30, 0, 0, NULL);
+		if (result)
+		{
+			printf("Failed to initialize dropdown data: %s\n", TREE_Result_ToString(result));
+			return 1;
+		}
 	}
 
-	// create dropdown
-	TREE_Control dropControl;
-	result = TREE_Control_Dropdown_Init(&dropControl, NULL, &dropData);
-	if (result)
+	// create dropdowns
+	TREE_Control dropControls[3];
+	for (TREE_Size i = 0; i < 3; i++)
 	{
-		printf("Failed to initialize dropdown: %s\n", TREE_Result_ToString(result));
-		return 1;
+		result = TREE_Control_Dropdown_Init(&dropControls[i], NULL, &dropDatas[i]);
+		if (result)
+		{
+			printf("Failed to initialize dropdown: %s\n", TREE_Result_ToString(result));
+			return 1;
+		}
+		dropControls[i].transform->localOffset.x = 23;
+		dropControls[i].transform->localOffset.y = 3 + (TREE_Int)i * 11;
 	}
-	dropControl.transform->localOffset.x = 23;
-	dropControl.transform->localOffset.y = 3;
 
 	// link controls
-	result = TREE_Control_Link(&quitButton, TREE_DIRECTION_EAST, TREE_CONTROL_LINK_DOUBLE, &dropControl);
+	result = TREE_Control_Link(&quitButton, TREE_DIRECTION_EAST, TREE_CONTROL_LINK_DOUBLE, dropControls);
 	if (result)
 	{
 		printf("Failed to link controls: %s\n", TREE_Result_ToString(result));
 		return 1;
 	}
-
-	// add text input to application
-	result = TREE_Application_AddControl(&app, &dropControl);
-	if (result)
+	for (TREE_Size i = 0; i < 3; i++)
 	{
-		printf("Failed to add text input to application: %s\n", TREE_Result_ToString(result));
-		return 1;
+		TREE_Control* control = &dropControls[i];
+		TREE_Control* nextControl = &dropControls[(i + 1) % 3];
+		result = TREE_Control_Link(control, TREE_DIRECTION_SOUTH, TREE_CONTROL_LINK_DOUBLE, nextControl);
+	}
+
+	// add to application
+	for (TREE_Size i = 0; i < 3; i++)
+	{
+		result = TREE_Application_AddControl(&app, &dropControls[i]);
+		if (result)
+		{
+			printf("Failed to add dropdown to application: %s\n", TREE_Result_ToString(result));
+			return 1;
+		}
 	}
 
 	// run the application
@@ -138,9 +154,12 @@ int main()
 
 	// cleanup
 	TREE_Control_Free(&quitButton);
-	TREE_Control_Free(&dropControl);
-	TREE_Control_DropdownData_Free(&dropData);
 	TREE_Control_ButtonData_Free(&quitButtonData);
+	for (TREE_Size i = 0; i < 3; i++)
+	{
+		TREE_Control_Free(&dropControls[i]);
+		TREE_Control_DropdownData_Free(&dropDatas[i]);
+	}
 	TREE_Application_Free(&app);
 	TREE_Surface_Free(&surface);
 	TREE_Free();
