@@ -4208,6 +4208,131 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 	return TREE_OK;
 }
 
+TREE_Result TREE_Control_Scrollbar_Draw(TREE_Image* target, TREE_Offset scrollbarOffset, TREE_Extent scrollbarExtent, TREE_Control_ScrollbarData* data, TREE_Size scroll, TREE_Size maxScroll, TREE_ColorPair colorPair)
+{
+	// validate
+	if (!target || !data)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+	if (scroll > maxScroll)
+	{
+		scroll = maxScroll;
+	}
+	if (scrollbarExtent.width <= 1 && scrollbarExtent.height <= 1)
+	{
+		return TREE_ERROR_ARG_OUT_OF_RANGE;
+	}
+	// at least one extent should be 1
+	if (scrollbarExtent.width != 1 && scrollbarExtent.height != 1)
+	{
+		return TREE_ERROR_ARG_INVALID;
+	}
+
+	TREE_Offset offset = scrollbarOffset;
+	TREE_Extent extent = scrollbarExtent;
+
+	// determine if horizontal or vertical
+	TREE_Bool vertical = extent.width == 1;
+
+	// draw the scrollbar
+	TREE_Pixel scrollbarPixel;
+	scrollbarPixel.character = data->line;
+	scrollbarPixel.colorPair = colorPair;
+	TREE_Result result = TREE_Image_FillRect(
+		target,
+		offset,
+		extent,
+		scrollbarPixel
+	);
+	if (result)
+	{
+		return result;
+	}
+
+	// if supposed to, draw the top and bottom
+	if (data->showEnds)
+	{
+		// draw the top
+		scrollbarPixel.character = data->top;
+		result = TREE_Image_Set(
+			target,
+			offset,
+			scrollbarPixel
+		);
+		if (result)
+		{
+			return result;
+		}
+
+		// draw the bottom
+		scrollbarPixel.character = data->bottom;
+		if (vertical)
+		{
+			offset.y = scrollbarOffset.y + (TREE_Int)(extent.height - 1);
+		}
+		else
+		{
+			offset.x = scrollbarOffset.x + (TREE_Int)(extent.width - 1);
+		}
+
+		result = TREE_Image_Set(
+			target,
+			offset,
+			scrollbarPixel
+		);
+		if (result)
+		{
+			return result;
+		}
+	}
+
+	// draw the bar, if it is needed
+	if (!maxScroll)
+	{
+		// not enough
+		return TREE_OK;
+	}
+
+	TREE_Size barSize;
+	TREE_Size barOffset;
+	if (maxScroll < extent.height)
+	{
+		// basic scrollbar
+		barSize = extent.height - maxScroll;
+		barOffset = scroll;
+	}
+	else
+	{
+		// complex/tiny scrollbar
+		barSize = 1;
+		barOffset = scroll * extent.height / maxScroll;
+	}
+	scrollbarPixel.character = data->bar;
+	if (vertical)
+	{
+		offset.y = scrollbarOffset.y + (TREE_Int)barOffset;
+		extent.height = (TREE_UInt)barSize;
+	}
+	else
+	{
+		offset.x = scrollbarOffset.x + (TREE_Int)barOffset;
+		extent.width = (TREE_UInt)barSize;
+	}
+	result = TREE_Image_FillRect(
+		target,
+		offset,
+		extent,
+		scrollbarPixel
+	);
+	if (result)
+	{
+		return result;
+	}
+
+	return TREE_OK;
+}
+
 TREE_Result TREE_Control_DropdownData_Init(TREE_Control_DropdownData* data, TREE_String* options, TREE_Size optionsSize, TREE_Size selectedIndex, TREE_Function onSubmit)
 {
 	// validate
@@ -4402,131 +4527,6 @@ TREE_Result TREE_Control_Dropdown_EventHandler(TREE_Event const* event)
 
 		break;
 	}
-	}
-
-	return TREE_OK;
-}
-
-TREE_Result TREE_Control_Scrollbar_Draw(TREE_Image* target, TREE_Offset scrollbarOffset, TREE_Extent scrollbarExtent, TREE_Control_ScrollbarData* data, TREE_Size scroll, TREE_Size maxScroll, TREE_ColorPair colorPair)
-{
-	// validate
-	if (!target || !data)
-	{
-		return TREE_ERROR_ARG_NULL;
-	}
-	if (scroll > maxScroll)
-	{
-		scroll = maxScroll;
-	}
-	if (scrollbarExtent.width <= 1 && scrollbarExtent.height <= 1)
-	{
-		return TREE_ERROR_ARG_OUT_OF_RANGE;
-	}
-	// at least one extent should be 1
-	if (scrollbarExtent.width != 1 && scrollbarExtent.height != 1)
-	{
-		return TREE_ERROR_ARG_INVALID;
-	}
-
-	TREE_Offset offset = scrollbarOffset;
-	TREE_Extent extent = scrollbarExtent;
-
-	// determine if horizontal or vertical
-	TREE_Bool vertical = extent.width == 1;
-
-	// draw the scrollbar
-	TREE_Pixel scrollbarPixel;
-	scrollbarPixel.character = data->line;
-	scrollbarPixel.colorPair = colorPair;
-	TREE_Result result = TREE_Image_FillRect(
-		target,
-		offset,
-		extent,
-		scrollbarPixel
-	);
-	if (result)
-	{
-		return result;
-	}
-
-	// if supposed to, draw the top and bottom
-	if (data->showEnds)
-	{
-		// draw the top
-		scrollbarPixel.character = data->top;
-		result = TREE_Image_Set(
-			target,
-			offset,
-			scrollbarPixel
-		);
-		if (result)
-		{
-			return result;
-		}
-
-		// draw the bottom
-		scrollbarPixel.character = data->bottom;
-		if (vertical)
-		{
-			offset.y = scrollbarOffset.y + (TREE_Int)(extent.height - 1);
-		}
-		else
-		{
-			offset.x = scrollbarOffset.x + (TREE_Int)(extent.width - 1);
-		}
-		
-		result = TREE_Image_Set(
-			target,
-			offset,
-			scrollbarPixel
-		);
-		if (result)
-		{
-			return result;
-		}
-	}	
-
-	// draw the bar, if it is needed
-	if (!maxScroll)
-	{
-		// not enough
-		return TREE_OK;
-	}
-
-	TREE_Size barSize;
-	TREE_Size barOffset;
-	if (maxScroll < extent.height)
-	{
-		// basic scrollbar
-		barSize = extent.height - maxScroll;
-		barOffset = scroll;
-	}
-	else
-	{
-		// complex/tiny scrollbar
-		barSize = 1;
-		barOffset = scroll * extent.height / maxScroll;
-	}
-	scrollbarPixel.character = data->bar;
-	if (vertical)
-	{
-		offset.y = scrollbarOffset.y + (TREE_Int)barOffset;
-		extent.height = (TREE_UInt)barSize;
-	}
-	else
-	{
-		offset.x = scrollbarOffset.x + (TREE_Int)barOffset;
-		extent.width = (TREE_UInt)barSize;
-	}
-	result = TREE_Image_FillRect(
-		target,
-		offset,
-		extent,
-		scrollbarPixel
-	);
-	if (result)
-	{
-		return result;
 	}
 
 	return TREE_OK;

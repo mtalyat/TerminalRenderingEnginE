@@ -758,6 +758,29 @@ TREE_String TREE_Control_TextInput_GetText(TREE_Control* control);
 TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event);
 
 ///////////////////////////////////////
+// Control: Scrollbar                //
+///////////////////////////////////////
+
+typedef enum _TREE_Control_ScrollbarType
+{
+	TREE_CONTROL_SCROLLBAR_TYPE_NONE, // never show
+	TREE_CONTROL_SCROLLBAR_TYPE_STATIC, // always show
+	TREE_CONTROL_SCROLLBAR_TYPE_DYNAMIC, // show when needed
+} TREE_Control_ScrollbarType;
+
+typedef struct _TREE_Control_ScrollbarData
+{
+	TREE_Control_ScrollbarType type;
+	TREE_Byte showEnds; // draw top and bottom if true
+	TREE_Char top; // top char of scroll area
+	TREE_Char bottom; // bottom char of scroll area
+	TREE_Char line; // scroll area
+	TREE_Char bar; // scroll bar
+} TREE_Control_ScrollbarData;
+
+TREE_Result TREE_Control_Scrollbar_Draw(TREE_Image* target, TREE_Offset offset, TREE_Extent extent, TREE_Control_ScrollbarData* data, TREE_Size scroll, TREE_Size maxScroll, TREE_ColorPair colorPair);
+
+///////////////////////////////////////
 // Control: Dropdown                 //
 ///////////////////////////////////////
 
@@ -785,29 +808,6 @@ TREE_Result TREE_Control_DropdownData_SetOptions(TREE_Control_DropdownData* data
 TREE_Result TREE_Control_Dropdown_Init(TREE_Control* control, TREE_Transform* parent, TREE_Control_DropdownData* data);
 
 TREE_Result TREE_Control_Dropdown_EventHandler(TREE_Event const* event);
-
-///////////////////////////////////////
-// Control: Scrollbar                //
-///////////////////////////////////////
-
-typedef enum _TREE_Control_ScrollbarType
-{
-	TREE_CONTROL_SCROLLBAR_TYPE_NONE, // never show
-	TREE_CONTROL_SCROLLBAR_TYPE_STATIC, // always show
-	TREE_CONTROL_SCROLLBAR_TYPE_DYNAMIC, // show when needed
-} TREE_Control_ScrollbarType;
-
-typedef struct _TREE_Control_ScrollbarData
-{
-	TREE_Control_ScrollbarType type;
-	TREE_Byte showEnds; // draw top and bottom if true
-	TREE_Char top; // top char of scroll area
-	TREE_Char bottom; // bottom char of scroll area
-	TREE_Char line; // scroll area
-	TREE_Char bar; // scroll bar
-} TREE_Control_ScrollbarData;
-
-TREE_Result TREE_Control_Scrollbar_Draw(TREE_Image* target, TREE_Offset offset, TREE_Extent extent, TREE_Control_ScrollbarData* data, TREE_Size scroll, TREE_Size maxScroll, TREE_ColorPair colorPair);
 
 ///////////////////////////////////////
 // Control: List                     //
