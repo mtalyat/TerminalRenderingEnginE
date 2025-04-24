@@ -783,35 +783,6 @@ TREE_Result TREE_Control_ScrollbarData_Init(TREE_Control_ScrollbarData* data, TR
 TREE_Result TREE_Control_Scrollbar_Draw(TREE_Image* target, TREE_Offset offset, TREE_Extent extent, TREE_Control_ScrollbarData* data, TREE_Size scroll, TREE_Size maxScroll, TREE_ColorPair colorPair);
 
 ///////////////////////////////////////
-// Control: Dropdown                 //
-///////////////////////////////////////
-
-typedef struct _TREE_Control_DropdownData
-{
-	TREE_Char** options;
-	TREE_Size optionsSize;
-	TREE_Size selectedIndex;
-	TREE_Size hoverIndex;
-	TREE_Pixel normal;
-	TREE_Pixel focused;
-	TREE_Pixel active;
-	TREE_Pixel selected;
-	TREE_Pixel unselected;
-
-	TREE_Function onSubmit;
-} TREE_Control_DropdownData;
-
-TREE_Result TREE_Control_DropdownData_Init(TREE_Control_DropdownData* data, TREE_String* options, TREE_Size optionsSize, TREE_Size selectedIndex, TREE_Function onSubmit);
-
-void TREE_Control_DropdownData_Free(TREE_Control_DropdownData* data);
-
-TREE_Result TREE_Control_DropdownData_SetOptions(TREE_Control_DropdownData* data, TREE_String* options, TREE_Size optionsSize);
-
-TREE_Result TREE_Control_Dropdown_Init(TREE_Control* control, TREE_Transform* parent, TREE_Control_DropdownData* data);
-
-TREE_Result TREE_Control_Dropdown_EventHandler(TREE_Event const* event);
-
-///////////////////////////////////////
 // Control: List                     //
 ///////////////////////////////////////
 
@@ -862,6 +833,35 @@ TREE_Bool TREE_Control_ListData_IsSelected(TREE_Control* control, TREE_Size inde
 TREE_Result TREE_Control_List_Init(TREE_Control* control, TREE_Transform* parent, TREE_Control_ListData* data);
 
 TREE_Result TREE_Control_List_EventHandler(TREE_Event const* event);
+
+///////////////////////////////////////
+// Control: Dropdown                 //
+///////////////////////////////////////
+
+typedef struct _TREE_Control_DropdownData
+{
+	TREE_Char** options;
+	TREE_Size optionsSize;
+	TREE_Size selectedIndex;
+	TREE_Size hoverIndex;
+	TREE_Pixel normal;
+	TREE_Pixel focused;
+	TREE_Pixel active;
+	TREE_Pixel selected;
+	TREE_Pixel unselected;
+
+	TREE_Function onSubmit;
+} TREE_Control_DropdownData;
+
+TREE_Result TREE_Control_DropdownData_Init(TREE_Control_DropdownData* data, TREE_String* options, TREE_Size optionsSize, TREE_Size selectedIndex, TREE_Function onSubmit);
+
+void TREE_Control_DropdownData_Free(TREE_Control_DropdownData* data);
+
+TREE_Result TREE_Control_DropdownData_SetOptions(TREE_Control_DropdownData* data, TREE_String* options, TREE_Size optionsSize);
+
+TREE_Result TREE_Control_Dropdown_Init(TREE_Control* control, TREE_Transform* parent, TREE_Control_DropdownData* data);
+
+TREE_Result TREE_Control_Dropdown_EventHandler(TREE_Event const* event);
 
 ///////////////////////////////////////
 // Application                       //
