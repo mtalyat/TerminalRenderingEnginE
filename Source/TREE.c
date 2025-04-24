@@ -3455,7 +3455,7 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 			{
 				// find the next space after the cursor
 				data->selectionStart = data->cursorPosition;
-				data->selectionEnd = _TREE_SeekDifferentCharType(data->text, textLength, data->cursorPosition - 1);
+				data->selectionEnd = _TREE_SeekDifferentCharType(data->text, textLength, data->cursorPosition);
 			}
 			if (data->selectionStart != data->selectionEnd)
 			{

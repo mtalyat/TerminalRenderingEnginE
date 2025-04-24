@@ -129,7 +129,7 @@ int main()
 
 	// create multi line text box
 	TREE_Control_TextInputData multiLineTextInputData;
-	result = TREE_Control_TextInputData_Init(&multiLineTextInputData, "Enter multi-line text here", 30, "Placeholder", TREE_CONTROL_TEXT_INPUT_TYPE_NORMAL, NULL, NULL);
+	result = TREE_Control_TextInputData_Init(&multiLineTextInputData, "Enter multi-line text here.\n\nHello world!", 30, "Placeholder", TREE_CONTROL_TEXT_INPUT_TYPE_NORMAL, NULL, NULL);
 	if (result)
 	{
 		printf("Failed to initialize multi-line text input data: %s\n", TREE_Result_ToString(result));
