@@ -26,6 +26,7 @@ typedef void(*TREE_Function)(void*);
 #define TREE_NEW_ARRAY(type, count) ((type*)malloc((count) * sizeof(type)))
 #define TREE_REPLACE(ptr, newPtr) do { free(ptr); ptr = newPtr; } while (0)
 #define TREE_DELETE(ptr) TREE_REPLACE(ptr, NULL)
+#define TREE_DELETE_ARRAY(ptr, count) do { for(TREE_Size i = 0; i < (count); i++) { free((ptr)[i]); } TREE_DELETE(ptr); } while (0)
 #define TREE_COPY(dest, src, type) memcpy(dest, src, sizeof(type))
 #define TREE_COPY_ARRAY(dest, src, type, count) memcpy(dest, src, (count) * sizeof(type))
 
@@ -415,6 +416,21 @@ typedef enum _TREE_Key
 TREE_String TREE_Key_ToString(TREE_Key key);
 
 ///////////////////////////////////////
+// Char Type                         //
+///////////////////////////////////////
+
+typedef enum _TREE_CharType
+{
+	TREE_CHAR_TYPE_NONE,
+	TREE_CHAR_TYPE_LETTER,
+	TREE_CHAR_TYPE_NUMBER,
+	TREE_CHAR_TYPE_WHITESPACE,
+	TREE_CHAR_TYPE_SYMBOL,
+} TREE_CharType;
+
+TREE_CharType TREE_Char_GetType(TREE_Char character);
+
+///////////////////////////////////////
 // Key Modifier Flags                //
 ///////////////////////////////////////
 
@@ -709,6 +725,7 @@ typedef struct _TREE_Control_TextInputData
 	TREE_Pixel active;
 	TREE_ColorPair cursor;
 	TREE_Size cursorPosition;
+	TREE_Offset cursorOffset;
 	TREE_Byte cursorTimer;
 	TREE_Size scroll;
 	TREE_ColorPair selection;

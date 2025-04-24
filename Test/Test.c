@@ -86,7 +86,7 @@ int main()
 
 	// create text input data
 	TREE_Control_TextInputData textInputData;
-	result = TREE_Control_TextInputData_Init(&textInputData, "Hello world!\nThis is some example text! This is a really really long line that should be wrapped, I think so yes it should!\nYes!\n\nNo!\nOk!\n\n", 256, "Enter text", TREE_CONTROL_TEXT_INPUT_TYPE_NORMAL, NULL, NULL);
+	result = TREE_Control_TextInputData_Init(&textInputData, "Hello world!\nThis is some example text! This is a really really long line that should be wrapped, I think so yes it should!\nYes!\n\nNo!\nOk!\n", 256, "Enter text", TREE_CONTROL_TEXT_INPUT_TYPE_NORMAL, NULL, NULL);
 	if (result)
 	{
 		printf("Failed to initialize text input data: %s\n", TREE_Result_ToString(result));

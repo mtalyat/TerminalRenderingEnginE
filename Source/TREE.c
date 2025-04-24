@@ -696,11 +696,7 @@ TREE_Result TREE_Directory_Enumerate(TREE_String path, TREE_Char*** files, TREE_
 	   }
        TREE_Char* fileName = (TREE_Char*)malloc(fileNameSize);  
        if (!fileName) {  
-           for (TREE_Size j = 0; j < i; j++) {  
-               free((*files)[j]);  
-           }
-           free(*files);  
-           *files = NULL;  
+		   TREE_DELETE_ARRAY(*files, i);
            FindClose(hFind);  
            return TREE_ERROR_ALLOC;  
        }  
@@ -1597,6 +1593,35 @@ TREE_String TREE_Key_ToString(TREE_Key key)
 	}
 }
 
+TREE_CharType TREE_Char_GetType(TREE_Char character)
+{
+	// letters
+	if (isalpha(character))
+	{
+		return TREE_CHAR_TYPE_LETTER;
+	}
+
+	// numbers
+	if (isdigit(character))
+	{
+		return TREE_CHAR_TYPE_NUMBER;
+	}
+
+	// whitespace
+	if (isspace(character))
+	{
+		return TREE_CHAR_TYPE_WHITESPACE;
+	}
+
+	// symbols
+	if (ispunct(character))
+	{
+		return TREE_CHAR_TYPE_SYMBOL;
+	}
+
+	return TREE_CHAR_TYPE_NONE;
+}
+
 TREE_Char TREE_Key_ToChar(TREE_Key key, TREE_KeyModifierFlags modifiers)
 {
 	TREE_Bool isShiftPressed = (modifiers & TREE_KEY_MODIFIER_FLAGS_SHIFT) != 0;
@@ -2224,14 +2249,8 @@ TREE_Result TREE_Control_HandleEvent(TREE_Control* control, TREE_Event const* ev
 	return TREE_OK;
 }
 
-TREE_Size _TREE_WordWrap(TREE_String text, TREE_Size width, TREE_Char*** result, TREE_Size lineCount)
+TREE_Size _TREE_WordWrapPass(TREE_String text, TREE_Size width, TREE_Char*** result, TREE_Size lineCount)
 {
-	// validate
-	if (!text || width == 0)
-	{
-		return 0;
-	}
-
 	// allocate lines, if count given
 	TREE_Char** lines = NULL;
 	if (result && lineCount > 0)
@@ -2258,11 +2277,12 @@ TREE_Size _TREE_WordWrap(TREE_String text, TREE_Size width, TREE_Char*** result,
 			// normal line end
 
 			// add to lines
-			if (lines)
+			if (lines && count < lineCount)
 			{
 				TREE_Size lineLength = i - lastLine + 1;
-				lines[count] = TREE_NEW_ARRAY(TREE_Char, lineLength + 1);
-				if (!lines[count])
+				TREE_Char* line = TREE_NEW_ARRAY(TREE_Char, lineLength + 1);
+				lines[count] = line;
+				if (!line)
 				{
 					for (TREE_Size j = 0; j < count; j++)
 					{
@@ -2271,8 +2291,8 @@ TREE_Size _TREE_WordWrap(TREE_String text, TREE_Size width, TREE_Char*** result,
 					TREE_DELETE(lines);
 					return 0;
 				}
-				memcpy(lines[count], &text[lastLine], lineLength);
-				lines[count][lineLength] = '\0'; // null terminator
+				memcpy(line, &text[lastLine], lineLength);
+				line[lineLength] = '\0'; // null terminator
 			}
 
 			// update markers
@@ -2291,11 +2311,12 @@ TREE_Size _TREE_WordWrap(TREE_String text, TREE_Size width, TREE_Char*** result,
 			}
 
 			// add to lines
-			if (lines)
+			if (lines && count < lineCount)
 			{
 				TREE_Size lineLength = i - lastLine + 1;
-				lines[count] = TREE_NEW_ARRAY(TREE_Char, lineLength + 1);
-				if (!lines[count])
+				TREE_Char* line = TREE_NEW_ARRAY(TREE_Char, lineLength + 1);
+				lines[count] = line;
+				if (!line)
 				{
 					for (TREE_Size j = 0; j < count; j++)
 					{
@@ -2304,8 +2325,8 @@ TREE_Size _TREE_WordWrap(TREE_String text, TREE_Size width, TREE_Char*** result,
 					TREE_DELETE(lines);
 					return 0;
 				}
-				memcpy(lines[count], &text[lastLine], lineLength);
-				lines[count][lineLength] = '\0'; // null terminator
+				memcpy(line, &text[lastLine], lineLength);
+				line[lineLength] = '\0'; // null terminator
 			}
 
 			// update markers
@@ -2324,10 +2345,33 @@ TREE_Size _TREE_WordWrap(TREE_String text, TREE_Size width, TREE_Char*** result,
 	if (lastLine < textLength)
 	{
 		// add to lines
-		if (lines)
+		if (lines && count < lineCount)
 		{
 			TREE_Size lineLength = textLength - lastLine + 1;
-			lines[count] = TREE_NEW_ARRAY(TREE_Char, lineLength + 1);
+			TREE_Char* line = TREE_NEW_ARRAY(TREE_Char, lineLength + 1);
+			lines[count] = line;
+			if (!line)
+			{
+				for (TREE_Size j = 0; j < count; j++)
+				{
+					TREE_DELETE(lines[j]);
+				}
+				TREE_DELETE(lines);
+				return 0;
+			}
+			memcpy(line, &text[lastLine], lineLength);
+			line[lineLength] = '\0'; // null terminator
+		}
+		count++;
+	}
+
+	// if last line ends a line end, add an empty line
+	if (text[textLength - 1] == '\n')
+	{
+		// add to lines
+		if (lines)
+		{
+			lines[count] = TREE_NEW_ARRAY(TREE_Char, 1);
 			if (!lines[count])
 			{
 				for (TREE_Size j = 0; j < count; j++)
@@ -2337,8 +2381,7 @@ TREE_Size _TREE_WordWrap(TREE_String text, TREE_Size width, TREE_Char*** result,
 				TREE_DELETE(lines);
 				return 0;
 			}
-			memcpy(lines[count], &text[lastLine], lineLength);
-			lines[count][lineLength] = '\0'; // null terminator
+			lines[count][0] = '\0'; // empty line
 		}
 		count++;
 	}
@@ -2348,6 +2391,77 @@ TREE_Size _TREE_WordWrap(TREE_String text, TREE_Size width, TREE_Char*** result,
 		*result = lines;
 	}
 	return count;
+}
+
+TREE_Result _TREE_WordWrap(TREE_String text, TREE_Size width, TREE_Char*** lines, TREE_Size* lineCount)
+{
+	*lines = NULL;
+	*lineCount = _TREE_WordWrapPass(text, width, lines, 0);
+	if (*lineCount == 0)
+	{
+		return TREE_ERROR;
+	}
+	_TREE_WordWrapPass(text, width, lines, *lineCount);
+	if (!*lines)
+	{
+		return TREE_ERROR;
+	}
+	return TREE_OK;
+}
+
+TREE_Size* _TREE_LineOffsets(TREE_String* lines, TREE_Size lineCount)
+{
+	TREE_Size* result = TREE_NEW_ARRAY(TREE_Size, lineCount);
+	if (!result)
+	{
+		return NULL;
+	}
+	TREE_Size offset = 0;
+	for (TREE_Size i = 0; i < lineCount; i++)
+	{
+		result[i] = offset;
+		offset += strlen(lines[i]);
+	}
+	return result;
+}
+
+TREE_Result _TREE_WordWrapAndOffsets(TREE_String text, TREE_Size width, TREE_Char*** lines, TREE_Size* lineCount, TREE_Size** lineOffsets)
+{
+	// word wrap the text
+	*lineCount = _TREE_WordWrapPass(text, width, NULL, 0);
+	_TREE_WordWrapPass(text, width, lines, *lineCount);
+	if (!*lines)
+	{
+		return TREE_ERROR;
+	}
+
+	// get the index offsets for each line
+	*lineOffsets = _TREE_LineOffsets(*lines, *lineCount);
+	if (!*lineOffsets)
+	{
+		TREE_DELETE_ARRAY(*lines, *lineCount);
+		return TREE_ERROR;
+	}
+
+	return TREE_OK;
+}
+
+TREE_Offset _TREE_CalculateCursorOffset(TREE_Size cursorPosition, TREE_Size* lineOffsets, TREE_Size lineCount)
+{
+	TREE_Offset result;
+	result.y = (TREE_Int)lineCount - 1;
+	TREE_Size offset;
+	for (TREE_Size i = 1; i < lineCount; i++)
+	{
+		offset = lineOffsets[i];
+		if (offset > cursorPosition)
+		{
+			result.y = (TREE_Int)i - 1;
+			break;
+		}
+	}
+	result.x = (TREE_Int)(cursorPosition - lineOffsets[result.y]);
+	return result;
 }
 
 TREE_Result _TREE_Control_Refresh_Text(TREE_Image* target, TREE_Extent extent, TREE_String text, TREE_Alignment alignment, TREE_Pixel design)
@@ -2375,8 +2489,8 @@ TREE_Result _TREE_Control_Refresh_Text(TREE_Image* target, TREE_Extent extent, T
 	}
 
 	TREE_Char** lines;
-	TREE_Size lineCount = _TREE_WordWrap(text, extent.width, NULL, 0);
-	_TREE_WordWrap(text, extent.width, &lines, lineCount);
+	TREE_Size lineCount = _TREE_WordWrapPass(text, extent.width, NULL, 0);
+	_TREE_WordWrapPass(text, extent.width, &lines, lineCount);
 	if (!lines)
 	{
 		return result;
@@ -2924,7 +3038,7 @@ TREE_Result TREE_Control_TextInputData_Init(TREE_Control_TextInputData* data, TR
 	// allocate data
 	TREE_Size textLength = strlen(text);
 	TREE_Size placeholderLength = strlen(placeholder);
-	data->text = TREE_NEW_ARRAY(TREE_Char, textLength + 1);
+	data->text = TREE_NEW_ARRAY(TREE_Char, capacity + 1);
 	if (!data->text)
 	{
 		return TREE_ERROR_ALLOC;
@@ -2952,7 +3066,8 @@ TREE_Result TREE_Control_TextInputData_Init(TREE_Control_TextInputData* data, TR
 	data->active.colorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_WHITE);
 	data->cursor = TREE_ColorPair_Create(TREE_COLOR_WHITE, TREE_COLOR_BRIGHT_BLACK);
 	// set cursor position to end of starting text
-	data->cursorPosition = textLength;
+	data->cursorPosition = 0;
+	data->cursorOffset = (TREE_Offset){ 0, 0 };
 	data->cursorTimer = 0;
 	data->scroll = 0;
 	data->selection = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_WHITE, TREE_COLOR_BRIGHT_BLUE);
@@ -2987,6 +3102,7 @@ void TREE_Control_TextInputData_Free(TREE_Control_TextInputData* data)
 	data->active.colorPair = TREE_ColorPair_CreateDefault();
 	data->cursor = TREE_ColorPair_CreateDefault();
 	data->cursorPosition = 0;
+	data->cursorOffset = (TREE_Offset){ 0, 0 };
 	data->cursorTimer = 0;
 	data->scroll = 0;
 	data->selection = TREE_ColorPair_CreateDefault();
@@ -3173,6 +3289,32 @@ void _TREE_MakeSafe(TREE_Char* text, TREE_Size size)
 	}
 }
 
+TREE_Size _TREE_SeekDifferentCharType(TREE_Char* text, TREE_Size textLength, TREE_Size index)
+{
+	TREE_CharType type = TREE_Char_GetType(text[index]);
+	for (TREE_Size i = index; i < textLength; i++)
+	{
+		if (TREE_Char_GetType(text[i]) != type)
+		{
+			return i + 1;
+		}
+	}
+	return textLength;
+}
+
+TREE_Size _TREE_SeekDifferentCharTypeReverse(TREE_Char* text, TREE_Size textLength, TREE_Size index)
+{
+	TREE_CharType type = TREE_Char_GetType(text[index]);
+	for (TREE_Size i = index; i > 0; i--)
+	{
+		if (TREE_Char_GetType(text[i]) != type)
+		{
+			return i;
+		}
+	}
+	return 0;
+}
+
 TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 {
 	// validate
@@ -3225,6 +3367,7 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 		TREE_Size textLength = strlen(data->text);
 
 		TREE_Bool cursorMoved = TREE_FALSE;
+		TREE_Bool updateCursorOffset = TREE_FALSE;
 
 		// reset cursor timer, as long as the input is not a modifier key
 		if (key != TREE_KEY_SHIFT && key != TREE_KEY_ALT && key != TREE_KEY_CONTROL)
@@ -3241,6 +3384,13 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 			CALL_ACTION(data->onSubmit, control);
 			break;
 		case TREE_KEY_BACKSPACE: // remove character before cursor
+			// if control held, "select" until a space found
+			if (data->cursorPosition > 0 && data->selectionStart == data->selectionEnd && keyData->modifiers & TREE_KEY_MODIFIER_FLAGS_CONTROL)
+			{
+				// find the last space before the cursor
+				data->selectionEnd = data->cursorPosition;
+				data->selectionStart = _TREE_SeekDifferentCharTypeReverse(data->text, textLength, data->cursorPosition - 1);
+			}
 			if (data->selectionStart != data->selectionEnd)
 			{
 				// remove selected text
@@ -3251,6 +3401,7 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 				}
 				control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
 				CALL_ACTION(data->onChange, control);
+				updateCursorOffset = TREE_TRUE;
 			}
 			else if (data->cursorPosition > 0)
 			{
@@ -3260,9 +3411,17 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 				data->cursorPosition--;
 				control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
 				CALL_ACTION(data->onChange, control);
+				updateCursorOffset = TREE_TRUE;
 			}
 			break;
 		case TREE_KEY_DELETE: // remove character at cursor
+			// if control held, "select" until a space found
+			if (data->cursorPosition < textLength && data->selectionStart == data->selectionEnd && keyData->modifiers & TREE_KEY_MODIFIER_FLAGS_CONTROL)
+			{
+				// find the next space after the cursor
+				data->selectionStart = data->cursorPosition;
+				data->selectionEnd = _TREE_SeekDifferentCharType(data->text, textLength, data->cursorPosition - 1);
+			}
 			if (data->selectionStart != data->selectionEnd)
 			{
 				// remove selected text
@@ -3273,6 +3432,7 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 				}
 				control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
 				CALL_ACTION(data->onChange, control);
+				updateCursorOffset = TREE_TRUE;
 			}
 			else if (data->cursorPosition < textLength)
 			{
@@ -3281,22 +3441,41 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 				data->text[textLength - 1] = '\0'; // null terminator
 				control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
 				CALL_ACTION(data->onChange, control);
+				updateCursorOffset = TREE_TRUE;
 			}
 			break;
 		case TREE_KEY_LEFT_ARROW: // move cursor left 1
 			if (data->cursorPosition > 0)
 			{
-				data->cursorPosition--;
+				// if control held, move until a space found
+				if (keyData->modifiers & TREE_KEY_MODIFIER_FLAGS_CONTROL)
+				{
+					data->cursorPosition = _TREE_SeekDifferentCharTypeReverse(data->text, textLength, data->cursorPosition - 1);
+				}
+				else
+				{
+					data->cursorPosition--;
+				}
 				control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
 				cursorMoved = TREE_TRUE;
+				updateCursorOffset = TREE_TRUE;
 			}
 			break;
 		case TREE_KEY_RIGHT_ARROW: // move cursor right 1
 			if (data->cursorPosition < textLength)
 			{
-				data->cursorPosition++;
+				// if control held, move until a space found
+				if (keyData->modifiers & TREE_KEY_MODIFIER_FLAGS_CONTROL)
+				{
+					data->cursorPosition = _TREE_SeekDifferentCharType(data->text, textLength, data->cursorPosition);
+				}
+				else
+				{
+					data->cursorPosition++;
+				}
 				control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
 				cursorMoved = TREE_TRUE;
+				updateCursorOffset = TREE_TRUE;
 			}
 			break;
 		case TREE_KEY_UP_ARROW: // move cursor up 1
@@ -3304,7 +3483,31 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 			{
 				if (multiline)
 				{
-					data->cursorPosition = (TREE_Size)MAX(0, (TREE_Int)data->cursorPosition - (TREE_Int)extent->width);
+					// if on first line, move to start of line
+					if (data->cursorOffset.y == 0)
+					{
+						data->cursorPosition = 0;
+						data->cursorOffset.x = 0;
+					}
+					else
+					{
+						// move cursor up 1 line
+						data->cursorOffset.y -= 1;
+
+						// get the line offsets
+						TREE_Size lineCount = 0;
+						TREE_Size* lineOffsets = NULL;
+						TREE_Char** lines = NULL;
+						result = _TREE_WordWrapAndOffsets(data->text, extent->width, &lines, &lineCount, &lineOffsets);
+						if (result)
+						{
+							return result;
+						}
+
+						// set position based on line
+						TREE_Size lineSize = strlen(lines[data->cursorOffset.y]);
+						data->cursorPosition = lineOffsets[data->cursorOffset.y] + MIN(lineSize - 1, (TREE_Size)data->cursorOffset.x);
+					}
 				}
 				else
 				{
@@ -3320,7 +3523,46 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 			{
 				if (multiline)
 				{
-					data->cursorPosition = (TREE_Size)MIN(textLength, (TREE_Int)data->cursorPosition + (TREE_Int)extent->width);
+					// get the line offsets
+					TREE_Size lineCount = 0;
+					TREE_Size* lineOffsets = NULL;
+					TREE_Char** lines = NULL;
+					result = _TREE_WordWrapAndOffsets(data->text, extent->width, &lines, &lineCount, &lineOffsets);
+					if (result)
+					{
+						return result;
+					}
+
+					// if on last line, move to end of line
+					if (data->cursorOffset.y == lineCount - 1)
+					{
+						data->cursorPosition = textLength;
+						TREE_Size lastLineLength = strlen(lines[lineCount - 1]);
+						if (lastLineLength)
+						{
+							data->cursorOffset.x = (TREE_Int)lastLineLength - 1;
+						}
+						else
+						{
+							data->cursorOffset.x = 0;
+						}
+					}
+					else
+					{
+						// move to next line
+						data->cursorOffset.y += 1;
+
+						// set position based on line
+						TREE_Size lineSize = strlen(lines[data->cursorOffset.y]);
+						if (lineSize)
+						{
+							data->cursorPosition = lineOffsets[data->cursorOffset.y] + MIN(lineSize - 1, (TREE_Size)data->cursorOffset.x);
+						}
+						else
+						{
+							data->cursorPosition = lineOffsets[data->cursorOffset.y];
+						}
+					}
 				}
 				else
 				{
@@ -3332,12 +3574,79 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 			}
 			break;
 		case TREE_KEY_HOME: // move cursor to start
-			data->cursorPosition = 0;
+			if (multiline)
+			{
+				// move to start of line
+				if (keyData->modifiers & TREE_KEY_MODIFIER_FLAGS_CONTROL)
+				{
+					// set position based on total text
+					data->cursorPosition = 0;
+					data->cursorOffset.x = 0;
+					data->cursorOffset.y = 0;
+				}
+				else
+				{
+					// get the line offsets
+					TREE_Size lineCount = 0;
+					TREE_Size* lineOffsets = NULL;
+					TREE_Char** lines = NULL;
+					result = _TREE_WordWrapAndOffsets(data->text, extent->width, &lines, &lineCount, &lineOffsets);
+					if (result)
+					{
+						return result;
+					}
+
+					// set position based on line
+					TREE_Size lineSize = strlen(lines[data->cursorOffset.y]);
+					data->cursorPosition = lineOffsets[data->cursorOffset.y];
+					data->cursorOffset.x = 0;
+				}
+			}
+			else
+			{
+				// move to start of text
+				data->cursorPosition = 0;
+				updateCursorOffset = TREE_TRUE;
+			}
 			control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
 			cursorMoved = TREE_TRUE;
 			break;
 		case TREE_KEY_END: // move cursor to end
-			data->cursorPosition = textLength;
+			if (multiline)
+			{
+				// move to end of line
+
+				// get the line offsets
+				TREE_Size lineCount = 0;
+				TREE_Size* lineOffsets = NULL;
+				TREE_Char** lines = NULL;
+				result = _TREE_WordWrapAndOffsets(data->text, extent->width, &lines, &lineCount, &lineOffsets);
+				if (result)
+				{
+					return result;
+				}
+
+				if (keyData->modifiers & TREE_KEY_MODIFIER_FLAGS_CONTROL)
+				{
+					// set position based on total text
+					data->cursorPosition = textLength - 1;
+					data->cursorOffset.x = (TREE_Int)strlen(lines[lineCount - 1]) - 1;
+					data->cursorOffset.y = (TREE_Int)lineCount - 1;
+				}
+				else
+				{
+					// set position based on line
+					TREE_Size lineSize = strlen(lines[data->cursorOffset.y]);
+					data->cursorPosition = lineOffsets[data->cursorOffset.y] + lineSize - 1;
+					data->cursorOffset.x = (TREE_Int)lineSize - 1;
+				}
+			}
+			else
+			{
+				// move to end of text
+				data->cursorPosition = textLength;
+				updateCursorOffset = TREE_TRUE;
+			}
 			control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
 			cursorMoved = TREE_TRUE;
 			break;
@@ -3352,11 +3661,13 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 			// get the character to add
 			TREE_Char ch = TREE_Key_ToChar(key, keyData->modifiers);
 
-			// if invalid, ignore it
-			if (!_TREE_IsCharSafe(ch))
+			// if invalid, ignore it, with exceptions
+			if (!_TREE_IsCharSafe(ch) && (!multiline || ch != '\n'))
 			{
 				break;
 			}
+
+			updateCursorOffset = TREE_TRUE;
 
 			control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
 			data->cursorTimer = 0;
@@ -3534,30 +3845,62 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 		}
 
 		// clamp the scroll to follow the cursor
+		TREE_Size scrollExtent;
+		TREE_Size scrollOffset;
 		if (multiline)
 		{
 			// scroll is up and down on multiline
-			TREE_Size cursorLine = data->cursorPosition / extent->width;
-			if (data->scroll + extent->height < cursorLine)
+
+			// get word wrap offsets
+			TREE_Char** lines;
+			TREE_Size lineCount;
+			TREE_Size* lineOffsets;
+			result = _TREE_WordWrapAndOffsets(
+				data->text,
+				extent->width,
+				&lines,
+				&lineCount,
+				&lineOffsets
+			);
+			if (result)
 			{
-				data->scroll = cursorLine - extent->height;
+				return result;
 			}
-			else if (data->scroll > cursorLine)
+
+			// get cursor offset
+			TREE_Offset cursorOffset = _TREE_CalculateCursorOffset(
+				data->cursorPosition,
+				lineOffsets,
+				lineCount
+			);
+
+			if (updateCursorOffset)
 			{
-				data->scroll = cursorLine;
+				// update the cursor offset
+				data->cursorOffset.x = cursorOffset.x;
+				data->cursorOffset.y = cursorOffset.y;
 			}
+
+			// calculate the line number
+			scrollOffset = cursorOffset.y;
+			scrollExtent = extent->height;
 		}
 		else
 		{
-			// scroll is left and right on singleline
-			if (data->scroll + extent->width < data->cursorPosition)
-			{
-				data->scroll = data->cursorPosition - extent->width;
-			}
-			else if (data->scroll > data->cursorPosition)
-			{
-				data->scroll = data->cursorPosition;
-			}
+			scrollOffset = data->cursorPosition;
+			scrollExtent = extent->width;
+		}
+
+		// adjust scroll
+		if (data->scroll + scrollExtent <= scrollOffset)
+		{
+			// scroll towards END
+			data->scroll = scrollOffset + 1 - scrollExtent;
+		}
+		else if (data->scroll > scrollOffset)
+		{
+			// scroll towards HOME
+			data->scroll = scrollOffset;
 		}
 
 		break;
@@ -3620,39 +3963,44 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 		{
 			// multiline
 
-			// word wrap the text
+			// get word wrap data
+			
 			TREE_Char** lines;
-			TREE_Size lineCount = _TREE_WordWrap(text, extent->width, NULL, 0);
-			_TREE_WordWrap(text, extent->width, &lines, lineCount);
-			if (!lines)
+			TREE_Size lineCount;
+			TREE_Size* lineOffsets;
+			result = _TREE_WordWrapAndOffsets(
+				text,
+				extent->width,
+				&lines,
+				&lineCount,
+				&lineOffsets
+			);
+			if (result)
 			{
-				return TREE_ERROR;
+				return result;
 			}
+
+			// calculate the cursor position
+			TREE_Offset cursorOffset = _TREE_CalculateCursorOffset(
+				data->cursorPosition,
+				lineOffsets,
+				lineCount
+			);
+			// adjust for scrolling
+			cursorOffset.y -= (TREE_Int)data->scroll;
 
 			// draw the lines based on the scroll
 			TREE_Size count = MIN(lineCount, extent->height);
 			TREE_Size scroll = data->scroll;
 
-			if (active)
-			{
-				// add one to scroll if cursor at end of text, but also beginning of a new line
-				if (data->cursorPosition == textLength && data->cursorPosition % extent->width == 0)
-				{
-					scroll++;
-					if (count == extent->height)
-					{
-						count--;
-					}
-				}
-			}
-			else
+			if (!active)
 			{
 				// no scroll when inactive
 				scroll = 0;
 			}
 
 			// draw each line
-			for (TREE_Size i = 0; i < count; i++)
+			for (TREE_Size i = 0; i < count && data->scroll + i < lineCount; i++)
 			{
 				// replace unsafe characters
 				TREE_Char* line = lines[data->scroll + i];
@@ -3690,9 +4038,6 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 				}
 
 				// draw the cursor
-				TREE_Offset cursorOffset;
-				cursorOffset.x = (TREE_Int)(data->cursorPosition % extent->width);
-				cursorOffset.y = (TREE_Int)(data->cursorPosition / extent->width - scroll);
 				result = TREE_Image_Set(
 					control->image,
 					cursorOffset,
