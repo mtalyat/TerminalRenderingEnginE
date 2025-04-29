@@ -28,10 +28,14 @@ TREE_Char const* TREE_Result_ToString(TREE_Result code)
 		return "OK";
 	case TREE_CANCEL:
 		return "Cancel";
-	case TREE_ERROR:
-		return "General error";
 	case TREE_NOT_IMPLEMENTED:
 		return "Not implemented";
+	case TREE_ERROR:
+		return "Generic error";
+	case TREE_ERROR_OVERFLOW:
+		return "Overflow error";
+	case TREE_ERROR_FULL:
+		return "The collection is at capacity";
 	case TREE_ERROR_ARG_NULL:
 		return "Argument is null";
 	case TREE_ERROR_ARG_OUT_OF_RANGE:
@@ -42,6 +46,45 @@ TREE_Char const* TREE_Result_ToString(TREE_Result code)
 		return "Memory allocation failed";
 	case TREE_ERROR_PRESENTATION:
 		return "Presentation failed";
+	case TREE_ERROR_FILE_OPEN:
+		return "Failed to open file";
+	case TREE_ERROR_FILE_DELETE:
+		return "Failed to delete file";
+	case TREE_ERROR_DIRECTORY_CREATE:
+		return "Failed to create directory";
+	case TREE_ERROR_DIRECTORY_DELETE:
+		return "Failed to delete directory";
+	case TREE_ERROR_DIRECTORY_ENUMERATE:
+		return "Failed to enumerate directory";
+	case TREE_ERROR_CLIPBOARD_SET_TEXT:
+		return "Failed to set clipboard text";
+	case TREE_ERROR_CLIPBOARD_GET_TEXT:
+		return "Failed to get clipboard text";
+	case TREE_ERROR_WORD_WRAPPING:
+		return "Word wrapping failed";
+	case TREE_ERROR_WORD_WRAPPING_OFFSETS:
+		return "Failed to generate offsets from word wrapping";
+	case TREE_ERROR_APPLICATION_MULTIPLE_ACTIVE_CONTROLS:
+		return "Multiple active controls are not allowed";
+
+	case TREE_ERROR_WINDOWS_GLOBAL_ALLOC:
+		return "Failed to allocate global memory";
+	case TREE_ERROR_WINDOWS_GLOBAL_LOCK:
+		return "Failed to lock global memory";
+	case TREE_ERROR_WINDOWS_GLOBAL_UNLOCK:
+		return "Failed to unlock global memory";
+	case TREE_ERROR_WINDOWS_SET_CONTROL_HANDLER:
+		return "Failed to set control handler";
+	case TREE_ERROR_WINDOWS_CLIPBOARD_OPEN:
+		return "Failed to open clipboard";
+	case TREE_ERROR_WINDOWS_CLIPBOARD_CLOSE:
+		return "Failed to close clipboard";
+	case TREE_ERROR_WINDOWS_CLIPBOARD_CLEAR:
+		return "Failed to clear clipboard";
+	case TREE_ERROR_WINDOWS_CONSOLE_GET_CURSOR_INFO:
+		return "Failed to get console cursor info";
+	case TREE_ERROR_WINDOWS_CONSOLE_SET_CURSOR_INFO:
+		return "Failed to set console cursor info";
 	default:
 		return "Unknown error";
 	}
@@ -74,7 +117,7 @@ TREE_Result TREE_Init()
 	// handle CTRL +C, etc.
 	if (!SetConsoleCtrlHandler(_ConsoleCtrlHandler, TRUE))
 	{
-		return TREE_ERROR;
+		return TREE_ERROR_WINDOWS_SET_CONTROL_HANDLER;
 	}
 #endif
 
@@ -156,14 +199,14 @@ TREE_Result TREE_Clipboard_SetText(TREE_String text)
 	// open the clipboard
 	if (!OpenClipboard(NULL))
 	{
-		return TREE_ERROR;
+		return TREE_ERROR_WINDOWS_CLIPBOARD_OPEN;
 	}
 
 	// clear the clipboard
 	if (!EmptyClipboard())
 	{
 		CloseClipboard();
-		return TREE_ERROR;
+		return TREE_ERROR_WINDOWS_CLIPBOARD_CLEAR;
 	}
 
 	// allocate global memory
@@ -172,7 +215,7 @@ TREE_Result TREE_Clipboard_SetText(TREE_String text)
 	if (!hGlobal)
 	{
 		CloseClipboard();
-		return TREE_ERROR_ALLOC;
+		return TREE_ERROR_WINDOWS_GLOBAL_ALLOC;
 	}
 
 	// copy the text to the global memory
@@ -181,24 +224,29 @@ TREE_Result TREE_Clipboard_SetText(TREE_String text)
 	{
 		GlobalFree(hGlobal);
 		CloseClipboard();
-		return TREE_ERROR;
+		return TREE_ERROR_WINDOWS_GLOBAL_LOCK;
 	}
 	memcpy(pGlobal, text, textLength);
-	GlobalUnlock(hGlobal);
+	if (!GlobalUnlock(hGlobal))
+	{
+		GlobalFree(hGlobal);
+		CloseClipboard();
+		return TREE_ERROR_WINDOWS_GLOBAL_UNLOCK;
+	}
 
 	// set the clipboard data
 	if (!SetClipboardData(CF_TEXT, hGlobal))
 	{
 		GlobalFree(hGlobal);
 		CloseClipboard();
-		return TREE_ERROR;
+		return TREE_ERROR_CLIPBOARD_SET_TEXT;
 	}
 
 	// close the clipboard
 	if (!CloseClipboard())
 	{
 		GlobalFree(hGlobal);
-		return TREE_ERROR;
+		return TREE_ERROR_WINDOWS_CLIPBOARD_CLOSE;
 	}
 
 	return TREE_OK;
@@ -221,7 +269,7 @@ TREE_Result TREE_Clipboard_GetText(TREE_Char** text)
 	// open the clipboard
 	if (!OpenClipboard(NULL))
 	{
-		return TREE_ERROR;
+		return TREE_ERROR_WINDOWS_CLIPBOARD_OPEN;
 	}
 
 	// check if there is text to paste
@@ -236,7 +284,7 @@ TREE_Result TREE_Clipboard_GetText(TREE_Char** text)
 	if (!hData)
 	{
 		CloseClipboard();
-		return TREE_ERROR;
+		return TREE_ERROR_CLIPBOARD_GET_TEXT;
 	}
 
 	// lock the global memory
@@ -244,12 +292,12 @@ TREE_Result TREE_Clipboard_GetText(TREE_Char** text)
 	if (!pGlobal)
 	{
 		CloseClipboard();
-		return TREE_ERROR;
+		return TREE_ERROR_WINDOWS_GLOBAL_LOCK;
 	}
 
 	// allocate memory for the text
 	size_t textLength = GlobalSize(hData);
-	*text = (char*)malloc(textLength + 1);
+	*text = TREE_NEW_ARRAY(TREE_Char, textLength + 1);
 	if (!*text)
 	{
 		GlobalUnlock(hData);
@@ -262,18 +310,16 @@ TREE_Result TREE_Clipboard_GetText(TREE_Char** text)
 	(*text)[textLength] = '\0';
 
 	// unlock the global memory
-	GlobalUnlock(hData);
+	if(!GlobalUnlock(hData))
+	{
+		free(*text);
+		*text = NULL;
+		CloseClipboard();
+		return TREE_ERROR_WINDOWS_GLOBAL_UNLOCK;
+	}
 
 	// close the clipboard
 	CloseClipboard();
-	//if (!)
-	//{
-	//	free(*text);
-	//	*text = NULL;
-	//	printf("Failed to close clipboard\n");
-	//	printf("Error: %d\n", GetLastError());
-	//	return TREE_ERROR;
-	//}
 
 	return TREE_OK;
 #else
@@ -486,17 +532,12 @@ TREE_Result TREE_File_Read(TREE_String path, TREE_Char* text, TREE_Size size)
 	FILE* file = fopen(path, "rb");
 	if (!file)
 	{
-		return TREE_ERROR;
+		return TREE_ERROR_FILE_OPEN;
 	}
 
 	// get the size of the file
 	fseek(file, 0, SEEK_END);
 	TREE_Size fileSize = ftell(file);
-	if (fileSize == 0)
-	{
-		fclose(file);
-		return TREE_ERROR;
-	}
 	fseek(file, 0, SEEK_SET);
 
 	// read the minimum between count and size, if a size given
@@ -523,7 +564,7 @@ TREE_Result TREE_File_Write(TREE_String path, TREE_String text)
 	FILE* file = fopen(path, "wb");
 	if (!file)
 	{
-		return TREE_ERROR;
+		return TREE_ERROR_FILE_OPEN;
 	}
 
 	// write the text to the file
@@ -545,7 +586,7 @@ TREE_Result TREE_File_Create(TREE_String path)
 	FILE* file = fopen(path, "wb");
 	if (!file)
 	{
-		return TREE_ERROR;
+		return TREE_ERROR_FILE_OPEN;
 	}
 
 	// close the file
@@ -571,7 +612,7 @@ TREE_Result TREE_File_Delete(TREE_String path)
 	// delete the file
 	if (remove(path) != 0)
 	{
-		return TREE_ERROR;
+		return TREE_ERROR_FILE_DELETE;
 	}
 
 	return TREE_OK;
@@ -602,7 +643,7 @@ TREE_Result TREE_Directory_Create(TREE_String path)
 	{
 		if (GetLastError() != ERROR_ALREADY_EXISTS)
 		{
-			return TREE_ERROR;
+			return TREE_ERROR_DIRECTORY_CREATE;
 		}
 	}
 	return TREE_OK;
@@ -628,7 +669,7 @@ TREE_Result TREE_Directory_Delete(TREE_String path)
 #ifdef TREE_WINDOWS
 	if (!RemoveDirectoryA(path))
 	{
-		return TREE_ERROR;
+		return TREE_ERROR_DIRECTORY_DELETE;
 	}
 	return TREE_OK;
 #else
@@ -700,7 +741,7 @@ TREE_Result TREE_Directory_Enumerate(TREE_String path, TREE_Char*** files, TREE_
 		HANDLE hFind = FindFirstFileA(searchPath, &findData);
 		if (hFind == INVALID_HANDLE_VALUE)
 		{
-			return TREE_ERROR;
+			return TREE_ERROR_DIRECTORY_ENUMERATE;
 		}
 		do {
 			if (!_TREE_Directory_Filter(findData.cFileName, findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY, flags))
@@ -726,7 +767,7 @@ TREE_Result TREE_Directory_Enumerate(TREE_String path, TREE_Char*** files, TREE_
 	{
 		free(*files);
 		*files = NULL;
-		return TREE_ERROR;
+		return TREE_ERROR_DIRECTORY_ENUMERATE;
 	}
 
 	TREE_Size i = 0;
@@ -1454,7 +1495,7 @@ TREE_Result TREE_Surface_Refresh(TREE_Surface* surface)
 	{
 		free(surface->text);
 		surface->text = NULL;
-		return TREE_ERROR;
+		return TREE_ERROR_OVERFLOW;
 	}
 
 	return TREE_OK;
@@ -1523,12 +1564,12 @@ TREE_Result TREE_Cursor_SetVisible(TREE_Bool visible)
 	CONSOLE_CURSOR_INFO cursorInfo;
 	if (!GetConsoleCursorInfo(hConsole, &cursorInfo))
 	{
-		return TREE_ERROR;
+		return TREE_ERROR_WINDOWS_CONSOLE_GET_CURSOR_INFO;
 	}
 	cursorInfo.bVisible = visible;
 	if (!SetConsoleCursorInfo(hConsole, &cursorInfo))
 	{
-		return TREE_ERROR;
+		return TREE_ERROR_WINDOWS_CONSOLE_SET_CURSOR_INFO;
 	}
 
 	return TREE_OK;
@@ -2470,12 +2511,12 @@ TREE_Result _TREE_WordWrap(TREE_String text, TREE_Size width, TREE_Char*** lines
 	*lineCount = _TREE_WordWrapPass(text, width, lines, 0);
 	if (*lineCount == 0)
 	{
-		return TREE_ERROR;
+		return TREE_OK;
 	}
 	_TREE_WordWrapPass(text, width, lines, *lineCount);
 	if (!*lines)
 	{
-		return TREE_ERROR;
+		return TREE_ERROR_WORD_WRAPPING;
 	}
 	return TREE_OK;
 }
@@ -2514,7 +2555,7 @@ TREE_Result _TREE_WordWrapAndOffsets(TREE_String text, TREE_Size width, TREE_Cha
 	{
 		*lineOffsets = NULL;
 		*lineCount = 0;
-		return TREE_ERROR;
+		return TREE_ERROR_WORD_WRAPPING;
 	}
 
 	// get the index offsets for each line
@@ -2523,7 +2564,7 @@ TREE_Result _TREE_WordWrapAndOffsets(TREE_String text, TREE_Size width, TREE_Cha
 	{
 		TREE_DELETE_ARRAY(*lines, *lineCount);
 		*lineCount = 0;
-		return TREE_ERROR;
+		return TREE_ERROR_WORD_WRAPPING_OFFSETS;
 	}
 
 	return TREE_OK;
@@ -6062,7 +6103,7 @@ TREE_Result TREE_Application_AddControl(TREE_Application* application, TREE_Cont
 	}
 	if (application->controlsSize == application->controlsCapacity)
 	{
-		return TREE_ERROR;
+		return TREE_ERROR_FULL;
 	}
 
 	// add to the application
@@ -6380,7 +6421,7 @@ TREE_Result TREE_Application_Run(TREE_Application* application)
 						// if already one active, whoops
 						if (active)
 						{
-							return TREE_ERROR;
+							return TREE_ERROR_APPLICATION_MULTIPLE_ACTIVE_CONTROLS;
 						}
 						active = control;
 						continue;
