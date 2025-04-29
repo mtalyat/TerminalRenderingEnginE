@@ -76,6 +76,9 @@ typedef enum _TREE_Result
 	// Application
 	TREE_ERROR_APPLICATION_MULTIPLE_ACTIVE_CONTROLS = 900,
 
+	// Window
+	TREE_ERROR_WINDOW_SET_TITLE = 1000,
+
 	//		Windows specific errors
 	// Global
 	TREE_ERROR_WINDOWS_GLOBAL_ALLOC = 10000,
@@ -346,6 +349,8 @@ TREE_Result TREE_Surface_Refresh(TREE_Surface* surface);
 ///////////////////////////////////////
 // Window                            //
 ///////////////////////////////////////
+
+TREE_Result TREE_Window_SetTitle(TREE_String title);
 
 TREE_Result TREE_Window_Present(TREE_Surface* surface);
 

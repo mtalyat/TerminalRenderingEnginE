@@ -66,6 +66,8 @@ TREE_Char const* TREE_Result_ToString(TREE_Result code)
 		return "Failed to generate offsets from word wrapping";
 	case TREE_ERROR_APPLICATION_MULTIPLE_ACTIVE_CONTROLS:
 		return "Multiple active controls are not allowed";
+	case TREE_ERROR_WINDOW_SET_TITLE:
+		return "Failed to set window title";
 
 	case TREE_ERROR_WINDOWS_GLOBAL_ALLOC:
 		return "Failed to allocate global memory";
@@ -227,12 +229,7 @@ TREE_Result TREE_Clipboard_SetText(TREE_String text)
 		return TREE_ERROR_WINDOWS_GLOBAL_LOCK;
 	}
 	memcpy(pGlobal, text, textLength);
-	if (!GlobalUnlock(hGlobal))
-	{
-		GlobalFree(hGlobal);
-		CloseClipboard();
-		return TREE_ERROR_WINDOWS_GLOBAL_UNLOCK;
-	}
+	GlobalUnlock(hGlobal);
 
 	// set the clipboard data
 	if (!SetClipboardData(CF_TEXT, hGlobal))
@@ -310,13 +307,7 @@ TREE_Result TREE_Clipboard_GetText(TREE_Char** text)
 	(*text)[textLength] = '\0';
 
 	// unlock the global memory
-	if(!GlobalUnlock(hData))
-	{
-		free(*text);
-		*text = NULL;
-		CloseClipboard();
-		return TREE_ERROR_WINDOWS_GLOBAL_UNLOCK;
-	}
+	GlobalUnlock(hData);
 
 	// close the clipboard
 	CloseClipboard();
@@ -1499,6 +1490,19 @@ TREE_Result TREE_Surface_Refresh(TREE_Surface* surface)
 	}
 
 	return TREE_OK;
+}
+
+TREE_Result TREE_Window_SetTitle(TREE_String title)
+{
+#ifdef TREE_WINDOWS
+	if(!SetConsoleTitleA(title))
+	{
+		return TREE_ERROR_WINDOW_SET_TITLE;
+	}
+	return TREE_OK;
+#else
+	return TREE_NOT_IMPLEMENTED;
+#endif // TREE_WINDOWS
 }
 
 TREE_Result TREE_Window_Present(TREE_Surface* surface)

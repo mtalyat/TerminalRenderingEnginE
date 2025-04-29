@@ -9,12 +9,6 @@ void Button_Quit(void* sender, void const* value)
 	TREE_Application_Quit(g_application);
 }
 
-void Text_Quit(void* sender, void const* value)
-{
-	TREE_Application_Quit(g_application);
-	printf("Final text: %s\n", *(char const**)value);
-}
-
 TREE_Result ApplicationEventHandler(TREE_Event const* event)
 {
 	switch (event->type)
@@ -39,6 +33,13 @@ int main()
 	if (result)
 	{
 		printf("Failed to initialize TREE: %s\n", TREE_Result_ToString(result));
+		return 1;
+	}
+
+	result = TREE_Window_SetTitle("TREE Test");
+	if (result)
+	{
+		printf("Failed to set window title: %s\n", TREE_Result_ToString(result));
 		return 1;
 	}
 
@@ -84,7 +85,7 @@ int main()
 
 	// create single line text box
 	TREE_Control_TextInputData textInputData;
-	result = TREE_Control_TextInputData_Init(&textInputData, "Enter text here", 256, "Placeholder", TREE_CONTROL_TEXT_INPUT_TYPE_NORMAL, NULL, Text_Quit);
+	result = TREE_Control_TextInputData_Init(&textInputData, "Enter text here", 256, "Placeholder", TREE_CONTROL_TEXT_INPUT_TYPE_NORMAL, NULL, NULL);
 	if (result)
 	{
 		printf("Failed to initialize text input data: %s\n", TREE_Result_ToString(result));
