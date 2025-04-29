@@ -954,6 +954,8 @@ typedef struct _TREE_Control_CheckboxData
 
 	TREE_ColorPair normal;
 	TREE_ColorPair focused;
+	TREE_ColorPair normalText;
+	TREE_ColorPair focusedText;
 	TREE_Char uncheckedChar;
 	TREE_Char checkedChar;
 

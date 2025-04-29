@@ -20,6 +20,12 @@
 
 #define CALL_ACTION(action, ...) do { if (action) { action(__VA_ARGS__); } } while (0)
 
+#define TREE_DEFAULT_COLOR_PAIR_NORMAL_TEXT (TREE_ColorPair_Create(TREE_COLOR_WHITE, TREE_COLOR_BLACK))
+#define TREE_DEFAULT_COLOR_PAIR_HIGHLIGHTED_TEXT (TREE_ColorPair_Create(TREE_COLOR_BRIGHT_WHITE, TREE_COLOR_BLUE))
+#define TREE_DEFAULT_COLOR_PAIR_NORMAL (TREE_ColorPair_Create(TREE_COLOR_BLACK, TREE_COLOR_BRIGHT_BLACK))
+#define TREE_DEFAULT_COLOR_PAIR_FOCUSED (TREE_ColorPair_Create(TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_BRIGHT_WHITE))
+#define TREE_DEFAULT_COLOR_PAIR_ACTIVE (TREE_ColorPair_Create(TREE_COLOR_BLACK, TREE_COLOR_WHITE))
+
 TREE_Char const* TREE_Result_ToString(TREE_Result code)
 {
 	switch (code)
@@ -965,7 +971,6 @@ void TREE_Pattern_Free(TREE_Pattern* pattern)
 		free(pattern->pixels);
 		pattern->pixels = NULL;
 	}
-	pattern->size = 0;
 }
 
 static TREE_Size _TREE_Image_GetIndex(TREE_Image* image, TREE_Offset offset)
@@ -1030,18 +1035,8 @@ void TREE_Image_Free(TREE_Image* image)
 	}
 
 	// free data
-	if (image->text)
-	{
-		free(image->text);
-		image->text = NULL;
-	}
-	if (image->colors)
-	{
-		free(image->colors);
-		image->colors = NULL;
-	}
-	image->extent.width = 0;
-	image->extent.height = 0;
+	TREE_DELETE(image->text);
+	TREE_DELETE(image->colors);
 }
 
 TREE_Result TREE_Image_Set(TREE_Image* image, TREE_Offset offset, TREE_Pixel pixel)
@@ -1388,11 +1383,7 @@ void TREE_Surface_Free(TREE_Surface* surface)
 
 	// free data
 	TREE_Image_Free(&surface->image);
-	if (surface->text)
-	{
-		free(surface->text);
-		surface->text = NULL;
-	}
+	TREE_DELETE(surface->text);
 }
 
 TREE_Result TREE_Surface_Refresh(TREE_Surface* surface)
@@ -1907,15 +1898,6 @@ TREE_Result TREE_Input_Init(TREE_Input* input)
 
 void TREE_Input_Free(TREE_Input* input)
 {
-	for (TREE_Size i = 0; i < TREE_KEY_COUNT; i++)
-	{
-		input->keys[i] = TREE_KEY_NONE;
-	}
-	for (TREE_Size i = 0; i < TREE_KEY_MAX; i++)
-	{
-		input->states[i] = TREE_INPUT_STATE_RELEASED;
-	}
-	input->modifiers = TREE_KEY_MODIFIER_FLAGS_NONE;
 }
 
 TREE_Direction TREE_Direction_Opposite(TREE_Direction direction)
@@ -1957,34 +1939,6 @@ TREE_Result TREE_Transform_Init(TREE_Transform* transform, TREE_Offset localOffs
 
 void TREE_Transform_Free(TREE_Transform* transform)
 {
-	// validate
-	if (!transform)
-	{
-		return;
-	}
-
-	// remove from family
-	TREE_Transform_SetParent(transform, NULL);
-
-	// disconnect children
-	TREE_Transform_DisconnectChildren(transform);
-
-	// free data
-	transform->localOffset.x = 0;
-	transform->localOffset.y = 0;
-	transform->localPivot.x = 0.0f;
-	transform->localPivot.y = 0.0f;
-	transform->localExtent.width = 0;
-	transform->localExtent.height = 0;
-	transform->localAlignment = TREE_ALIGNMENT_NONE;
-	transform->parent = NULL;
-	transform->child = NULL;
-	transform->sibling = NULL;
-	transform->dirty = TREE_FALSE;
-	transform->globalRect.offset.x = 0;
-	transform->globalRect.offset.y = 0;
-	transform->globalRect.extent.width = 0;
-	transform->globalRect.extent.height = 0;
 }
 
 TREE_Result TREE_Transform_Dirty(TREE_Transform* transform)
@@ -2256,16 +2210,10 @@ void TREE_Control_Free(TREE_Control* control)
 	}
 
 	// free data
-	control->type = TREE_CONTROL_TYPE_NONE;
-	control->flags = TREE_CONTROL_FLAGS_NONE;
-	control->stateFlags = TREE_CONTROL_STATE_FLAGS_NONE;
 	TREE_Transform_Free(control->transform);
 	TREE_DELETE(control->transform);
 	TREE_Image_Free(control->image);
 	TREE_DELETE(control->image);
-	memset(control->adjacent, 0, 4 * sizeof(TREE_Control*));
-	control->eventHandler = NULL;
-	control->data = NULL;
 }
 
 TREE_Result TREE_Control_Link(TREE_Control* control, TREE_Direction direction, TREE_ControlLink link, TREE_Control* other)
@@ -2739,7 +2687,7 @@ TREE_Result TREE_Control_LabelData_Init(TREE_Control_LabelData* data, TREE_Strin
 	data->text[textLength] = '\0'; // null terminator
 	data->alignment = TREE_ALIGNMENT_TOPLEFT;
 	data->normal.character = ' ';
-	data->normal.colorPair = TREE_ColorPair_Create(TREE_COLOR_WHITE, TREE_COLOR_BLACK);
+	data->normal.colorPair = TREE_DEFAULT_COLOR_PAIR_NORMAL_TEXT;
 
 	return TREE_OK;
 }
@@ -2754,9 +2702,6 @@ void TREE_Control_LabelData_Free(TREE_Control_LabelData* data)
 
 	// free data
 	TREE_DELETE(data->text);
-	data->alignment = TREE_ALIGNMENT_NONE;
-	data->normal.character = ' ';
-	data->normal.colorPair = TREE_ColorPair_CreateDefault();
 }
 
 TREE_Result TREE_Control_Label_Init(TREE_Control* control, TREE_Transform* parent, TREE_Control_LabelData* data)
@@ -2949,11 +2894,11 @@ TREE_Result TREE_Control_ButtonData_Init(TREE_Control_ButtonData* data, TREE_Str
 	data->text[textLength] = '\0'; // null terminator
 	data->alignment = TREE_ALIGNMENT_CENTER;
 	data->normal.character = ' ';
-	data->normal.colorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_WHITE, TREE_COLOR_BRIGHT_BLACK);
+	data->normal.colorPair = TREE_DEFAULT_COLOR_PAIR_NORMAL;
 	data->focused.character = ' ';
-	data->focused.colorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_BRIGHT_WHITE);
+	data->focused.colorPair = TREE_DEFAULT_COLOR_PAIR_FOCUSED;
 	data->active.character = ' ';
-	data->active.colorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_WHITE);
+	data->active.colorPair = TREE_DEFAULT_COLOR_PAIR_ACTIVE;
 	data->onSubmit = onSubmit;
 
 	return TREE_OK;
@@ -2969,14 +2914,6 @@ void TREE_Control_ButtonData_Free(TREE_Control_ButtonData* data)
 
 	// free data
 	TREE_DELETE(data->text);
-	data->alignment = TREE_ALIGNMENT_CENTER;
-	data->normal.character = ' ';
-	data->normal.colorPair = TREE_ColorPair_CreateDefault();
-	data->focused.character = ' ';
-	data->focused.colorPair = TREE_ColorPair_CreateDefault();
-	data->active.character = ' ';
-	data->active.colorPair = TREE_ColorPair_CreateDefault();
-	data->onSubmit = NULL;
 }
 
 TREE_Result TREE_Control_Button_Init(TREE_Control* control, TREE_Transform* parent, TREE_Control_ButtonData* data)
@@ -3194,18 +3131,18 @@ TREE_Result TREE_Control_TextInputData_Init(TREE_Control_TextInputData* data, TR
 	data->placeholder[placeholderLength] = '\0'; // null terminator
 
 	data->normal.character = ' ';
-	data->normal.colorPair = TREE_ColorPair_Create(TREE_COLOR_BLACK, TREE_COLOR_BRIGHT_BLACK);
+	data->normal.colorPair = TREE_DEFAULT_COLOR_PAIR_NORMAL;
 	data->focused.character = ' ';
-	data->focused.colorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_BRIGHT_WHITE);
+	data->focused.colorPair = TREE_DEFAULT_COLOR_PAIR_FOCUSED;
 	data->active.character = ' ';
-	data->active.colorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_WHITE);
-	data->cursor = TREE_ColorPair_Create(TREE_COLOR_WHITE, TREE_COLOR_BRIGHT_BLACK);
+	data->active.colorPair = TREE_DEFAULT_COLOR_PAIR_ACTIVE;
+	data->cursor = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_WHITE, TREE_COLOR_BRIGHT_BLACK);
 	// set cursor position to end of starting text
 	data->cursorPosition = 0;
 	data->cursorOffset = (TREE_Offset){ 0, 0 };
 	data->cursorTimer = 0;
 	data->scroll = 0;
-	data->selection = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_WHITE, TREE_COLOR_BRIGHT_BLUE);
+	data->selection = TREE_DEFAULT_COLOR_PAIR_HIGHLIGHTED_TEXT;
 	data->selectionOrigin = 0;
 	data->selectionStart = textLength;
 	data->selectionEnd = textLength;
@@ -3227,25 +3164,6 @@ void TREE_Control_TextInputData_Free(TREE_Control_TextInputData* data)
 	// free data
 	TREE_DELETE(data->text);
 	TREE_DELETE(data->placeholder);
-	data->type = TREE_CONTROL_TEXT_INPUT_TYPE_NONE;
-	data->capacity = 0;
-	data->normal.character = ' ';
-	data->normal.colorPair = TREE_ColorPair_CreateDefault();
-	data->focused.character = ' ';
-	data->focused.colorPair = TREE_ColorPair_CreateDefault();
-	data->active.character = ' ';
-	data->active.colorPair = TREE_ColorPair_CreateDefault();
-	data->cursor = TREE_ColorPair_CreateDefault();
-	data->cursorPosition = 0;
-	data->cursorOffset = (TREE_Offset){ 0, 0 };
-	data->cursorTimer = 0;
-	data->scroll = 0;
-	data->selection = TREE_ColorPair_CreateDefault();
-	data->selectionOrigin = 0;
-	data->selectionStart = 0;
-	data->selectionEnd = 0;
-	data->onChange = NULL;
-	data->onSubmit = NULL;
 }
 
 TREE_Char* TREE_Control_TextInputData_GetSelectedText(TREE_Control_TextInputData* data)
@@ -4584,23 +4502,23 @@ TREE_Result TREE_Control_ListData_Init(TREE_Control_ListData* data, TREE_Control
 
 	// set data
 	data->normalSelected.character = ' ';
-	data->normalSelected.colorPair = TREE_ColorPair_Create(TREE_COLOR_WHITE, TREE_COLOR_BRIGHT_BLUE);
+	data->normalSelected.colorPair = TREE_ColorPair_Create(TREE_COLOR_BLACK, TREE_COLOR_BRIGHT_BLUE);
 	data->normalUnselected.character = ' ';
-	data->normalUnselected.colorPair = TREE_ColorPair_Create(TREE_COLOR_WHITE, TREE_COLOR_BRIGHT_BLACK);
-	data->normalScrollbarColorPair = TREE_ColorPair_Create(TREE_COLOR_WHITE, TREE_COLOR_BRIGHT_BLACK);
-	data->normalScrollbarBarColorPair = TREE_ColorPair_Create(TREE_COLOR_WHITE, TREE_COLOR_BRIGHT_BLACK);
+	data->normalUnselected.colorPair = TREE_DEFAULT_COLOR_PAIR_NORMAL;
+	data->normalScrollbarColorPair = TREE_DEFAULT_COLOR_PAIR_NORMAL;
+	data->normalScrollbarBarColorPair = TREE_DEFAULT_COLOR_PAIR_NORMAL;
 
 	data->focusedSelected.character = ' ';
 	data->focusedSelected.colorPair = TREE_ColorPair_Create(TREE_COLOR_WHITE, TREE_COLOR_BRIGHT_BLUE);
 	data->focusedUnselected.character = ' ';
-	data->focusedUnselected.colorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_WHITE);
+	data->focusedUnselected.colorPair = TREE_DEFAULT_COLOR_PAIR_FOCUSED;
 	data->focusedScrollbarColorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_WHITE);
 	data->focusedScrollbarBarColorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_WHITE);
 
 	data->activeSelected.character = ' ';
 	data->activeSelected.colorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_WHITE, TREE_COLOR_BLUE);
 	data->activeUnselected.character = ' ';
-	data->activeUnselected.colorPair = TREE_ColorPair_Create(TREE_COLOR_BLACK, TREE_COLOR_WHITE);
+	data->activeUnselected.colorPair = TREE_DEFAULT_COLOR_PAIR_ACTIVE;
 	data->activeScrollbarColorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_BRIGHT_WHITE);
 	data->activeScrollbarBarColorPair = TREE_ColorPair_Create(TREE_COLOR_WHITE, TREE_COLOR_BRIGHT_BLACK);
 
@@ -4630,32 +4548,6 @@ void TREE_Control_ListData_Free(TREE_Control_ListData* data)
 
 	// free the options
 	TREE_DELETE_ARRAY(data->options, data->optionsSize);
-	data->optionsSize = 0;
-	data->selectedIndex = 0;
-	data->selectedIndices = NULL;
-	data->hoverIndex = 0;
-	data->scroll = 0;
-	data->normalSelected.character = ' ';
-	data->normalSelected.colorPair = TREE_ColorPair_CreateDefault();
-	data->normalUnselected.character = ' ';
-	data->normalUnselected.colorPair = TREE_ColorPair_CreateDefault();
-	data->normalScrollbarColorPair = TREE_ColorPair_CreateDefault();
-	data->focusedSelected.character = ' ';
-	data->focusedSelected.colorPair = TREE_ColorPair_CreateDefault();
-	data->focusedUnselected.character = ' ';
-	data->focusedUnselected.colorPair = TREE_ColorPair_CreateDefault();
-	data->focusedScrollbarColorPair = TREE_ColorPair_CreateDefault();
-	data->activeSelected.character = ' ';
-	data->activeSelected.colorPair = TREE_ColorPair_CreateDefault();
-	data->activeUnselected.character = ' ';
-	data->activeUnselected.colorPair = TREE_ColorPair_CreateDefault();
-	data->activeScrollbarColorPair = TREE_ColorPair_CreateDefault();
-	data->hoveredSelected.character = ' ';
-	data->hoveredSelected.colorPair = TREE_ColorPair_CreateDefault();
-	data->hoveredUnselected.character = ' ';
-	data->hoveredUnselected.colorPair = TREE_ColorPair_CreateDefault();
-	data->onChange = NULL;
-	data->onSubmit = NULL;
 }
 
 TREE_Result TREE_Control_ListData_SetOptions(TREE_Control_ListData* data, TREE_String* options, TREE_Size optionsSize)
@@ -5247,10 +5139,10 @@ TREE_Result TREE_Control_DropdownData_Init(TREE_Control_DropdownData* data, TREE
 	data->drop = drop;
 
 	data->normal.character = ' ';
-	data->normal.colorPair = TREE_ColorPair_Create(TREE_COLOR_BLACK, TREE_COLOR_BRIGHT_BLACK);
+	data->normal.colorPair = TREE_DEFAULT_COLOR_PAIR_NORMAL;
 
 	data->focused.character = ' ';
-	data->focused.colorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_BRIGHT_WHITE);
+	data->focused.colorPair = TREE_DEFAULT_COLOR_PAIR_FOCUSED;
 
 	data->active.character = ' ';
 	data->active.colorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_WHITE);
@@ -5258,7 +5150,7 @@ TREE_Result TREE_Control_DropdownData_Init(TREE_Control_DropdownData* data, TREE
 	data->selected.character = ' ';
 	data->selected.colorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_WHITE, TREE_COLOR_BLUE);
 	data->unselected.character = ' ';
-	data->unselected.colorPair = TREE_ColorPair_Create(TREE_COLOR_BLACK, TREE_COLOR_WHITE);
+	data->unselected.colorPair = TREE_DEFAULT_COLOR_PAIR_ACTIVE;
 
 	data->hoveredSelected.character = ' ';
 	data->hoveredSelected.colorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_WHITE, TREE_COLOR_BRIGHT_BLUE);
@@ -5278,20 +5170,6 @@ void TREE_Control_DropdownData_Free(TREE_Control_DropdownData* data)
 	}
 	// free the options
 	TREE_DELETE_ARRAY(data->options, data->optionsSize);
-	data->optionsSize = 0;
-	data->selectedIndex = 0;
-	data->hoverIndex = 0;
-	data->normal.character = ' ';
-	data->normal.colorPair = TREE_ColorPair_CreateDefault();
-	data->focused.character = ' ';
-	data->focused.colorPair = TREE_ColorPair_CreateDefault();
-	data->active.character = ' ';
-	data->active.colorPair = TREE_ColorPair_CreateDefault();
-	data->selected.character = ' ';
-	data->selected.colorPair = TREE_ColorPair_CreateDefault();
-	data->unselected.character = '/';
-	data->unselected.colorPair = TREE_ColorPair_CreateDefault();
-	data->onSubmit = NULL;
 }
 
 TREE_Result TREE_Control_DropdownData_SetOptions(TREE_Control_DropdownData* data, TREE_String* options, TREE_Size optionsSize)
@@ -5768,8 +5646,10 @@ TREE_Result TREE_Control_CheckboxData_Init(TREE_Control_CheckboxData* data, TREE
 	data->checked = checked;
 	data->reverse = TREE_FALSE;
 
-	data->normal = TREE_ColorPair_Create(TREE_COLOR_BLACK, TREE_COLOR_BRIGHT_BLACK);
-	data->focused = TREE_ColorPair_Create(TREE_COLOR_BLACK, TREE_COLOR_BRIGHT_WHITE);
+	data->normal = TREE_DEFAULT_COLOR_PAIR_NORMAL;
+	data->focused = TREE_DEFAULT_COLOR_PAIR_FOCUSED;
+	data->normalText = TREE_DEFAULT_COLOR_PAIR_NORMAL_TEXT;
+	data->focusedText = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_WHITE, TREE_COLOR_BLACK);
 
 	data->uncheckedChar = ' ';
 	data->checkedChar = 'X';
@@ -5960,6 +5840,14 @@ TREE_Result TREE_Control_Checkbox_EventHandler(TREE_Event const* event)
 		// draw the string
 		offset.x = textOffset;
 		offset.y = 0;
+		if (control->stateFlags & TREE_CONTROL_STATE_FLAGS_FOCUSED)
+		{
+			color = data->focusedText;
+		}
+		else
+		{
+			color = data->normalText;
+		}
 		
 		// if the string is too long, cap it
 		TREE_Char* text;
@@ -5976,7 +5864,7 @@ TREE_Result TREE_Control_Checkbox_EventHandler(TREE_Event const* event)
 			control->image,
 			offset,
 			text,
-			data->normal
+			color
 		);
 		free(text);
 		if (result)
@@ -5997,7 +5885,7 @@ TREE_Result TREE_Control_Checkbox_EventHandler(TREE_Event const* event)
 			fillerExtent.height = 1;
 			
 			pixel.character = ' ';
-			pixel.colorPair = data->normal;
+			pixel.colorPair = color;
 			result = TREE_Image_FillRect(
 				control->image,
 				fillerOffset,
@@ -6083,19 +5971,8 @@ void TREE_Application_Free(TREE_Application* application)
 		return;
 	}
 
-	if (application->controls)
-	{
-		free(application->controls);
-		application->controls = NULL;
-	}
-
-	application->controlsCapacity = 0;
-	application->controlsSize = 0;
-	application->focusedControl = NULL;
-	application->running = TREE_FALSE;
+	TREE_DELETE(application->controls);
 	TREE_Input_Free(&application->input);
-	application->eventHandler = NULL;
-	application->surface = NULL;
 }
 
 TREE_Result TREE_Application_AddControl(TREE_Application* application, TREE_Control* control)

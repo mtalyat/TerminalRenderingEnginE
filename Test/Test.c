@@ -210,6 +210,26 @@ int main()
 		checkboxes[i].transform->localOffset.y = 3 + (TREE_Int)i;
 	}
 
+	// create label data
+	TREE_Control_LabelData labelData;
+	result = TREE_Control_LabelData_Init(&labelData, "Checkboxes:");
+	if (result)
+	{
+		printf("Failed to initialize label data: %s\n", TREE_Result_ToString(result));
+		return 1;
+	}
+
+	// create label
+	TREE_Control label;
+	result = TREE_Control_Label_Init(&label, NULL, &labelData);
+	if (result)
+	{
+		printf("Failed to initialize label: %s\n", TREE_Result_ToString(result));
+		return 1;
+	}
+	label.transform->localOffset.x = 82;
+	label.transform->localOffset.y = 2;
+
 	// link controls
 	result = TREE_Control_Link(&listControl, TREE_DIRECTION_NORTH, TREE_CONTROL_LINK_DOUBLE, &quitButton);
 	if (result)
@@ -304,6 +324,12 @@ int main()
 			printf("Failed to add checkbox to application: %s\n", TREE_Result_ToString(result));
 			return 1;
 		}
+	}
+	result = TREE_Application_AddControl(&app, &label);
+	if (result)
+	{
+		printf("Failed to add label to application: %s\n", TREE_Result_ToString(result));
+		return 1;
 	}
 
 	// run the application
