@@ -17,9 +17,9 @@
 
 ## Building and Linking
 
-To use TREE in your project, you have two options. 1) add the header and source file directly to your project, or 2) build TREE, and link it to your program.
-
-TODO: Tutorial
+To use TREE in your project, you have two options:
+1) Add the header and source file directly to your project.
+2) Build TREE, and link it to your program.
 
 ## Examples/Guides
 
