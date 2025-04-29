@@ -780,7 +780,7 @@ typedef struct _TREE_Control_ScrollbarData
 
 TREE_Result TREE_Control_ScrollbarData_Init(TREE_Control_ScrollbarData* data, TREE_Control_ScrollbarType type, TREE_Bool vertical);
 
-TREE_Result TREE_Control_Scrollbar_Draw(TREE_Image* target, TREE_Offset offset, TREE_Extent extent, TREE_Control_ScrollbarData* data, TREE_Size scroll, TREE_Size maxScroll, TREE_ColorPair colorPair);
+TREE_Result TREE_Control_Scrollbar_Draw(TREE_Image* target, TREE_Offset offset, TREE_Extent extent, TREE_Control_ScrollbarData* data, TREE_Size scroll, TREE_Size maxScroll, TREE_ColorPair colorPair, TREE_ColorPair barColorPair);
 
 ///////////////////////////////////////
 // Control: List                     //
@@ -805,12 +805,15 @@ typedef struct _TREE_Control_ListData
 	TREE_Pixel normalSelected;
 	TREE_Pixel normalUnselected;
 	TREE_ColorPair normalScrollbarColorPair;
+	TREE_ColorPair normalScrollbarBarColorPair;
 	TREE_Pixel focusedSelected;
 	TREE_Pixel focusedUnselected;
 	TREE_ColorPair focusedScrollbarColorPair;
+	TREE_ColorPair focusedScrollbarBarColorPair;
 	TREE_Pixel activeSelected;
 	TREE_Pixel activeUnselected;
 	TREE_ColorPair activeScrollbarColorPair;
+	TREE_ColorPair activeScrollbarBarColorPair;
 	TREE_Pixel hoveredSelected;
 	TREE_Pixel hoveredUnselected;
 
@@ -854,6 +857,7 @@ typedef struct _TREE_Control_DropdownData
 	TREE_Offset origin;
 	TREE_Control_DropdownType dropType; // if static, use set drop value, otherwise calculate it automatically
 	TREE_Int drop; // extent of the dropdown, when active: positive for down, negative for up
+	TREE_Control* listControl; // the list control that is used to display the options
 
 	TREE_Pixel normal;
 	TREE_Pixel focused;

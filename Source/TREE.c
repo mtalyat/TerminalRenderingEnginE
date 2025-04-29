@@ -2267,6 +2267,11 @@ TREE_Size _TREE_ClampScroll(TREE_Size scroll, TREE_Size offset, TREE_Size extent
 
 TREE_Size _TREE_WordWrapPass(TREE_String text, TREE_Size width, TREE_Char*** result, TREE_Size lineCount)
 {
+	if (!text || !*text || width == 0)
+	{
+		return 0;
+	}
+
 	// allocate lines, if count given
 	TREE_Char** lines = NULL;
 	if (result && lineCount > 0)
@@ -2445,9 +2450,20 @@ TREE_Result _TREE_WordWrapAndOffsets(TREE_String text, TREE_Size width, TREE_Cha
 {
 	// word wrap the text
 	*lineCount = _TREE_WordWrapPass(text, width, NULL, 0);
+
+	// if no count
+	if (!*lineCount)
+	{
+		*lines = NULL;
+		*lineOffsets = NULL;
+		return TREE_OK;
+	}
+
 	_TREE_WordWrapPass(text, width, lines, *lineCount);
 	if (!*lines)
 	{
+		*lineOffsets = NULL;
+		*lineCount = 0;
 		return TREE_ERROR;
 	}
 
@@ -2456,6 +2472,7 @@ TREE_Result _TREE_WordWrapAndOffsets(TREE_String text, TREE_Size width, TREE_Cha
 	if (!*lineOffsets)
 	{
 		TREE_DELETE_ARRAY(*lines, *lineCount);
+		*lineCount = 0;
 		return TREE_ERROR;
 	}
 
@@ -2464,6 +2481,12 @@ TREE_Result _TREE_WordWrapAndOffsets(TREE_String text, TREE_Size width, TREE_Cha
 
 TREE_Offset _TREE_CalculateCursorOffset(TREE_Size cursorPosition, TREE_Size* lineOffsets, TREE_Size lineCount)
 {
+	// if no lines, return 0
+	if (!lineCount)
+	{
+		return (TREE_Offset) { 0, 0 };
+	}
+
 	TREE_Offset result;
 	result.y = (TREE_Int)lineCount - 1;
 	TREE_Size offset;
@@ -3172,7 +3195,11 @@ TREE_Result TREE_Control_TextInputData_RemoveSelectedText(TREE_Control_TextInput
 	// remove selection
 	TREE_Size textLength = strlen(data->text);
 	TREE_Size selectionLength = data->selectionEnd - data->selectionStart;
-	memmove(&data->text[data->selectionStart], &data->text[data->selectionEnd], (textLength - data->selectionEnd) * sizeof(TREE_Char));
+	TREE_Size moveSize = textLength - data->selectionEnd;
+	if (moveSize)
+	{
+		memmove(&data->text[data->selectionStart], &data->text[data->selectionEnd], (textLength - data->selectionEnd) * sizeof(TREE_Char));
+	}
 	data->text[textLength - selectionLength] = '\0'; // null terminator
 
 	// update cursor position and clear selection
@@ -3575,7 +3602,7 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 						TREE_Size lastLineLength = strlen(lines[lineCount - 1]);
 						if (lastLineLength)
 						{
-							data->cursorOffset.x = (TREE_Int)lastLineLength - 1;
+							data->cursorOffset.x = (TREE_Int)lastLineLength;
 						}
 						else
 						{
@@ -3591,7 +3618,8 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 						TREE_Size lineSize = strlen(lines[data->cursorOffset.y]);
 						if (lineSize)
 						{
-							data->cursorPosition = lineOffsets[data->cursorOffset.y] + MIN(lineSize - 1, (TREE_Size)data->cursorOffset.x);
+							TREE_Size adjustment = data->cursorOffset.y == lineCount - 1 ? 0 : 1;
+							data->cursorPosition = lineOffsets[data->cursorOffset.y] + MIN(lineSize - adjustment, (TREE_Size)data->cursorOffset.x);
 						}
 						else
 						{
@@ -3661,11 +3689,11 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 					return result;
 				}
 
-				if (keyData->modifiers & TREE_KEY_MODIFIER_FLAGS_CONTROL)
+				if (keyData->modifiers & TREE_KEY_MODIFIER_FLAGS_CONTROL || data->cursorOffset.y == lineCount - 1)
 				{
 					// set position based on total text
-					data->cursorPosition = textLength - 1;
-					data->cursorOffset.x = (TREE_Int)strlen(lines[lineCount - 1]) - 1;
+					data->cursorPosition = textLength;
+					data->cursorOffset.x = (TREE_Int)strlen(lines[lineCount - 1]);
 					data->cursorOffset.y = (TREE_Int)lineCount - 1;
 				}
 				else
@@ -3687,6 +3715,16 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 			break;
 		default:
 		{
+			// if single line, and enter key pressed, submit
+			if (key == TREE_KEY_ENTER && !multiline)
+			{
+				// if singleline, treat enter as a submit
+				control->stateFlags &= ~TREE_CONTROL_STATE_FLAGS_ACTIVE;
+				control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+				CALL_ACTION(data->onSubmit, control);
+				break;
+			}
+
 			// if at capacity, ignore new characters
 			if (textLength >= data->capacity)
 			{
@@ -3709,14 +3747,6 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 
 			// check for special inputs
 			TREE_Bool ctrl = (keyData->modifiers & TREE_KEY_MODIFIER_FLAGS_CONTROL) != 0;
-			if (key == TREE_KEY_ENTER && !multiline)
-			{
-				// if singleline, treat enter as a submit
-				control->stateFlags &= ~TREE_CONTROL_STATE_FLAGS_ACTIVE;
-				control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
-				CALL_ACTION(data->onSubmit, control);
-				break;
-			}
 			if (ctrl && key == TREE_KEY_C)
 			{
 				// get selection text
@@ -4026,6 +4056,7 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 			}
 
 			// draw each line
+			TREE_ColorPair lineColor;
 			for (TREE_Size i = 0; i < count && data->scroll + i < lineCount; i++)
 			{
 				// replace unsafe characters
@@ -4033,6 +4064,22 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 				TREE_Size lineLength = strlen(line);
 				_TREE_MakeSafe(line, lineLength);
 
+				// determine if whole line is selected or not
+				TREE_Size lineBeginIndex = lineOffsets[data->scroll + i];
+				TREE_Size lineEndIndex = lineBeginIndex + lineLength;
+				if (lineBeginIndex >= data->selectionStart &&
+					lineEndIndex <= data->selectionEnd)
+				{
+					// all selected
+					lineColor = data->selection;
+				}
+				else
+				{
+					// none/partial selected
+					lineColor = pixel->colorPair;
+				}
+
+				// draw the string
 				TREE_Offset offset;
 				offset.x = 0;
 				offset.y = (TREE_Int)i;
@@ -4040,11 +4087,50 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 					control->image,
 					offset,
 					line,
-					pixel->colorPair
+					lineColor
 				);
 				if (result)
 				{
 					break;
+				}
+
+				if (data->selectionStart != data->selectionEnd &&
+					((data->selectionStart >= lineBeginIndex &&
+						data->selectionStart <= lineEndIndex) ||
+					(data->selectionEnd >= lineBeginIndex &&
+						data->selectionEnd <= lineEndIndex)))
+				{ 
+					// draw just the selected part, over the existing text
+					TREE_Size selectionStart = MAX(data->selectionStart, lineBeginIndex);
+					TREE_Size selectionEnd = MIN(data->selectionEnd, lineEndIndex);
+					TREE_Size selectionLength = selectionEnd - selectionStart;
+					TREE_Size selectionOffset = selectionStart - lineBeginIndex;
+					TREE_Char* selectionText = TREE_NEW_ARRAY(TREE_Char, selectionLength + 1);
+					if (!selectionText)
+					{
+						return TREE_ERROR_ALLOC;
+					}
+					memcpy(selectionText, &text[selectionStart], selectionLength * sizeof(TREE_Char));
+					selectionText[selectionLength] = '\0'; // null terminator
+
+					// only render safe chars
+					_TREE_MakeSafe(selectionText, selectionLength);
+
+					// draw the selection
+					TREE_Offset selectionPos;
+					selectionPos.x = (TREE_Int)selectionOffset;
+					selectionPos.y = (TREE_Int)i;
+					result = TREE_Image_DrawString(
+						control->image,
+						selectionPos,
+						selectionText,
+						data->selection
+					);
+					TREE_DELETE(selectionText);
+					if (result)
+					{
+						return result;
+					}
 				}
 			}
 
@@ -4255,7 +4341,7 @@ TREE_Result TREE_Control_ScrollbarData_Init(TREE_Control_ScrollbarData* data, TR
 	return TREE_OK;
 }
 
-TREE_Result TREE_Control_Scrollbar_Draw(TREE_Image* target, TREE_Offset scrollbarOffset, TREE_Extent scrollbarExtent, TREE_Control_ScrollbarData* data, TREE_Size scroll, TREE_Size maxScroll, TREE_ColorPair colorPair)
+TREE_Result TREE_Control_Scrollbar_Draw(TREE_Image* target, TREE_Offset scrollbarOffset, TREE_Extent scrollbarExtent, TREE_Control_ScrollbarData* data, TREE_Size scroll, TREE_Size maxScroll, TREE_ColorPair colorPair, TREE_ColorPair barColorPair)
 {
 	// validate
 	if (!target || !data)
@@ -4353,9 +4439,10 @@ TREE_Result TREE_Control_Scrollbar_Draw(TREE_Image* target, TREE_Offset scrollba
 	{
 		// complex/tiny scrollbar
 		barSize = 1;
-		barOffset = scroll * extent.height / maxScroll;
+		barOffset = scroll * (extent.height - 1) / maxScroll;
 	}
 	scrollbarPixel.character = data->bar;
+	scrollbarPixel.colorPair = barColorPair;
 	if (vertical)
 	{
 		offset.y = scrollbarOffset.y + (TREE_Int)barOffset;
@@ -4405,18 +4492,21 @@ TREE_Result TREE_Control_ListData_Init(TREE_Control_ListData* data, TREE_Control
 	data->normalUnselected.character = ' ';
 	data->normalUnselected.colorPair = TREE_ColorPair_Create(TREE_COLOR_WHITE, TREE_COLOR_BRIGHT_BLACK);
 	data->normalScrollbarColorPair = TREE_ColorPair_Create(TREE_COLOR_WHITE, TREE_COLOR_BRIGHT_BLACK);
+	data->normalScrollbarBarColorPair = TREE_ColorPair_Create(TREE_COLOR_WHITE, TREE_COLOR_BRIGHT_BLACK);
 
 	data->focusedSelected.character = ' ';
 	data->focusedSelected.colorPair = TREE_ColorPair_Create(TREE_COLOR_WHITE, TREE_COLOR_BRIGHT_BLUE);
 	data->focusedUnselected.character = ' ';
 	data->focusedUnselected.colorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_WHITE);
 	data->focusedScrollbarColorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_WHITE);
+	data->focusedScrollbarBarColorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_WHITE);
 
 	data->activeSelected.character = ' ';
 	data->activeSelected.colorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_WHITE, TREE_COLOR_BLUE);
 	data->activeUnselected.character = ' ';
 	data->activeUnselected.colorPair = TREE_ColorPair_Create(TREE_COLOR_BLACK, TREE_COLOR_WHITE);
 	data->activeScrollbarColorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_BRIGHT_WHITE);
+	data->activeScrollbarBarColorPair = TREE_ColorPair_Create(TREE_COLOR_WHITE, TREE_COLOR_BRIGHT_BLACK);
 
 	data->hoveredSelected.character = ' ';
 	data->hoveredSelected.colorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_WHITE, TREE_COLOR_BRIGHT_BLUE);
@@ -4682,17 +4772,20 @@ TREE_Result _TREE_Control_List_Draw(TREE_Image* target, TREE_Offset controlOffse
 	TREE_Pixel const* unselectedPixel = &data->normalUnselected;
 	TREE_Pixel const* selectedPixel = &data->normalSelected;
 	TREE_ColorPair scrollbarColorPair = data->normalScrollbarColorPair;
+	TREE_ColorPair scrollbarBarColorPair = data->normalScrollbarBarColorPair;
 	if (active)
 	{
 		unselectedPixel = &data->activeUnselected;
 		selectedPixel = &data->activeSelected;
 		scrollbarColorPair = data->activeScrollbarColorPair;
+		scrollbarBarColorPair = data->activeScrollbarBarColorPair;
 	}
 	else if (stateFlags & TREE_CONTROL_STATE_FLAGS_FOCUSED)
 	{
 		unselectedPixel = &data->focusedUnselected;
 		selectedPixel = &data->focusedSelected;
 		scrollbarColorPair = data->focusedScrollbarColorPair;
+		scrollbarBarColorPair = data->focusedScrollbarBarColorPair;
 	}
 
 	// determine if there is a scrollbar
@@ -4765,8 +4858,8 @@ TREE_Result _TREE_Control_List_Draw(TREE_Image* target, TREE_Offset controlOffse
 
 			// draw option text
 			TREE_Offset offset;
-			offset.x = 0;
-			offset.y = (TREE_Int)i;
+			offset.x = controlOffset.x;
+			offset.y = controlOffset.y + (TREE_Int)i;
 			result = TREE_Image_DrawString(
 				target,
 				offset,
@@ -4792,8 +4885,8 @@ TREE_Result _TREE_Control_List_Draw(TREE_Image* target, TREE_Offset controlOffse
 		if (fillerLength)
 		{
 			TREE_Offset offset;
-			offset.x = (TREE_Int)fillerOffset;
-			offset.y = (TREE_Int)i;
+			offset.x = controlOffset.x + (TREE_Int)fillerOffset;
+			offset.y = controlOffset.y + (TREE_Int)i;
 			TREE_Extent extent;
 			extent.width = (TREE_UInt)fillerLength;
 			extent.height = 1;
@@ -4813,6 +4906,7 @@ TREE_Result _TREE_Control_List_Draw(TREE_Image* target, TREE_Offset controlOffse
 	// draw the scrollbar
 	if (scrollbar)
 	{
+
 		// get the scrollbar extent
 		TREE_Extent scrollbarExtent;
 		scrollbarExtent.width = 1;
@@ -4820,8 +4914,8 @@ TREE_Result _TREE_Control_List_Draw(TREE_Image* target, TREE_Offset controlOffse
 
 		// get the scrollbar offset
 		TREE_Offset scrollbarOffset;
-		scrollbarOffset.x = (TREE_Int)optionsWidth;
-		scrollbarOffset.y = 0;
+		scrollbarOffset.x = controlOffset.x + (TREE_Int)optionsWidth;
+		scrollbarOffset.y = controlOffset.y;
 
 		// draw the scrollbar
 		result = TREE_Control_Scrollbar_Draw(
@@ -4831,7 +4925,8 @@ TREE_Result _TREE_Control_List_Draw(TREE_Image* target, TREE_Offset controlOffse
 			&data->scrollbar,
 			data->scroll,
 			data->optionsSize - controlExtent.height,
-			scrollbarColorPair
+			scrollbarColorPair,
+			scrollbarBarColorPair
 		);
 		if (result)
 		{
@@ -4977,9 +5072,10 @@ TREE_Result TREE_Control_List_EventHandler(TREE_Event const* event)
 		}
 
 		// draw the list
+		TREE_Offset offset = { 0, 0 };
 		result = _TREE_Control_List_Draw(
 			control->image,
-			control->transform->globalRect.offset,
+			offset,
 			control->transform->globalRect.extent,
 			control->stateFlags,
 			data);
@@ -5493,6 +5589,7 @@ TREE_Result TREE_Control_Dropdown_EventHandler(TREE_Event const* event)
 			listData.activeSelected = data->selected;
 			listData.activeUnselected = data->unselected;
 			listData.activeScrollbarColorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_BRIGHT_WHITE);
+			listData.activeScrollbarBarColorPair = TREE_ColorPair_Create(TREE_COLOR_WHITE, TREE_COLOR_BRIGHT_BLACK);
 			listData.hoveredSelected = data->hoveredSelected;
 			listData.hoveredUnselected = data->hoveredUnselected;
 			listData.onChange = NULL;
@@ -5802,6 +5899,191 @@ TREE_Result TREE_Application_Run(TREE_Application* application)
 		// get current time
 		currentTime = clock();
 
+		// update the dirty controls/transforms
+		{
+			// for refreshes
+			TREE_Event event;
+			event.type = TREE_EVENT_TYPE_REFRESH;
+			event.data = NULL;
+			event.control = NULL;
+			event.application = application;
+
+			dirtyRect.offset.x = (TREE_Int)application->surface->image.extent.width;
+			dirtyRect.offset.y = (TREE_Int)application->surface->image.extent.height;
+			dirtyRect.extent.width = 0;
+			dirtyRect.extent.height = 0;
+
+			TREE_Control* control;
+			TREE_Bool dirty;
+			TREE_Rect rect;
+			for (TREE_Size i = 0; i < application->controlsSize; ++i)
+			{
+				control = application->controls[i];
+				dirty = TREE_FALSE;
+
+				// refresh the transform
+				if (control->transform->dirty)
+				{
+					// keep a copy of the old global rect
+					TREE_Rect oldGlobalRect = control->transform->globalRect;
+
+					// refresh the transform
+					result = TREE_Transform_Refresh(control->transform);
+					if (result)
+					{
+						application->running = TREE_FALSE;
+						return result;
+					}
+
+					// get the dirty rect (combination of old and new rects)
+					rect = TREE_Rect_Combine(
+						&oldGlobalRect,
+						&control->transform->globalRect
+					);
+
+					// clear flag
+					control->transform->dirty = TREE_FALSE;
+
+					// update the dirty rect
+					dirty = TREE_TRUE;
+				}
+				else
+				{
+					// transform did not change, so just use the global rect
+					rect = control->transform->globalRect;
+				}
+
+				// refresh the control
+				if (dirty || (control->stateFlags & TREE_CONTROL_STATE_FLAGS_DIRTY))
+				{
+					// refresh the control
+					event.control = control;
+					result = TREE_Control_HandleEvent(control, &event);
+					if (result)
+					{
+						application->running = TREE_FALSE;
+						return result;
+					}
+
+					// clear flag
+					control->stateFlags &= ~TREE_CONTROL_STATE_FLAGS_DIRTY;
+
+					// update the dirty rect
+					dirty = TREE_TRUE;
+				}
+
+				// update the dirty rect
+				if (dirty)
+				{
+					dirtyRect = TREE_Rect_Combine(
+						&dirtyRect,
+						&rect
+					);
+				}
+			}
+		}
+
+		shouldPresent = TREE_FALSE;
+		// draw the controls using the dirty rect, if there is a dirty rect
+		if (dirtyRect.extent.width != 0 && dirtyRect.extent.height != 0)
+		{
+			// clear the surface where the dirty rect is
+			TREE_Pixel pixel;
+			pixel.character = ' ';
+			pixel.colorPair = TREE_ColorPair_CreateDefault();
+			result = TREE_Image_FillRect(
+				&application->surface->image,
+				dirtyRect.offset,
+				dirtyRect.extent,
+				pixel
+			);
+			if (result)
+			{
+				application->running = TREE_FALSE;
+				return result;
+			}
+
+			// create event data
+			TREE_EventData_Draw eventData;
+			eventData.target = &application->surface->image;
+			eventData.dirtyRect = dirtyRect;
+
+			// create event
+			TREE_Event event;
+			event.type = TREE_EVENT_TYPE_DRAW;
+			event.data = &eventData;
+			event.control = NULL;
+			event.application = application;
+
+			// delay the drawing of the active control until the end
+			TREE_Control* active = NULL;
+			TREE_Control* control;
+
+			// check each control: if it is within the dirty rect, redraw it if so
+			for (TREE_Size i = 0; i < application->controlsSize; ++i)
+			{
+				control = application->controls[i];
+				if (TREE_Rect_IsOverlapping(&dirtyRect, &control->transform->globalRect))
+				{
+					// if this is the active control, skip
+					if (control->stateFlags & TREE_CONTROL_STATE_FLAGS_ACTIVE)
+					{
+						// if already one active, whoops
+						if (active)
+						{
+							return TREE_ERROR;
+						}
+						active = control;
+						continue;
+					}
+
+					// set the control for the event
+					event.control = control;
+
+					// call the event handler
+					result = TREE_Control_HandleEvent(control, &event);
+					if (result)
+					{
+						application->running = TREE_FALSE;
+						return result;
+					}
+
+					// there was a drawing update
+					shouldPresent = TREE_TRUE;
+				}
+			}
+			
+			// draw active
+			if (active)
+			{
+				event.control = active;
+				result = TREE_Control_HandleEvent(active, &event);
+				if (result)
+				{
+					application->running = TREE_FALSE;
+					return result;
+				}
+				shouldPresent = TREE_TRUE;
+			}
+		}
+
+		// present the surface, if there is an update to show
+		if (shouldPresent)
+		{
+			result = TREE_Surface_Refresh(application->surface);
+			if (result)
+			{
+				application->running = TREE_FALSE;
+				return result;
+			}
+			result = TREE_Window_Present(application->surface);
+			if (result)
+			{
+				application->running = TREE_FALSE;
+				return result;
+			}
+		}
+
 		// update key states
 		{
 			// update modifiers
@@ -5931,168 +6213,6 @@ TREE_Result TREE_Application_Run(TREE_Application* application)
 				}
 			}
 #endif // TREE_WINDOWS
-		}
-
-		// check for quit event
-		if (!application->running)
-		{
-			break;
-		}
-
-		// update the dirty controls/transforms
-		{
-			// for refreshes
-			TREE_Event event;
-			event.type = TREE_EVENT_TYPE_REFRESH;
-			event.data = NULL;
-			event.control = NULL;
-			event.application = application;
-
-			dirtyRect.offset.x = (TREE_Int)application->surface->image.extent.width;
-			dirtyRect.offset.y = (TREE_Int)application->surface->image.extent.height;
-			dirtyRect.extent.width = 0;
-			dirtyRect.extent.height = 0;
-
-			TREE_Control* control;
-			TREE_Bool dirty;
-			TREE_Rect rect;
-			for (TREE_Size i = 0; i < application->controlsSize; ++i)
-			{
-				control = application->controls[i];
-				dirty = TREE_FALSE;
-
-				// refresh the transform
-				if (control->transform->dirty)
-				{
-					// keep a copy of the old global rect
-					TREE_Rect oldGlobalRect = control->transform->globalRect;
-
-					// refresh the transform
-					result = TREE_Transform_Refresh(control->transform);
-					if (result)
-					{
-						application->running = TREE_FALSE;
-						return result;
-					}
-
-					// get the dirty rect (combination of old and new rects)
-					rect = TREE_Rect_Combine(
-						&oldGlobalRect,
-						&control->transform->globalRect
-					);
-
-					// clear flag
-					control->transform->dirty = TREE_FALSE;
-
-					// update the dirty rect
-					dirty = TREE_TRUE;
-				}
-				else
-				{
-					// transform did not change, so just use the global rect
-					rect = control->transform->globalRect;
-				}
-
-				// refresh the control
-				if (dirty || (control->stateFlags & TREE_CONTROL_STATE_FLAGS_DIRTY))
-				{
-					// refresh the control
-					event.control = control;
-					result = TREE_Control_HandleEvent(control, &event);
-					if (result)
-					{
-						application->running = TREE_FALSE;
-						return result;
-					}
-
-					// clear flag
-					control->stateFlags &= ~TREE_CONTROL_STATE_FLAGS_DIRTY;
-
-					// update the dirty rect
-					dirty = TREE_TRUE;
-				}
-
-				// update the dirty rect
-				if (dirty)
-				{
-					dirtyRect = TREE_Rect_Combine(
-						&dirtyRect,
-						&rect
-					);
-				}
-			}
-		}
-
-		shouldPresent = TREE_FALSE;
-		// draw the controls using the dirty rect, if there is a dirty rect
-		if (dirtyRect.extent.width != 0 && dirtyRect.extent.height != 0)
-		{
-			// clear the surface where the dirty rect is
-			TREE_Pixel pixel;
-			pixel.character = ' ';
-			pixel.colorPair = TREE_ColorPair_CreateDefault();
-			result = TREE_Image_FillRect(
-				&application->surface->image,
-				dirtyRect.offset,
-				dirtyRect.extent,
-				pixel
-			);
-			if (result)
-			{
-				application->running = TREE_FALSE;
-				return result;
-			}
-
-			// create event data
-			TREE_EventData_Draw eventData;
-			eventData.target = &application->surface->image;
-			eventData.dirtyRect = dirtyRect;
-
-			// create event
-			TREE_Event event;
-			event.type = TREE_EVENT_TYPE_DRAW;
-			event.data = &eventData;
-			event.control = NULL;
-			event.application = application;
-
-			// check each control: if it is within the dirty rect, redraw it if so
-			for (TREE_Size i = 0; i < application->controlsSize; ++i)
-			{
-				TREE_Control* control = application->controls[i];
-				if (TREE_Rect_IsOverlapping(&dirtyRect, &control->transform->globalRect))
-				{
-					// set the control for the event
-					event.control = control;
-
-					// call the event handler
-					result = TREE_Control_HandleEvent(control, &event);
-					if (result)
-					{
-						application->running = TREE_FALSE;
-						return result;
-					}
-
-					// there was a drawing update
-					shouldPresent = TREE_TRUE;
-				}
-			}
-		}
-
-		// present the surface, if there is an update to show
-		if (shouldPresent)
-		{
-			result = TREE_Surface_Refresh(application->surface);
-			if (result)
-			{
-				application->running = TREE_FALSE;
-				return result;
-			}
-			result = TREE_Window_Present(application->surface);
-			if (result)
-			{
-				application->running = TREE_FALSE;
-				return result;
-			}
 		}
 	}
 
