@@ -48,7 +48,7 @@ int main()
 	// create the application
 	TREE_Application app;
 	g_application = &app; // Store the application globally for the event handler
-	result = TREE_Application_Init(&app, &surface, 10, ApplicationEventHandler);
+	result = TREE_Application_Init(&app, &surface, 32, ApplicationEventHandler);
 	if (result)
 	{
 		printf("Failed to initialize application: %s\n", TREE_Result_ToString(result));
@@ -175,6 +175,34 @@ int main()
 		dropControls[i].transform->localOffset.y = 3 + (TREE_Int)i * 11;
 	}
 
+	// create checkbox datas
+#define CHECKBOX_COUNT 4
+	TREE_Control_CheckboxData checkboxDatas[CHECKBOX_COUNT];
+	for (TREE_Size i = 0; i < CHECKBOX_COUNT; i++)
+	{
+		result = TREE_Control_CheckboxData_Init(&checkboxDatas[i], (i & 2) == 0 ? " Normal" : "Reversed ", i & 1, NULL);
+		if (result)
+		{
+			printf("Failed to initialize checkbox data: %s\n", TREE_Result_ToString(result));
+			return 1;
+		}
+		checkboxDatas[i].reverse = i & 2;
+	}
+
+	// create checkboxes
+	TREE_Control checkboxes[CHECKBOX_COUNT];
+	for (TREE_Size i = 0; i < CHECKBOX_COUNT; i++)
+	{
+		result = TREE_Control_Checkbox_Init(&checkboxes[i], NULL, &checkboxDatas[i]);
+		if (result)
+		{
+			printf("Failed to initialize checkbox: %s\n", TREE_Result_ToString(result));
+			return 1;
+		}
+		checkboxes[i].transform->localOffset.x = 82;
+		checkboxes[i].transform->localOffset.y = 3 + (TREE_Int)i;
+	}
+
 	// link controls
 	result = TREE_Control_Link(&listControl, TREE_DIRECTION_NORTH, TREE_CONTROL_LINK_DOUBLE, &quitButton);
 	if (result)
@@ -211,6 +239,21 @@ int main()
 		printf("Failed to link controls: %s\n", TREE_Result_ToString(result));
 		return 1;
 	}
+	result = TREE_Control_Link(&textInput, TREE_DIRECTION_EAST, TREE_CONTROL_LINK_DOUBLE, checkboxes);
+	if (result)
+	{
+		printf("Failed to link controls: %s\n", TREE_Result_ToString(result));
+		return 1;
+	}
+	for (TREE_Size i = 0; i < CHECKBOX_COUNT; i++)
+	{
+		result = TREE_Control_Link(&checkboxes[i], TREE_DIRECTION_SOUTH, TREE_CONTROL_LINK_DOUBLE, &checkboxes[(i + 1) % CHECKBOX_COUNT]);
+		if (result)
+		{
+			printf("Failed to link controls: %s\n", TREE_Result_ToString(result));
+			return 1;
+		}
+	}
 
 	// add controls to application
 	result = TREE_Application_AddControl(&app, &quitButton);
@@ -246,6 +289,15 @@ int main()
 		printf("Failed to add multi-line text input to application: %s\n", TREE_Result_ToString(result));
 		return 1;
 	}
+	for (TREE_Size i = 0; i < CHECKBOX_COUNT; i++)
+	{
+		result = TREE_Application_AddControl(&app, &checkboxes[i]);
+		if (result)
+		{
+			printf("Failed to add checkbox to application: %s\n", TREE_Result_ToString(result));
+			return 1;
+		}
+	}
 
 	// run the application
 	result = TREE_Application_Run(&app);
@@ -256,6 +308,17 @@ int main()
 	}
 
 	// cleanup
+	TREE_Control_Free(&listControl);
+	TREE_Control_ListData_Free(&listData);
+	TREE_Control_TextInputData_Free(&textInputData);
+	TREE_Control_Free(&textInput);
+	TREE_Control_TextInputData_Free(&multiLineTextInputData);
+	TREE_Control_Free(&multiLineTextInput);
+	for (TREE_Size i = 0; i < CHECKBOX_COUNT; i++)
+	{
+		TREE_Control_Free(&checkboxes[i]);
+		TREE_Control_CheckboxData_Free(&checkboxDatas[i]);
+	}
 	TREE_Control_Free(&quitButton);
 	TREE_Control_ButtonData_Free(&quitButtonData);
 	for (TREE_Size i = 0; i < 3; i++)

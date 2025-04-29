@@ -68,6 +68,14 @@ TREE_Result TREE_Init();
 void TREE_Free();
 
 ///////////////////////////////////////
+// String                            //
+///////////////////////////////////////
+
+TREE_Result TREE_String_CreateCopy(TREE_Char** dest, TREE_String src);
+
+TREE_Result TREE_String_CreateClampedCopy(TREE_Char** dest, TREE_String src, TREE_Size maxSize);
+
+///////////////////////////////////////
 // Clipboard                         //
 ///////////////////////////////////////
 
@@ -612,6 +620,7 @@ typedef enum _TREE_ControlType
 	TREE_CONTROL_TYPE_TEXT_INPUT,
 	TREE_CONTROL_TYPE_DROPDOWN,
 	TREE_CONTROL_TYPE_LIST,
+	TREE_CONTROL_TYPE_CHECKBOX,
 } TREE_ControlType;
 
 typedef enum _TREE_ControlFlags
@@ -879,6 +888,36 @@ TREE_Result TREE_Control_DropdownData_SetOptions(TREE_Control_DropdownData* data
 TREE_Result TREE_Control_Dropdown_Init(TREE_Control* control, TREE_Transform* parent, TREE_Control_DropdownData* data);
 
 TREE_Result TREE_Control_Dropdown_EventHandler(TREE_Event const* event);
+
+///////////////////////////////////////
+// Control: Checkbox                 //
+///////////////////////////////////////
+
+typedef struct _TREE_Control_CheckboxData
+{
+	TREE_Char* text;
+	TREE_Byte checked;
+	TREE_Byte reverse; // if true, put checkbox on right side of text
+
+	TREE_ColorPair normal;
+	TREE_ColorPair focused;
+	TREE_Char uncheckedChar;
+	TREE_Char checkedChar;
+
+	TREE_Function onCheck;
+} TREE_Control_CheckboxData;
+
+TREE_Result TREE_Control_CheckboxData_Init(TREE_Control_CheckboxData* data, TREE_String text, TREE_Byte checked, TREE_EventHandler onCheck);
+
+void TREE_Control_CheckboxData_Free(TREE_Control_CheckboxData* data);
+
+TREE_Result TREE_Control_Checkbox_Init(TREE_Control* control, TREE_Transform* parent, TREE_Control_CheckboxData* data);
+
+TREE_Result TREE_Control_Checkbox_SetChecked(TREE_Control* control, TREE_Byte checked);
+
+TREE_Bool TREE_Control_Checkbox_GetChecked(TREE_Control* control);
+
+TREE_Result TREE_Control_Checkbox_EventHandler(TREE_Event const* event);
 
 ///////////////////////////////////////
 // Application                       //

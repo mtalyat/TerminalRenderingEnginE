@@ -94,6 +94,56 @@ void TREE_Free()
 	TREE_Cursor_SetVisible(TREE_TRUE);
 }
 
+TREE_Result TREE_String_CreateCopy(TREE_Char** dest, TREE_String src)
+{
+	// validate
+	if (!dest || !src)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	// allocate memory for the string
+	TREE_Size length = strlen(src);
+	*dest = TREE_NEW_ARRAY(TREE_Char, length + 1);
+	if (!*dest)
+	{
+		return TREE_ERROR_ALLOC;
+	}
+
+	// copy the string
+	memcpy(*dest, src, length);
+	(*dest)[length] = '\0';
+
+	return TREE_OK;
+}
+
+TREE_Result TREE_String_CreateClampedCopy(TREE_Char** dest, TREE_String src, TREE_Size maxSize)
+{
+	// validate
+	if (!dest || !src)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	// allocate memory for the string
+	TREE_Size length = strlen(src);
+	if (length > maxSize)
+	{
+		length = maxSize;
+	}
+	*dest = TREE_NEW_ARRAY(TREE_Char, length + 1);
+	if (!*dest)
+	{
+		return TREE_ERROR_ALLOC;
+	}
+
+	// copy the string
+	memcpy(*dest, src, length);
+	(*dest)[length] = '\0';
+
+	return TREE_OK;
+}
+
 TREE_Result TREE_Clipboard_SetText(TREE_String text)
 {
 	// validate
@@ -2503,16 +2553,16 @@ TREE_Offset _TREE_CalculateCursorOffset(TREE_Size cursorPosition, TREE_Size* lin
 	return result;
 }
 
-TREE_Result _TREE_Control_Refresh_Text(TREE_Image* target, TREE_Extent extent, TREE_String text, TREE_Alignment alignment, TREE_Pixel design)
+TREE_Result _TREE_Control_Refresh_Text(TREE_Image* target, TREE_Offset controlOffset, TREE_Extent controlExtent, TREE_String text, TREE_Alignment alignment, TREE_Pixel design)
 {
 	TREE_Result result;
 
 	// resize image if needed
-	if (extent.width != target->extent.width ||
-		extent.height != target->extent.height)
+	if (controlExtent.width != target->extent.width ||
+		controlExtent.height != target->extent.height)
 	{
 		TREE_Image_Free(target);
-		result = TREE_Image_Init(target, extent);
+		result = TREE_Image_Init(target, controlExtent);
 		if (result)
 		{
 			return result;
@@ -2528,8 +2578,8 @@ TREE_Result _TREE_Control_Refresh_Text(TREE_Image* target, TREE_Extent extent, T
 	}
 
 	TREE_Char** lines;
-	TREE_Size lineCount = _TREE_WordWrapPass(text, extent.width, NULL, 0);
-	_TREE_WordWrapPass(text, extent.width, &lines, lineCount);
+	TREE_Size lineCount = _TREE_WordWrapPass(text, controlExtent.width, NULL, 0);
+	_TREE_WordWrapPass(text, controlExtent.width, &lines, lineCount);
 	if (!lines)
 	{
 		return result;
@@ -2544,11 +2594,11 @@ TREE_Result _TREE_Control_Refresh_Text(TREE_Image* target, TREE_Extent extent, T
 	}
 	else if (alignment & TREE_ALIGNMENT_CENTER)
 	{
-		top = (TREE_Int)(extent.height - lineCount) / 2;
+		top = (TREE_Int)(controlExtent.height - lineCount) / 2;
 	}
 	else
 	{
-		top = (TREE_Int)(extent.height - lineCount);
+		top = (TREE_Int)(controlExtent.height - lineCount);
 	}
 
 	if (alignment & TREE_ALIGNMENT_LEFT)
@@ -2573,7 +2623,7 @@ TREE_Result _TREE_Control_Refresh_Text(TREE_Image* target, TREE_Extent extent, T
 	{
 		for (TREE_Int i = 0; i < lineCount; i++)
 		{
-			offset.x = (TREE_Int)(extent.width - strlen(lines[i])) / 2;
+			offset.x = (TREE_Int)(controlExtent.width - strlen(lines[i])) / 2;
 			offset.y = top + i;
 			result = TREE_Image_DrawString(
 				target,
@@ -2591,7 +2641,7 @@ TREE_Result _TREE_Control_Refresh_Text(TREE_Image* target, TREE_Extent extent, T
 	{
 		for (TREE_Int i = 0; i < lineCount; i++)
 		{
-			offset.x = (TREE_Int)(extent.width - strlen(lines[i]));
+			offset.x = (TREE_Int)(controlExtent.width - strlen(lines[i]));
 			offset.y = top + i;
 			result = TREE_Image_DrawString(
 				target,
@@ -2792,8 +2842,10 @@ TREE_Result TREE_Control_Label_EventHandler(TREE_Event const* event)
 	{
 	case TREE_EVENT_TYPE_REFRESH:
 	{
+		TREE_Offset offset = { 0, 0 };
 		result = _TREE_Control_Refresh_Text(
 			control->image,
+			offset,
 			control->transform->globalRect.extent,
 			labelData->text,
 			labelData->alignment,
@@ -3028,8 +3080,10 @@ TREE_Result TREE_Control_Button_EventHandler(TREE_Event const* event)
 			pixel = &buttonData->focused;
 		}
 
+		TREE_Offset offset = { 0, 0 };
 		result = _TREE_Control_Refresh_Text(
 			control->image,
+			offset,
 			control->transform->globalRect.extent,
 			buttonData->text,
 			buttonData->alignment,
@@ -5612,6 +5666,294 @@ TREE_Result TREE_Control_Dropdown_EventHandler(TREE_Event const* event)
 			if (result)
 			{
 				TREE_Control_ListData_Free(&listData);
+				return result;
+			}
+		}
+
+		break;
+	}
+	case TREE_EVENT_TYPE_DRAW:
+	{
+		// get the event data
+		TREE_EventData_Draw* drawData = (TREE_EventData_Draw*)event->data;
+		TREE_Image* target = drawData->target;
+		TREE_Rect const* dirtyRect = &drawData->dirtyRect;
+
+		// draw the control
+		TREE_Result result = _TREE_Control_Draw(
+			target,
+			dirtyRect,
+			&control->transform->globalRect,
+			control->image
+		);
+		if (result)
+		{
+			return result;
+		}
+
+		break;
+	}
+	}
+
+	return TREE_OK;
+}
+
+TREE_Result TREE_Control_CheckboxData_Init(TREE_Control_CheckboxData* data, TREE_String text, TREE_Byte checked, TREE_EventHandler onCheck)
+{
+	// validate
+	if (!data || !text)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	// set data
+	TREE_Result result = TREE_String_CreateCopy(&data->text, text);
+	if (result)
+	{
+		return result;
+	}
+
+	data->checked = checked;
+	data->reverse = TREE_FALSE;
+
+	data->normal = TREE_ColorPair_Create(TREE_COLOR_BLACK, TREE_COLOR_BRIGHT_BLACK);
+	data->focused = TREE_ColorPair_Create(TREE_COLOR_BLACK, TREE_COLOR_BRIGHT_WHITE);
+
+	data->uncheckedChar = ' ';
+	data->checkedChar = 'X';
+
+	data->onCheck = onCheck;
+
+	return TREE_OK;
+}
+
+void TREE_Control_CheckboxData_Free(TREE_Control_CheckboxData* data)
+{
+	// validate
+	if (!data)
+	{
+		return;
+	}
+	// free the text
+	TREE_DELETE(data->text);
+}
+
+TREE_Result TREE_Control_Checkbox_Init(TREE_Control* control, TREE_Transform* parent, TREE_Control_CheckboxData* data)
+{
+	// validate
+	if (!control || !data)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	// control init
+	TREE_Result result = TREE_Control_Init(control, parent, TREE_Control_Checkbox_EventHandler, data);
+	if (result)
+	{
+		return result;
+	}
+
+	// set data
+	control->type = TREE_CONTROL_TYPE_CHECKBOX;
+	control->flags = TREE_CONTROL_FLAGS_FOCUSABLE;
+	control->transform->localExtent.width = 16;
+	control->transform->localExtent.height = 1;
+
+	return TREE_OK;
+}
+
+TREE_Result TREE_Control_Checkbox_SetChecked(TREE_Control* control, TREE_Byte checked)
+{
+	// validate
+	if (!control || control->type != TREE_CONTROL_TYPE_CHECKBOX)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	// set the checked state
+	TREE_Control_CheckboxData* data = (TREE_Control_CheckboxData*)control->data;
+	data->checked = checked;
+
+	// dirty the component to be redrawn
+	control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+
+	return TREE_OK;
+}
+
+TREE_Bool TREE_Control_Checkbox_GetChecked(TREE_Control* control)
+{
+	// validate
+	if (!control || control->type != TREE_CONTROL_TYPE_CHECKBOX)
+	{
+		return TREE_FALSE;
+	}
+
+	// get the checked state
+	TREE_Control_CheckboxData* data = (TREE_Control_CheckboxData*)control->data;
+	return data->checked;
+}
+
+TREE_Result TREE_Control_Checkbox_EventHandler(TREE_Event const* event)
+{
+	// validate
+	if (!event || !event->control)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+	if (event->control->type != TREE_CONTROL_TYPE_CHECKBOX)
+	{
+		return TREE_ERROR_ARG_INVALID;
+	}
+
+	// get data
+	TREE_Result result;
+	TREE_Control* control = event->control;
+	TREE_Control_CheckboxData* data = (TREE_Control_CheckboxData*)control->data;
+
+	// handle events
+	switch (event->type)
+	{
+	case TREE_EVENT_TYPE_KEY_DOWN:
+	case TREE_EVENT_TYPE_KEY_HELD:
+	{
+		// ignore if not focused
+		if (!(control->stateFlags & TREE_CONTROL_STATE_FLAGS_FOCUSED))
+		{
+			break;
+		}
+
+		// get the event data
+		TREE_EventData_Key* keyData = (TREE_EventData_Key*)event->data;
+		TREE_Key key = keyData->key;
+
+		// check boxes are like buttons, they do not need to be active to be used
+		// when submit button is pressed, toggle the checkbox
+		if (key == TREE_KEY_ENTER || key == TREE_KEY_SPACE)
+		{
+			data->checked = !data->checked;
+			control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+			CALL_ACTION(data->onCheck, control);
+		}
+		break;
+	}
+	case TREE_EVENT_TYPE_REFRESH:
+	{
+		// resize if needed
+		result = TREE_Image_Resize(control->image, control->transform->globalRect.extent);
+		if (result)
+		{
+			return result;
+		}
+
+		// get color from state
+		TREE_ColorPair color;
+		if (control->stateFlags & TREE_CONTROL_STATE_FLAGS_FOCUSED)
+		{
+			color = data->focused;
+		}
+		else
+		{
+			color = data->normal;
+		}
+
+		// get checked character
+		TREE_Char checkedChar = data->checked ? data->checkedChar : data->uncheckedChar;
+
+		// draw the checkbox
+		TREE_Offset offset;
+		offset.y = 0;
+
+		// if reverse, place the checkbox on the right
+		TREE_Int checkboxLength = 3;
+		TREE_Int checkOffset = data->reverse ? control->transform->globalRect.extent.width - checkboxLength : 0;
+		TREE_Int textOffset = data->reverse ? 0 : checkboxLength;
+		offset.x = checkOffset;
+
+		// draw the checkbox
+		TREE_Pixel pixel;
+		pixel.character = '[';
+		pixel.colorPair = color;
+		result = TREE_Image_Set(
+			control->image,
+			offset,
+			pixel
+		);
+		if (result)
+		{
+			return result;
+		}
+		offset.x++;
+		pixel.character = checkedChar;
+		result = TREE_Image_Set(
+			control->image,
+			offset,
+			pixel
+		);
+		if (result)
+		{
+			return result;
+		}
+		offset.x++;
+		pixel.character = ']';
+		result = TREE_Image_Set(
+			control->image,
+			offset,
+			pixel
+		);
+		if (result)
+		{
+			return result;
+		}
+
+		// draw the string
+		offset.x = textOffset;
+		offset.y = 0;
+		
+		// if the string is too long, cap it
+		TREE_Char* text;
+		result = TREE_String_CreateClampedCopy(&text, data->text, control->transform->globalRect.extent.width - (TREE_Size)checkboxLength);
+		if (result)
+		{
+			return result;
+		}
+
+		TREE_Size textSize = strlen(text);
+
+		// draw the string
+		result = TREE_Image_DrawString(
+			control->image,
+			offset,
+			text,
+			data->normal
+		);
+		free(text);
+		if (result)
+		{
+			return result;
+		}
+
+		// if there is extra space, fill it
+		TREE_Size fillerSize = control->transform->globalRect.extent.width - (TREE_Size)checkboxLength - textSize;
+		if (fillerSize)
+		{
+			TREE_Offset fillerOffset;
+			fillerOffset.x = (TREE_Int)(textOffset + textSize);
+			fillerOffset.y = 0;
+
+			TREE_Extent fillerExtent;
+			fillerExtent.width = (TREE_UInt)fillerSize;
+			fillerExtent.height = 1;
+			
+			pixel.character = ' ';
+			pixel.colorPair = data->normal;
+			result = TREE_Image_FillRect(
+				control->image,
+				fillerOffset,
+				fillerExtent,
+				pixel
+			);
+			if (result)
+			{
 				return result;
 			}
 		}
