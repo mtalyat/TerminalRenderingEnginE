@@ -16,7 +16,6 @@ typedef unsigned long long TREE_Size;
 typedef void* TREE_Data;
 typedef long TREE_Long;
 typedef long TREE_Time;
-typedef void(*TREE_Function)(void*);
 
 #define TREE_FALSE 0
 #define TREE_TRUE 1
@@ -657,6 +656,8 @@ typedef struct _TREE_Control
 	TREE_Data data;
 } TREE_Control;
 
+typedef void(*TREE_ControlEventHandler)(void*, void const*); // sender, value
+
 TREE_Result TREE_Control_Init(TREE_Control* control, TREE_Transform* parent, TREE_EventHandler eventHandler, TREE_Data data);
 
 void TREE_Control_Free(TREE_Control* control);
@@ -699,10 +700,11 @@ typedef struct _TREE_Control_ButtonData
 	TREE_Pixel normal;
 	TREE_Pixel focused;
 	TREE_Pixel active;
-	TREE_Function onSubmit;
+
+	TREE_ControlEventHandler onSubmit;
 } TREE_Control_ButtonData;
 
-TREE_Result TREE_Control_ButtonData_Init(TREE_Control_ButtonData* data, TREE_String text, TREE_Function onSubmit);
+TREE_Result TREE_Control_ButtonData_Init(TREE_Control_ButtonData* data, TREE_String text, TREE_ControlEventHandler onSubmit);
 
 void TREE_Control_ButtonData_Free(TREE_Control_ButtonData* data);
 
@@ -744,11 +746,11 @@ typedef struct _TREE_Control_TextInputData
 	TREE_Size selectionStart;
 	TREE_Size selectionEnd;
 	
-	TREE_Function onChange;
-	TREE_Function onSubmit;
+	TREE_ControlEventHandler onChange;
+	TREE_ControlEventHandler onSubmit;
 } TREE_Control_TextInputData;
 
-TREE_Result TREE_Control_TextInputData_Init(TREE_Control_TextInputData* data, TREE_String text, TREE_Size capacity, TREE_String placeholder, TREE_Control_TextInputType type, TREE_Function onChange, TREE_Function onSubmit);
+TREE_Result TREE_Control_TextInputData_Init(TREE_Control_TextInputData* data, TREE_String text, TREE_Size capacity, TREE_String placeholder, TREE_Control_TextInputType type, TREE_ControlEventHandler onChange, TREE_ControlEventHandler onSubmit);
 
 void TREE_Control_TextInputData_Free(TREE_Control_TextInputData* data);
 
@@ -826,11 +828,11 @@ typedef struct _TREE_Control_ListData
 	TREE_Pixel hoveredSelected;
 	TREE_Pixel hoveredUnselected;
 
-	TREE_Function onChange; // when selection changes
-	TREE_Function onSubmit; // when editing done
+	TREE_ControlEventHandler onChange; // when selection changes
+	TREE_ControlEventHandler onSubmit; // when editing done
 } TREE_Control_ListData;
 
-TREE_Result TREE_Control_ListData_Init(TREE_Control_ListData* data, TREE_Control_ListFlags flags, TREE_String* options, TREE_Size optionsSize, TREE_Function onChange, TREE_Function onSubmit);
+TREE_Result TREE_Control_ListData_Init(TREE_Control_ListData* data, TREE_Control_ListFlags flags, TREE_String* options, TREE_Size optionsSize, TREE_ControlEventHandler onChange, TREE_ControlEventHandler onSubmit);
 
 void TREE_Control_ListData_Free(TREE_Control_ListData* data);
 
@@ -876,10 +878,10 @@ typedef struct _TREE_Control_DropdownData
 	TREE_Pixel hoveredSelected;
 	TREE_Pixel hoveredUnselected;
 
-	TREE_Function onSubmit;
+	TREE_ControlEventHandler onSubmit;
 } TREE_Control_DropdownData;
 
-TREE_Result TREE_Control_DropdownData_Init(TREE_Control_DropdownData* data, TREE_String* options, TREE_Size optionsSize, TREE_Size selectedIndex, TREE_Int drop, TREE_Function onSubmit);
+TREE_Result TREE_Control_DropdownData_Init(TREE_Control_DropdownData* data, TREE_String* options, TREE_Size optionsSize, TREE_Size selectedIndex, TREE_Int drop, TREE_ControlEventHandler onSubmit);
 
 void TREE_Control_DropdownData_Free(TREE_Control_DropdownData* data);
 
@@ -904,10 +906,10 @@ typedef struct _TREE_Control_CheckboxData
 	TREE_Char uncheckedChar;
 	TREE_Char checkedChar;
 
-	TREE_Function onCheck;
+	TREE_ControlEventHandler onCheck;
 } TREE_Control_CheckboxData;
 
-TREE_Result TREE_Control_CheckboxData_Init(TREE_Control_CheckboxData* data, TREE_String text, TREE_Byte checked, TREE_EventHandler onCheck);
+TREE_Result TREE_Control_CheckboxData_Init(TREE_Control_CheckboxData* data, TREE_String text, TREE_Byte checked, TREE_ControlEventHandler onCheck);
 
 void TREE_Control_CheckboxData_Free(TREE_Control_CheckboxData* data);
 

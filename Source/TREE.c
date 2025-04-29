@@ -2883,7 +2883,7 @@ TREE_Result TREE_Control_Label_EventHandler(TREE_Event const* event)
 	return TREE_OK;
 }
 
-TREE_Result TREE_Control_ButtonData_Init(TREE_Control_ButtonData* data, TREE_String text, TREE_Function onSubmit)
+TREE_Result TREE_Control_ButtonData_Init(TREE_Control_ButtonData* data, TREE_String text, TREE_ControlEventHandler onSubmit)
 {
 	// validate
 	if (!data || !text)
@@ -3059,10 +3059,7 @@ TREE_Result TREE_Control_Button_EventHandler(TREE_Event const* event)
 			control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
 
 			// call the onSubmit function
-			if (buttonData->onSubmit)
-			{
-				buttonData->onSubmit(control);
-			}
+			CALL_ACTION(buttonData->onSubmit, control, NULL);
 		}
 
 		break;
@@ -3120,7 +3117,7 @@ TREE_Result TREE_Control_Button_EventHandler(TREE_Event const* event)
 	return TREE_OK;
 }
 
-TREE_Result TREE_Control_TextInputData_Init(TREE_Control_TextInputData* data, TREE_String text, TREE_Size capacity, TREE_String placeholder, TREE_Control_TextInputType type, TREE_Function onChange, TREE_Function onSubmit)
+TREE_Result TREE_Control_TextInputData_Init(TREE_Control_TextInputData* data, TREE_String text, TREE_Size capacity, TREE_String placeholder, TREE_Control_TextInputType type, TREE_ControlEventHandler onChange, TREE_ControlEventHandler onSubmit)
 {
 	// validate
 	if (!data || !text || !placeholder)
@@ -3497,7 +3494,7 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 		case TREE_KEY_ESCAPE: // exit out of active state, call submit function
 			control->stateFlags &= ~TREE_CONTROL_STATE_FLAGS_ACTIVE;
 			control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
-			CALL_ACTION(data->onSubmit, control);
+			CALL_ACTION(data->onSubmit, control, &data->text);
 			break;
 		case TREE_KEY_BACKSPACE: // remove character before cursor
 			// if control held, "select" until a space found
@@ -3516,7 +3513,7 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 					return result;
 				}
 				control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
-				CALL_ACTION(data->onChange, control);
+				CALL_ACTION(data->onChange, control, &data->text);
 				updateCursorOffset = TREE_TRUE;
 			}
 			else if (data->cursorPosition > 0)
@@ -3526,7 +3523,7 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 				data->text[textLength - 1] = '\0'; // null terminator
 				data->cursorPosition--;
 				control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
-				CALL_ACTION(data->onChange, control);
+				CALL_ACTION(data->onChange, control, &data->text);
 				updateCursorOffset = TREE_TRUE;
 			}
 			break;
@@ -3547,7 +3544,7 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 					return result;
 				}
 				control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
-				CALL_ACTION(data->onChange, control);
+				CALL_ACTION(data->onChange, control, &data->text);
 				updateCursorOffset = TREE_TRUE;
 			}
 			else if (data->cursorPosition < textLength)
@@ -3556,7 +3553,7 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 				memmove(&data->text[data->cursorPosition], &data->text[data->cursorPosition + 1], (textLength - data->cursorPosition) * sizeof(TREE_Char));
 				data->text[textLength - 1] = '\0'; // null terminator
 				control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
-				CALL_ACTION(data->onChange, control);
+				CALL_ACTION(data->onChange, control, &data->text);
 				updateCursorOffset = TREE_TRUE;
 			}
 			break;
@@ -3775,7 +3772,7 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 				// if singleline, treat enter as a submit
 				control->stateFlags &= ~TREE_CONTROL_STATE_FLAGS_ACTIVE;
 				control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
-				CALL_ACTION(data->onSubmit, control);
+				CALL_ACTION(data->onSubmit, control, &data->text);
 				break;
 			}
 
@@ -3849,7 +3846,7 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 				control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
 
 				// call onChange
-				CALL_ACTION(data->onChange, control);
+				CALL_ACTION(data->onChange, control, &data->text);
 
 				break;
 			}
@@ -3882,7 +3879,7 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 					control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
 
 					// call onChange
-					CALL_ACTION(data->onChange, control);
+					CALL_ACTION(data->onChange, control, &data->text);
 				}
 				break;
 			}
@@ -3919,7 +3916,7 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 			// insert character
 			data->text[data->cursorPosition] = ch;
 			data->cursorPosition++;
-			CALL_ACTION(data->onChange, control);
+			CALL_ACTION(data->onChange, control, &data->text);
 			break;
 		}
 		}
@@ -4521,7 +4518,7 @@ TREE_Result TREE_Control_Scrollbar_Draw(TREE_Image* target, TREE_Offset scrollba
 	return TREE_OK;
 }
 
-TREE_Result TREE_Control_ListData_Init(TREE_Control_ListData* data, TREE_Control_ListFlags flags, TREE_String* options, TREE_Size optionsSize, TREE_Function onChange, TREE_Function onSubmit)
+TREE_Result TREE_Control_ListData_Init(TREE_Control_ListData* data, TREE_Control_ListFlags flags, TREE_String* options, TREE_Size optionsSize, TREE_ControlEventHandler onChange, TREE_ControlEventHandler onSubmit)
 {
 	// validate
 	if (!data || !options)
@@ -5094,20 +5091,30 @@ TREE_Result TREE_Control_List_EventHandler(TREE_Event const* event)
 			{
 				// multiselect
 				data->selectedIndices[data->hoverIndex] = !data->selectedIndices[data->hoverIndex];
+				CALL_ACTION(data->onChange, control, &data->selectedIndices);
 			}
 			else
 			{
 				// single select
 				data->selectedIndex = data->hoverIndex;
+				CALL_ACTION(data->onChange, control, &data->selectedIndex);
 			}
 			control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
-			CALL_ACTION(data->onChange, control);
 			break;
 		}
 		case TREE_KEY_ESCAPE: // exit
 			control->stateFlags &= ~TREE_CONTROL_STATE_FLAGS_ACTIVE;
 			control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
-			CALL_ACTION(data->onSubmit, control);
+			if (data->flags & TREE_CONTROL_LIST_FLAGS_MULTISELECT)
+			{
+				// multiselect
+				CALL_ACTION(data->onChange, control, &data->selectedIndices);
+			}
+			else
+			{
+				// single select
+				CALL_ACTION(data->onChange, control, &data->selectedIndex);
+			}
 			break;
 		}
 
@@ -5165,7 +5172,7 @@ TREE_Result TREE_Control_List_EventHandler(TREE_Event const* event)
 	return TREE_OK;
 }
 
-TREE_Result TREE_Control_DropdownData_Init(TREE_Control_DropdownData* data, TREE_String* options, TREE_Size optionsSize, TREE_Size selectedIndex, TREE_Int drop, TREE_Function onSubmit)
+TREE_Result TREE_Control_DropdownData_Init(TREE_Control_DropdownData* data, TREE_String* options, TREE_Size optionsSize, TREE_Size selectedIndex, TREE_Int drop, TREE_ControlEventHandler onSubmit)
 {
 	// validate
 	if (!data || !options)
@@ -5478,7 +5485,7 @@ TREE_Result TREE_Control_Dropdown_EventHandler(TREE_Event const* event)
 			data->selectedIndex = data->hoverIndex;
 			control->stateFlags &= ~TREE_CONTROL_STATE_FLAGS_ACTIVE;
 			control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
-			CALL_ACTION(data->onSubmit, control);
+			CALL_ACTION(data->onSubmit, control, &data->selectedIndex);
 			break;
 		}
 		case TREE_KEY_ESCAPE: // cancel
@@ -5698,7 +5705,7 @@ TREE_Result TREE_Control_Dropdown_EventHandler(TREE_Event const* event)
 	return TREE_OK;
 }
 
-TREE_Result TREE_Control_CheckboxData_Init(TREE_Control_CheckboxData* data, TREE_String text, TREE_Byte checked, TREE_EventHandler onCheck)
+TREE_Result TREE_Control_CheckboxData_Init(TREE_Control_CheckboxData* data, TREE_String text, TREE_Byte checked, TREE_ControlEventHandler onCheck)
 {
 	// validate
 	if (!data || !text)
@@ -5832,7 +5839,7 @@ TREE_Result TREE_Control_Checkbox_EventHandler(TREE_Event const* event)
 		{
 			data->checked = !data->checked;
 			control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
-			CALL_ACTION(data->onCheck, control);
+			CALL_ACTION(data->onCheck, control, &data->checked);
 		}
 		break;
 	}

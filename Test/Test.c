@@ -4,9 +4,15 @@
 
 TREE_Application* g_application = NULL;
 
-void Button_Quit(void* sender)
+void Button_Quit(void* sender, void const* value)
 {
 	TREE_Application_Quit(g_application);
+}
+
+void Text_Quit(void* sender, void const* value)
+{
+	TREE_Application_Quit(g_application);
+	printf("Final text: %s\n", *(char const**)value);
 }
 
 TREE_Result ApplicationEventHandler(TREE_Event const* event)
@@ -78,7 +84,7 @@ int main()
 
 	// create single line text box
 	TREE_Control_TextInputData textInputData;
-	result = TREE_Control_TextInputData_Init(&textInputData, "Enter text here", 256, "Placeholder", TREE_CONTROL_TEXT_INPUT_TYPE_NORMAL, NULL, NULL);
+	result = TREE_Control_TextInputData_Init(&textInputData, "Enter text here", 256, "Placeholder", TREE_CONTROL_TEXT_INPUT_TYPE_NORMAL, NULL, Text_Quit);
 	if (result)
 	{
 		printf("Failed to initialize text input data: %s\n", TREE_Result_ToString(result));
