@@ -238,6 +238,26 @@ int main()
 	label.transform->localOffset.x = 82;
 	label.transform->localOffset.y = 2;
 
+	// create number input
+	TREE_Control_NumberInputData numberInputData;
+	result = TREE_Control_NumberInputData_Init(&numberInputData, 0, 0, 100, 1, 0, NULL, NULL, &theme);
+	if (result)
+	{
+		printf("Failed to initialize number input data: %s\n", TREE_Result_ToString(result));
+		return 1;
+	}
+
+	// create number input
+	TREE_Control numberInput;
+	result = TREE_Control_NumberInput_Init(&numberInput, NULL, &numberInputData);
+	if (result)
+	{
+		printf("Failed to initialize number input: %s\n", TREE_Result_ToString(result));
+		return 1;
+	}
+	numberInput.transform->localOffset.x = 100;
+	numberInput.transform->localOffset.y = 3;
+
 	// link controls
 	result = TREE_Control_Link(&listControl, TREE_DIRECTION_NORTH, TREE_CONTROL_LINK_DOUBLE, &quitButton);
 	if (result)
@@ -289,6 +309,12 @@ int main()
 			return 1;
 		}
 	}
+	result = TREE_Control_Link(&checkboxes[0], TREE_DIRECTION_EAST, TREE_CONTROL_LINK_DOUBLE, &numberInput);
+	if (result)
+	{
+		printf("Failed to link controls: %s\n", TREE_Result_ToString(result));
+		return 1;
+	}
 
 	// add controls to application
 	result = TREE_Application_AddControl(&app, &quitButton);
@@ -339,6 +365,12 @@ int main()
 		printf("Failed to add label to application: %s\n", TREE_Result_ToString(result));
 		return 1;
 	}
+	result = TREE_Application_AddControl(&app, &numberInput);
+	if (result)
+	{
+		printf("Failed to add number input to application: %s\n", TREE_Result_ToString(result));
+		return 1;
+	}
 
 	// run the application
 	result = TREE_Application_Run(&app);
@@ -349,6 +381,8 @@ int main()
 	}
 
 	// cleanup
+	TREE_Control_NumberInputData_Free(&numberInputData);
+	TREE_Control_Free(&numberInput);
 	TREE_Control_LabelData_Free(&labelData);
 	TREE_Control_Free(&label);
 	TREE_Control_ListData_Free(&listData);

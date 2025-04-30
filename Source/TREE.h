@@ -8,7 +8,7 @@
 typedef int TREE_Bool;
 typedef int TREE_Int;
 typedef unsigned TREE_UInt;
-typedef float TREE_Float;
+typedef double TREE_Float;
 typedef unsigned char TREE_Byte;
 typedef char TREE_Char;
 typedef TREE_Char const* TREE_String;
@@ -44,6 +44,7 @@ typedef enum _TREE_Result
 	TREE_ERROR = 100,
 	TREE_ERROR_OVERFLOW = 101,
 	TREE_ERROR_FULL = 102,
+	TREE_ERROR_INVALID_STATE = 103,
 
 	// Argument errors
 	TREE_ERROR_ARG_NULL = 200,
@@ -80,6 +81,7 @@ typedef enum _TREE_Result
 	TREE_ERROR_WINDOW_SET_TITLE = 1000,
 
 	//		Windows specific errors
+	
 	// Global
 	TREE_ERROR_WINDOWS_GLOBAL_ALLOC = 10000,
 	TREE_ERROR_WINDOWS_GLOBAL_LOCK = 10001,
@@ -310,10 +312,10 @@ typedef enum _TREE_ThemeCharacterID
 	TREE_THEME_CID_SCROLL_H_AREA,
 	TREE_THEME_CID_SCROLL_V_BAR,
 	TREE_THEME_CID_SCROLL_H_BAR,
-	TREE_THEME_CID_SCROLL_V_TOP,
-	TREE_THEME_CID_SCROLL_V_BOTTOM,
-	TREE_THEME_CID_SCROLL_H_LEFT,
-	TREE_THEME_CID_SCROLL_H_RIGHT,
+	TREE_THEME_CID_UP,
+	TREE_THEME_CID_DOWN,
+	TREE_THEME_CID_LEFT,
+	TREE_THEME_CID_RIGHT,
 	TREE_THEME_CID_CHECKBOX_UNCHECKED,
 	TREE_THEME_CID_CHECKBOX_CHECKED,
 	TREE_THEME_CID_CHECKBOX_LEFT,
@@ -733,6 +735,7 @@ typedef enum _TREE_ControlType
 	TREE_CONTROL_TYPE_DROPDOWN,
 	TREE_CONTROL_TYPE_LIST,
 	TREE_CONTROL_TYPE_CHECKBOX,
+	TREE_CONTROL_TYPE_NUMBER_INPUT,
 } TREE_ControlType;
 
 typedef enum _TREE_ControlFlags
@@ -1108,6 +1111,69 @@ TREE_Result TREE_Control_Checkbox_SetChecked(TREE_Control* control, TREE_Byte ch
 TREE_Bool TREE_Control_Checkbox_GetChecked(TREE_Control* control);
 
 TREE_Result TREE_Control_Checkbox_EventHandler(TREE_Event const* event);
+
+///////////////////////////////////////
+// NumberInput                       //
+///////////////////////////////////////
+
+typedef struct _TREE_Control_NumberInputData
+{
+	TREE_Float value;
+	TREE_Float minValue;
+	TREE_Float maxValue;
+	TREE_Float increment;
+	TREE_Int decimalPlaces;
+
+	TREE_Pixel normal;
+	TREE_Pixel focused;
+	TREE_Pixel active;
+
+	TREE_Char up;
+	TREE_Char down;
+
+	TREE_ControlEventHandler onChange;
+	TREE_ControlEventHandler onSubmit;
+} TREE_Control_NumberInputData;
+
+TREE_Result TREE_Control_NumberInputData_Init(TREE_Control_NumberInputData* data, TREE_Float value, TREE_Float min, TREE_Float max, TREE_Float increment, TREE_Int decimalPlaces, TREE_ControlEventHandler onChange, TREE_ControlEventHandler onSubmit, TREE_Theme const* theme);
+
+void TREE_Control_NumberInputData_Free(TREE_Control_NumberInputData* data);
+
+TREE_Result TREE_Control_NumberInput_Init(TREE_Control* control, TREE_Transform* parent, TREE_Control_NumberInputData* data);
+
+TREE_Result TREE_Control_NumberInput_SetValue(TREE_Control* control, TREE_Float value);
+
+TREE_Float TREE_Control_NumberInput_GetValue(TREE_Control* control);
+
+TREE_Result TREE_Control_NumberInput_SetMin(TREE_Control* control, TREE_Float minValue);
+
+TREE_Float TREE_Control_NumberInput_GetMin(TREE_Control* control);
+
+TREE_Result TREE_Control_NumberInput_SetMax(TREE_Control* control, TREE_Float maxValue);
+
+TREE_Float TREE_Control_NumberInput_GetMax(TREE_Control* control);
+
+TREE_Result TREE_Control_NumberInput_SetIncrement(TREE_Control* control, TREE_Float increment);
+
+TREE_Float TREE_Control_NumberInput_GetIncrement(TREE_Control* control);
+
+TREE_Result TREE_Control_NumberInput_SetDecimalPlaces(TREE_Control* control, TREE_Int decimalPlaces);
+
+TREE_Int TREE_Control_NumberInput_GetDecimalPlaces(TREE_Control* control);
+
+TREE_Result TREE_Control_NumberInput_SetPixel(TREE_Control* control, TREE_ThemePixelID id, TREE_Pixel pixel);
+
+TREE_Pixel TREE_Control_NumberInput_GetPixel(TREE_Control* control, TREE_ThemePixelID id);
+
+TREE_Result TREE_Control_NumberInput_SetOnChange(TREE_Control* control, TREE_ControlEventHandler onChange);
+
+TREE_ControlEventHandler TREE_Control_NumberInput_GetOnChange(TREE_Control* control);
+
+TREE_Result TREE_Control_NumberInput_SetOnSubmit(TREE_Control* control, TREE_ControlEventHandler onSubmit);
+
+TREE_ControlEventHandler TREE_Control_NumberInput_GetOnSubmit(TREE_Control* control);
+
+TREE_Result TREE_Control_NumberInput_EventHandler(TREE_Event const* event);
 
 ///////////////////////////////////////
 // Application                       //

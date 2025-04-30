@@ -17,6 +17,7 @@
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
+#define CLAMP(a, min, max) ((a) < (min) ? (min) : ((a) > (max) ? (max) : (a)))
 
 #define CALL_ACTION(action, ...) do { if (action) { action(__VA_ARGS__); } } while (0)
 
@@ -36,6 +37,8 @@ TREE_Char const* TREE_Result_ToString(TREE_Result code)
 		return "Overflow error";
 	case TREE_ERROR_FULL:
 		return "The collection is at capacity";
+	case TREE_ERROR_INVALID_STATE:
+		return "Invalid state";
 	case TREE_ERROR_ARG_NULL:
 		return "Argument is null";
 	case TREE_ERROR_ARG_OUT_OF_RANGE:
@@ -1000,10 +1003,10 @@ TREE_Result TREE_Theme_Init(TREE_Theme* theme)
 	theme->characters[TREE_THEME_CID_SCROLL_H_AREA] = '-';
 	theme->characters[TREE_THEME_CID_SCROLL_V_BAR] = '#';
 	theme->characters[TREE_THEME_CID_SCROLL_H_BAR] = '#';
-	theme->characters[TREE_THEME_CID_SCROLL_V_TOP] = '^';
-	theme->characters[TREE_THEME_CID_SCROLL_V_BOTTOM] = 'v';
-	theme->characters[TREE_THEME_CID_SCROLL_H_LEFT] = '<';
-	theme->characters[TREE_THEME_CID_SCROLL_H_RIGHT] = '>';
+	theme->characters[TREE_THEME_CID_UP] = '^';
+	theme->characters[TREE_THEME_CID_DOWN] = 'v';
+	theme->characters[TREE_THEME_CID_LEFT] = '<';
+	theme->characters[TREE_THEME_CID_RIGHT] = '>';
 	theme->characters[TREE_THEME_CID_CHECKBOX_UNCHECKED] = ' ';
 	theme->characters[TREE_THEME_CID_CHECKBOX_CHECKED] = 'X';
 	theme->characters[TREE_THEME_CID_CHECKBOX_LEFT] = '[';
@@ -1554,7 +1557,7 @@ TREE_Result TREE_Surface_Refresh(TREE_Surface* surface)
 TREE_Result TREE_Window_SetTitle(TREE_String title)
 {
 #ifdef TREE_WINDOWS
-	if(!SetConsoleTitleA(title))
+	if (!SetConsoleTitleA(title))
 	{
 		return TREE_ERROR_WINDOW_SET_TITLE;
 	}
@@ -3194,7 +3197,7 @@ TREE_Pixel TREE_Control_Button_GetPixel(TREE_Control* control, TREE_ThemePixelID
 
 	// get data
 	TREE_Control_ButtonData* buttonData = (TREE_Control_ButtonData*)control->data;
-	
+
 	// return pixel
 	switch (id)
 	{
@@ -4670,9 +4673,9 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 				if (data->selectionStart != data->selectionEnd &&
 					((data->selectionStart >= lineBeginIndex &&
 						data->selectionStart <= lineEndIndex) ||
-					(data->selectionEnd >= lineBeginIndex &&
-						data->selectionEnd <= lineEndIndex)))
-				{ 
+						(data->selectionEnd >= lineBeginIndex &&
+							data->selectionEnd <= lineEndIndex)))
+				{
 					// draw just the selected part, over the existing text
 					TREE_Size selectionStart = MAX(data->selectionStart, lineBeginIndex);
 					TREE_Size selectionEnd = MIN(data->selectionEnd, lineEndIndex);
@@ -4891,15 +4894,15 @@ TREE_Result TREE_Control_ScrollbarData_Init(TREE_Control_ScrollbarData* data, TR
 	data->type = type;
 	if (vertical)
 	{
-		data->top = theme->characters[TREE_THEME_CID_SCROLL_V_TOP];
-		data->bottom = theme->characters[TREE_THEME_CID_SCROLL_V_BOTTOM];
+		data->top = theme->characters[TREE_THEME_CID_UP];
+		data->bottom = theme->characters[TREE_THEME_CID_DOWN];
 		data->line = theme->characters[TREE_THEME_CID_SCROLL_V_AREA];
 		data->bar = theme->characters[TREE_THEME_CID_SCROLL_V_BAR];
 	}
 	else
 	{
-		data->top = theme->characters[TREE_THEME_CID_SCROLL_H_LEFT];
-		data->bottom = theme->characters[TREE_THEME_CID_SCROLL_H_RIGHT];
+		data->top = theme->characters[TREE_THEME_CID_LEFT];
+		data->bottom = theme->characters[TREE_THEME_CID_RIGHT];
 		data->line = theme->characters[TREE_THEME_CID_SCROLL_H_AREA];
 		data->bar = theme->characters[TREE_THEME_CID_SCROLL_H_BAR];
 	}
@@ -6167,7 +6170,7 @@ TREE_Result TREE_Control_Dropdown_EventHandler(TREE_Event const* event)
 	case TREE_EVENT_TYPE_REFRESH:
 	{
 		TREE_Bool active = (control->stateFlags & TREE_CONTROL_STATE_FLAGS_ACTIVE);
-		
+
 		// resize if needed
 		result = TREE_Image_Resize(control->image, control->transform->globalRect.extent);
 		if (result)
@@ -6597,7 +6600,7 @@ TREE_Result TREE_Control_Checkbox_EventHandler(TREE_Event const* event)
 		{
 			color = data->normalText;
 		}
-		
+
 		// if the string is too long, cap it
 		TREE_Char* text;
 		result = TREE_String_CreateClampedCopy(&text, data->text, control->transform->globalRect.extent.width - (TREE_Size)checkboxLength);
@@ -6632,9 +6635,632 @@ TREE_Result TREE_Control_Checkbox_EventHandler(TREE_Event const* event)
 			TREE_Extent fillerExtent;
 			fillerExtent.width = (TREE_UInt)fillerSize;
 			fillerExtent.height = 1;
-			
+
 			pixel.character = ' ';
 			pixel.colorPair = color;
+			result = TREE_Image_FillRect(
+				control->image,
+				fillerOffset,
+				fillerExtent,
+				pixel
+			);
+			if (result)
+			{
+				return result;
+			}
+		}
+
+		break;
+	}
+	case TREE_EVENT_TYPE_DRAW:
+	{
+		// get the event data
+		TREE_EventData_Draw* drawData = (TREE_EventData_Draw*)event->data;
+		TREE_Image* target = drawData->target;
+		TREE_Rect const* dirtyRect = &drawData->dirtyRect;
+
+		// draw the control
+		TREE_Result result = _TREE_Control_Draw(
+			target,
+			dirtyRect,
+			&control->transform->globalRect,
+			control->image
+		);
+		if (result)
+		{
+			return result;
+		}
+
+		break;
+	}
+	}
+
+	return TREE_OK;
+}
+
+TREE_Result TREE_Control_NumberInputData_Init(TREE_Control_NumberInputData* data, TREE_Float value, TREE_Float min, TREE_Float max, TREE_Float increment, TREE_Int decimalPlaces, TREE_ControlEventHandler onChange, TREE_ControlEventHandler onSubmit, TREE_Theme const* theme)
+{
+	// validate
+	if (!data)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+	if (min > max)
+	{
+		return TREE_ERROR_ARG_OUT_OF_RANGE;
+	}
+
+	// set data
+	data->minValue = min;
+	data->maxValue = max;
+	data->value = CLAMP(value, min, max);
+	data->increment = increment;
+	data->decimalPlaces = decimalPlaces;
+
+	data->normal = theme->pixels[TREE_THEME_PID_NORMAL];
+	data->focused = theme->pixels[TREE_THEME_PID_FOCUSED];
+	data->active = theme->pixels[TREE_THEME_PID_ACTIVE];
+	data->up = theme->characters[TREE_THEME_CID_UP];
+	data->down = theme->characters[TREE_THEME_CID_DOWN];
+
+	data->onChange = onChange;
+	data->onSubmit = onSubmit;
+
+	return TREE_OK;
+}
+
+void TREE_Control_NumberInputData_Free(TREE_Control_NumberInputData* data)
+{
+	if (!data)
+	{
+		return;
+	}
+
+	// nothing to free
+}
+
+TREE_Result TREE_Control_NumberInput_Init(TREE_Control* control, TREE_Transform* parent, TREE_Control_NumberInputData* data)
+{
+	// validate
+	if (!control || !data)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	// control init
+	TREE_Result result = TREE_Control_Init(control, parent, TREE_Control_NumberInput_EventHandler, data);
+	if (result)
+	{
+		return result;
+	}
+
+	// set data
+	control->type = TREE_CONTROL_TYPE_NUMBER_INPUT;
+	control->flags = TREE_CONTROL_FLAGS_FOCUSABLE;
+	control->transform->localExtent.width = 7;
+	control->transform->localExtent.height = 1;
+
+	return TREE_OK;
+}
+
+TREE_Result TREE_Control_NumberInput_SetValue(TREE_Control* control, TREE_Float value)
+{
+	// validate
+	if (!control || control->type != TREE_CONTROL_TYPE_NUMBER_INPUT)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	// set the value
+	TREE_Control_NumberInputData* data = (TREE_Control_NumberInputData*)control->data;
+	data->value = CLAMP(value, data->minValue, data->maxValue);
+
+	// redraw
+	control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+
+	// call the onChange event
+	CALL_ACTION(data->onChange, control, &data->value);
+
+	return TREE_OK;
+}
+
+TREE_Float TREE_Control_NumberInput_GetValue(TREE_Control* control)
+{
+	// validate
+	if (!control || control->type != TREE_CONTROL_TYPE_NUMBER_INPUT)
+	{
+		return 0;
+	}
+
+	// get the value
+	TREE_Control_NumberInputData* data = (TREE_Control_NumberInputData*)control->data;
+
+	return data->value;
+}
+
+TREE_Result TREE_Control_NumberInput_SetMin(TREE_Control* control, TREE_Float minValue)
+{
+	// validate
+	if (!control || control->type != TREE_CONTROL_TYPE_NUMBER_INPUT)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	// set the min
+	TREE_Control_NumberInputData* data = (TREE_Control_NumberInputData*)control->data;
+	data->minValue = minValue;
+	data->value = CLAMP(data->value, minValue, data->maxValue);
+
+	// redraw
+	control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+
+	return TREE_OK;
+}
+
+TREE_Float TREE_Control_NumberInput_GetMin(TREE_Control* control)
+{
+	// validate
+	if (!control || control->type != TREE_CONTROL_TYPE_NUMBER_INPUT)
+	{
+		return 0;
+	}
+
+	// get the min
+	TREE_Control_NumberInputData* data = (TREE_Control_NumberInputData*)control->data;
+
+	return data->minValue;
+}
+
+TREE_Result TREE_Control_NumberInput_SetMax(TREE_Control* control, TREE_Float maxValue)
+{
+	// validate
+	if (!control || control->type != TREE_CONTROL_TYPE_NUMBER_INPUT)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	// set the max
+	TREE_Control_NumberInputData* data = (TREE_Control_NumberInputData*)control->data;
+	data->maxValue = maxValue;
+	data->value = CLAMP(data->value, data->minValue, maxValue);
+
+	// redraw
+	control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+
+	return TREE_OK;
+}
+
+TREE_Float TREE_Control_NumberInput_GetMax(TREE_Control* control)
+{
+	// validate
+	if (!control || control->type != TREE_CONTROL_TYPE_NUMBER_INPUT)
+	{
+		return 0;
+	}
+
+	// get the max
+	TREE_Control_NumberInputData* data = (TREE_Control_NumberInputData*)control->data;
+
+	return data->maxValue;
+}
+
+TREE_Result TREE_Control_NumberInput_SetIncrement(TREE_Control* control, TREE_Float increment)
+{
+	// validate
+	if (!control || control->type != TREE_CONTROL_TYPE_NUMBER_INPUT)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	// set the increment
+	TREE_Control_NumberInputData* data = (TREE_Control_NumberInputData*)control->data;
+	data->increment = increment;
+
+	// redraw
+	control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+
+	return TREE_OK;
+}
+
+TREE_Float TREE_Control_NumberInput_GetIncrement(TREE_Control* control)
+{
+	// validate
+	if (!control || control->type != TREE_CONTROL_TYPE_NUMBER_INPUT)
+	{
+		return 0;
+	}
+
+	// get the increment
+	TREE_Control_NumberInputData* data = (TREE_Control_NumberInputData*)control->data;
+	return data->increment;
+}
+
+TREE_Result TREE_Control_NumberInput_SetDecimalPlaces(TREE_Control* control, TREE_Int decimalPlaces)
+{
+	// validate
+	if (!control || control->type != TREE_CONTROL_TYPE_NUMBER_INPUT)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	// set the decimal places
+	TREE_Control_NumberInputData* data = (TREE_Control_NumberInputData*)control->data;
+	data->decimalPlaces = decimalPlaces;
+
+	// redraw
+	control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+
+	return TREE_OK;
+}
+
+TREE_Int TREE_Control_NumberInput_GetDecimalPlaces(TREE_Control* control)
+{
+	// validate
+	if (!control || control->type != TREE_CONTROL_TYPE_NUMBER_INPUT)
+	{
+		return 0;
+	}
+
+	// get the decimal places
+	TREE_Control_NumberInputData* data = (TREE_Control_NumberInputData*)control->data;
+	return data->decimalPlaces;
+}
+
+TREE_Result TREE_Control_NumberInput_SetPixel(TREE_Control* control, TREE_ThemePixelID id, TREE_Pixel pixel)
+{
+	// validate
+	if (!control || control->type != TREE_CONTROL_TYPE_NUMBER_INPUT)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	// set the pixel
+	TREE_Control_NumberInputData* data = (TREE_Control_NumberInputData*)control->data;
+	switch (id)
+	{
+	case TREE_THEME_PID_NORMAL:
+		data->normal = pixel;
+		break;
+	case TREE_THEME_PID_FOCUSED:
+		data->focused = pixel;
+		break;
+	case TREE_THEME_PID_ACTIVE:
+		data->active = pixel;
+		break;
+	default:
+		return TREE_ERROR_ARG_OUT_OF_RANGE;
+	}
+
+	return TREE_OK;
+}
+
+TREE_Pixel TREE_Control_NumberInput_GetPixel(TREE_Control* control, TREE_ThemePixelID id)
+{
+	// validate
+	if (!control || control->type != TREE_CONTROL_TYPE_NUMBER_INPUT)
+	{
+		return (TREE_Pixel) { 0 };
+	}
+
+	// get the pixel
+	TREE_Control_NumberInputData* data = (TREE_Control_NumberInputData*)control->data;
+	switch (id)
+	{
+	case TREE_THEME_PID_NORMAL:
+		return data->normal;
+	case TREE_THEME_PID_FOCUSED:
+		return data->focused;
+	case TREE_THEME_PID_ACTIVE:
+		return data->active;
+	default:
+		return (TREE_Pixel) { 0 };
+	}
+}
+
+TREE_Result TREE_Control_NumberInput_SetOnChange(TREE_Control* control, TREE_ControlEventHandler onChange)
+{
+	// validate
+	if (!control || control->type != TREE_CONTROL_TYPE_NUMBER_INPUT)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	// set the onChange event
+	TREE_Control_NumberInputData* data = (TREE_Control_NumberInputData*)control->data;
+	data->onChange = onChange;
+	return TREE_OK;
+}
+
+TREE_ControlEventHandler TREE_Control_NumberInput_GetOnChange(TREE_Control* control)
+{
+	// validate
+	if (!control || control->type != TREE_CONTROL_TYPE_NUMBER_INPUT)
+	{
+		return NULL;
+	}
+
+	// get the onChange event
+	TREE_Control_NumberInputData* data = (TREE_Control_NumberInputData*)control->data;
+	return data->onChange;
+}
+
+TREE_Result TREE_Control_NumberInput_SetOnSubmit(TREE_Control* control, TREE_ControlEventHandler onSubmit)
+{
+	// validate
+	if (!control || control->type != TREE_CONTROL_TYPE_NUMBER_INPUT)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	// set the onSubmit event
+	TREE_Control_NumberInputData* data = (TREE_Control_NumberInputData*)control->data;
+	data->onSubmit = onSubmit;
+	return TREE_OK;
+}
+
+TREE_ControlEventHandler TREE_Control_NumberInput_GetOnSubmit(TREE_Control* control)
+{
+	// validate
+	if (!control || control->type != TREE_CONTROL_TYPE_NUMBER_INPUT)
+	{
+		return NULL;
+	}
+
+	// get the onSubmit event
+	TREE_Control_NumberInputData* data = (TREE_Control_NumberInputData*)control->data;
+	return data->onSubmit;
+}
+
+TREE_Result TREE_Control_NumberInput_EventHandler(TREE_Event const* event)
+{
+	// validate
+	if (!event || !event->control)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+	if (event->control->type != TREE_CONTROL_TYPE_NUMBER_INPUT)
+	{
+		return TREE_ERROR_ARG_INVALID;
+	}
+
+	// get data
+	TREE_Result result;
+	TREE_Control* control = event->control;
+	TREE_Control_NumberInputData* data = (TREE_Control_NumberInputData*)control->data;
+
+	// handle events
+	switch (event->type)
+	{
+	case TREE_EVENT_TYPE_KEY_DOWN:
+	case TREE_EVENT_TYPE_KEY_HELD:
+	{
+		// ignore if not focused
+		if (!(control->stateFlags & TREE_CONTROL_STATE_FLAGS_FOCUSED))
+		{
+			break;
+		}
+
+		// get the event data
+		TREE_EventData_Key* keyData = (TREE_EventData_Key*)event->data;
+		TREE_Key key = keyData->key;
+		TREE_KeyModifierFlags modifiers = keyData->modifiers;
+
+		// if not active, make it active if submit key pressed
+		if (!(control->stateFlags & TREE_CONTROL_STATE_FLAGS_ACTIVE))
+		{
+			if (key == TREE_KEY_ENTER || key == TREE_KEY_SPACE)
+			{
+				control->stateFlags |= TREE_CONTROL_STATE_FLAGS_ACTIVE;
+				control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+			}
+			break;
+		}
+
+		// if active, handle the key
+		switch (key)
+		{
+		case TREE_KEY_UP_ARROW: // increment
+		case TREE_KEY_LEFT_ARROW:
+		case TREE_KEY_W:
+		case TREE_KEY_A:
+		case TREE_KEY_EQUALS:
+		{
+			TREE_Float inc = (modifiers & TREE_KEY_MODIFIER_FLAGS_CONTROL) ? data->increment * 10 : data->increment;
+			data->value += inc;
+			data->value = CLAMP(data->value, data->minValue, data->maxValue);
+			control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+			CALL_ACTION(data->onChange, control, &data->value);
+			break;
+		}
+		case TREE_KEY_DOWN_ARROW: // decrement
+		case TREE_KEY_RIGHT_ARROW:
+		case TREE_KEY_S:
+		case TREE_KEY_D:
+		case TREE_KEY_MINUS:
+		{
+			TREE_Float inc = (modifiers & TREE_KEY_MODIFIER_FLAGS_CONTROL) ? data->increment * 10 : data->increment;
+			data->value -= inc;
+			data->value = CLAMP(data->value, data->minValue, data->maxValue);
+			control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+			CALL_ACTION(data->onChange, control, &data->value);
+			break;
+		}
+		case TREE_KEY_HOME: // set to min
+		{
+			data->value = data->minValue;
+			control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+			CALL_ACTION(data->onChange, control, &data->value);
+			break;
+		}
+		case TREE_KEY_END: // set to max
+		{
+			data->value = data->maxValue;
+			control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+			CALL_ACTION(data->onChange, control, &data->value);
+			break;
+		}
+		case TREE_KEY_ENTER: // submit
+		case TREE_KEY_SPACE:
+		{
+			control->stateFlags &= ~TREE_CONTROL_STATE_FLAGS_ACTIVE;
+			control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+			CALL_ACTION(data->onSubmit, control, &data->value);
+			break;
+		}
+		break;
+		}
+	}
+	case TREE_EVENT_TYPE_REFRESH:
+	{
+		// resize if needed
+		result = TREE_Image_Resize(control->image, control->transform->globalRect.extent);
+		if (result)
+		{
+			return result;
+		}
+
+		// get color from state
+		TREE_Pixel pixel;
+		if (control->stateFlags & TREE_CONTROL_STATE_FLAGS_ACTIVE)
+		{
+			pixel = data->active;
+		}
+		else if (control->stateFlags & TREE_CONTROL_STATE_FLAGS_FOCUSED)
+		{
+			pixel = data->focused;
+		}
+		else
+		{
+			pixel = data->normal;
+		}
+
+		// draw the down arrow input, if not at max value
+		TREE_Int width = (TREE_Int)control->transform->globalRect.extent.width;
+		TREE_Offset offset;
+		offset.x = 0;
+		offset.y = 0;
+		if (data->value > data->minValue)
+		{
+			pixel.character = data->down;
+		}
+		else
+		{
+			// draw a space
+			pixel.character = ' ';
+		}
+		TREE_Result result = TREE_Image_Set(
+			control->image,
+			offset,
+			pixel
+		);
+		if (result)
+		{
+			return result;
+		}
+
+		// draw the up arrow input, if not at min value
+		offset.x = width - 1;
+		offset.y = 0;
+		if (data->value < data->maxValue)
+		{
+			pixel.character = data->up;
+		}
+		else
+		{
+			// draw a space
+			pixel.character = ' ';
+		}
+		result = TREE_Image_Set(
+			control->image,
+			offset,
+			pixel
+		);
+		if (result)
+		{
+			return result;
+		}
+
+		// draw the bar separators
+		pixel.character = '|';
+		offset.x = 1;
+		offset.y = 0;
+		result = TREE_Image_Set(
+			control->image,
+			offset,
+			pixel
+		);
+		if (result)
+		{
+			return result;
+		}
+		offset.x = width - 2;
+		offset.y = 0;
+		result = TREE_Image_Set(
+			control->image,
+			offset,
+			pixel
+		);
+		if (result)
+		{
+			return result;
+		}
+
+		// get the value, using the decimal places
+		TREE_Char valueString[32];
+		TREE_Int valueStringSize = snprintf(
+			valueString,
+			sizeof(valueString),
+			"%.*f",
+			data->decimalPlaces,
+			data->value
+		);
+		if (valueStringSize < 0)
+		{
+			return TREE_ERROR_INVALID_STATE;
+		}
+
+		// get max width of text string
+		TREE_Int textWidth = width - 4;
+		if (textWidth <= 0)
+		{
+			// cannot render any text
+			break;
+		}
+
+		// if the string is too long, replace with hashes
+		if (valueStringSize > textWidth)
+		{
+			valueStringSize = textWidth;
+			memset(valueString, '#', valueStringSize);
+			valueString[valueStringSize] = '\0';
+		}
+
+		// draw the value string
+		offset.x = width - 2 - valueStringSize;
+		offset.y = 0;
+		result = TREE_Image_DrawString(
+			control->image,
+			offset,
+			valueString,
+			pixel.colorPair
+		);
+		if (result)
+		{
+			return result;
+		}
+
+		// if space left over, fill it
+		TREE_Size fillerSize = textWidth - valueStringSize;
+		if (fillerSize > 0)
+		{
+			TREE_Offset fillerOffset;
+			fillerOffset.x = 2;
+			fillerOffset.y = 0;
+			TREE_Extent fillerExtent;
+			fillerExtent.width = (TREE_UInt)fillerSize;
+			fillerExtent.height = 1;
+			pixel.character = ' ';
+			pixel.colorPair = pixel.colorPair;
 			result = TREE_Image_FillRect(
 				control->image,
 				fillerOffset,
@@ -7072,7 +7698,7 @@ TREE_Result TREE_Application_Run(TREE_Application* application)
 					shouldPresent = TREE_TRUE;
 				}
 			}
-			
+
 			// draw active
 			if (active)
 			{
