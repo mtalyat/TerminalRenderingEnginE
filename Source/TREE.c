@@ -1008,6 +1008,10 @@ TREE_Result TREE_Theme_Init(TREE_Theme* theme)
 	theme->characters[TREE_THEME_CID_CHECKBOX_CHECKED] = 'X';
 	theme->characters[TREE_THEME_CID_CHECKBOX_LEFT] = '[';
 	theme->characters[TREE_THEME_CID_CHECKBOX_RIGHT] = ']';
+	theme->characters[TREE_THEME_CID_RADIOBOX_UNCHECKED] = ' ';
+	theme->characters[TREE_THEME_CID_RADIOBOX_CHECKED] = 'O';
+	theme->characters[TREE_THEME_CID_RADIOBOX_LEFT] = '(';
+	theme->characters[TREE_THEME_CID_RADIOBOX_RIGHT] = ')';
 
 	// Pixel IDs
 	TREE_Char emptyChar = theme->characters[TREE_THEME_CID_EMPTY];
@@ -6361,7 +6365,7 @@ TREE_Result TREE_Control_Dropdown_EventHandler(TREE_Event const* event)
 	return TREE_OK;
 }
 
-TREE_Result TREE_Control_CheckboxData_Init(TREE_Control_CheckboxData* data, TREE_String text, TREE_Byte checked, TREE_ControlEventHandler onCheck, TREE_Theme const* theme)
+TREE_Result TREE_Control_CheckboxData_Init(TREE_Control_CheckboxData* data, TREE_String text, TREE_Byte checked, TREE_Bool radio, TREE_ControlEventHandler onCheck, TREE_Theme const* theme)
 {
 	// validate
 	if (!data || !text)
@@ -6384,10 +6388,20 @@ TREE_Result TREE_Control_CheckboxData_Init(TREE_Control_CheckboxData* data, TREE
 	data->normalText = theme->pixels[TREE_THEME_PID_NORMAL_TEXT].colorPair;
 	data->focusedText = theme->pixels[TREE_THEME_PID_FOCUSED_TEXT].colorPair;
 
-	data->checkedChar = theme->characters[TREE_THEME_CID_CHECKBOX_CHECKED];
-	data->uncheckedChar = theme->characters[TREE_THEME_CID_CHECKBOX_UNCHECKED];
-	data->left = theme->characters[TREE_THEME_CID_CHECKBOX_LEFT];
-	data->right = theme->characters[TREE_THEME_CID_CHECKBOX_RIGHT];
+	if (radio)
+	{
+		data->checkedChar = theme->characters[TREE_THEME_CID_RADIOBOX_CHECKED];
+		data->uncheckedChar = theme->characters[TREE_THEME_CID_RADIOBOX_UNCHECKED];
+		data->left = theme->characters[TREE_THEME_CID_RADIOBOX_LEFT];
+		data->right = theme->characters[TREE_THEME_CID_RADIOBOX_RIGHT];
+	}
+	else
+	{
+		data->checkedChar = theme->characters[TREE_THEME_CID_CHECKBOX_CHECKED];
+		data->uncheckedChar = theme->characters[TREE_THEME_CID_CHECKBOX_UNCHECKED];
+		data->left = theme->characters[TREE_THEME_CID_CHECKBOX_LEFT];
+		data->right = theme->characters[TREE_THEME_CID_CHECKBOX_RIGHT];
+	}
 
 	data->onCheck = onCheck;
 

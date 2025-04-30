@@ -318,6 +318,10 @@ typedef enum _TREE_ThemeCharacterID
 	TREE_THEME_CID_CHECKBOX_CHECKED,
 	TREE_THEME_CID_CHECKBOX_LEFT,
 	TREE_THEME_CID_CHECKBOX_RIGHT,
+	TREE_THEME_CID_RADIOBOX_UNCHECKED,
+	TREE_THEME_CID_RADIOBOX_CHECKED,
+	TREE_THEME_CID_RADIOBOX_LEFT,
+	TREE_THEME_CID_RADIOBOX_RIGHT,
 
 	TREE_THEME_CID_COUNT
 } TREE_ThemeCharacterID;
@@ -1093,7 +1097,7 @@ typedef struct _TREE_Control_CheckboxData
 	TREE_ControlEventHandler onCheck;
 } TREE_Control_CheckboxData;
 
-TREE_Result TREE_Control_CheckboxData_Init(TREE_Control_CheckboxData* data, TREE_String text, TREE_Byte checked, TREE_ControlEventHandler onCheck, TREE_Theme const* theme);
+TREE_Result TREE_Control_CheckboxData_Init(TREE_Control_CheckboxData* data, TREE_String text, TREE_Byte checked, TREE_Bool radio, TREE_ControlEventHandler onCheck, TREE_Theme const* theme);
 
 void TREE_Control_CheckboxData_Free(TREE_Control_CheckboxData* data);
 
