@@ -20,12 +20,6 @@
 
 #define CALL_ACTION(action, ...) do { if (action) { action(__VA_ARGS__); } } while (0)
 
-#define TREE_DEFAULT_COLOR_PAIR_NORMAL_TEXT (TREE_ColorPair_Create(TREE_COLOR_WHITE, TREE_COLOR_BLACK))
-#define TREE_DEFAULT_COLOR_PAIR_HIGHLIGHTED_TEXT (TREE_ColorPair_Create(TREE_COLOR_BRIGHT_WHITE, TREE_COLOR_BLUE))
-#define TREE_DEFAULT_COLOR_PAIR_NORMAL (TREE_ColorPair_Create(TREE_COLOR_BLACK, TREE_COLOR_BRIGHT_BLACK))
-#define TREE_DEFAULT_COLOR_PAIR_FOCUSED (TREE_ColorPair_Create(TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_BRIGHT_WHITE))
-#define TREE_DEFAULT_COLOR_PAIR_ACTIVE (TREE_ColorPair_Create(TREE_COLOR_BLACK, TREE_COLOR_WHITE))
-
 TREE_Char const* TREE_Result_ToString(TREE_Result code)
 {
 	switch (code)
@@ -182,15 +176,18 @@ TREE_Result TREE_String_CreateClampedCopy(TREE_Char** dest, TREE_String src, TRE
 	{
 		length = maxSize;
 	}
-	*dest = TREE_NEW_ARRAY(TREE_Char, length + 1);
-	if (!*dest)
+	TREE_Char* temp = TREE_NEW_ARRAY(TREE_Char, length + 1);
+	if (!temp)
 	{
+		*dest = NULL;
 		return TREE_ERROR_ALLOC;
 	}
 
 	// copy the string
-	memcpy(*dest, src, length);
-	(*dest)[length] = '\0';
+	memcpy(temp, src, length);
+	temp[length] = '\0';
+
+	*dest = temp;
 
 	return TREE_OK;
 }
@@ -846,6 +843,14 @@ TREE_Rect TREE_Rect_GetIntersection(TREE_Rect const* rectA, TREE_Rect const* rec
 	return result;
 }
 
+TREE_Pixel TREE_Pixel_Create(TREE_Char character, TREE_Color foreground, TREE_Color background)
+{
+	TREE_Pixel pixel;
+	pixel.character = character;
+	pixel.colorPair = TREE_ColorPair_Create(foreground, background);
+	return pixel;
+}
+
 TREE_Pixel TREE_Pixel_CreateDefault()
 {
 	TREE_Pixel pixel;
@@ -977,6 +982,65 @@ static TREE_Size _TREE_Image_GetIndex(TREE_Image* image, TREE_Offset offset)
 {
 	// calculate index
 	return (TREE_Size)offset.y * image->extent.width + offset.x;
+}
+
+TREE_Result TREE_Theme_Init(TREE_Theme* theme)
+{
+	// validate
+	if (!theme)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	// set individually so it's easier to change/more obvious
+
+	// Character IDs
+	theme->characters[TREE_THEME_CID_EMPTY] = ' ';
+	theme->characters[TREE_THEME_CID_SCROLL_V_AREA] = '|';
+	theme->characters[TREE_THEME_CID_SCROLL_H_AREA] = '-';
+	theme->characters[TREE_THEME_CID_SCROLL_V_BAR] = '#';
+	theme->characters[TREE_THEME_CID_SCROLL_H_BAR] = '#';
+	theme->characters[TREE_THEME_CID_SCROLL_V_TOP] = '^';
+	theme->characters[TREE_THEME_CID_SCROLL_V_BOTTOM] = 'v';
+	theme->characters[TREE_THEME_CID_SCROLL_H_LEFT] = '<';
+	theme->characters[TREE_THEME_CID_SCROLL_H_RIGHT] = '>';
+	theme->characters[TREE_THEME_CID_CHECKBOX_UNCHECKED] = ' ';
+	theme->characters[TREE_THEME_CID_CHECKBOX_CHECKED] = 'X';
+	theme->characters[TREE_THEME_CID_CHECKBOX_LEFT] = '[';
+	theme->characters[TREE_THEME_CID_CHECKBOX_RIGHT] = ']';
+
+	// Pixel IDs
+	TREE_Char emptyChar = theme->characters[TREE_THEME_CID_EMPTY];
+	theme->pixels[TREE_THEME_PID_NORMAL] = TREE_Pixel_Create(emptyChar, TREE_COLOR_BLACK, TREE_COLOR_BRIGHT_BLACK);
+	theme->pixels[TREE_THEME_PID_FOCUSED] = TREE_Pixel_Create(emptyChar, TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_BRIGHT_WHITE);
+	theme->pixels[TREE_THEME_PID_ACTIVE] = TREE_Pixel_Create(emptyChar, TREE_COLOR_BLACK, TREE_COLOR_WHITE);
+	theme->pixels[TREE_THEME_PID_HOVERED] = TREE_Pixel_Create(emptyChar, TREE_COLOR_BLACK, TREE_COLOR_BRIGHT_WHITE);
+	theme->pixels[TREE_THEME_PID_NORMAL_SELECTED] = TREE_Pixel_Create(emptyChar, TREE_COLOR_BLACK, TREE_COLOR_BRIGHT_BLUE);
+	theme->pixels[TREE_THEME_PID_FOCUSED_SELECTED] = TREE_Pixel_Create(emptyChar, TREE_COLOR_BLACK, TREE_COLOR_BRIGHT_BLUE);
+	theme->pixels[TREE_THEME_PID_ACTIVE_SELECTED] = TREE_Pixel_Create(emptyChar, TREE_COLOR_BRIGHT_WHITE, TREE_COLOR_BLUE);
+	theme->pixels[TREE_THEME_PID_HOVERED_SELECTED] = TREE_Pixel_Create(emptyChar, TREE_COLOR_BRIGHT_WHITE, TREE_COLOR_BRIGHT_BLUE);
+	theme->pixels[TREE_THEME_PID_NORMAL_TEXT] = TREE_Pixel_Create(emptyChar, TREE_COLOR_WHITE, TREE_COLOR_BLACK);
+	theme->pixels[TREE_THEME_PID_FOCUSED_TEXT] = TREE_Pixel_Create(emptyChar, TREE_COLOR_BRIGHT_WHITE, TREE_COLOR_BLACK);
+	theme->pixels[TREE_THEME_PID_NORMAL_SCROLL_AREA] = TREE_Pixel_Create(emptyChar, TREE_COLOR_BLACK, TREE_COLOR_BRIGHT_BLACK);
+	theme->pixels[TREE_THEME_PID_FOCUSED_SCROLL_AREA] = TREE_Pixel_Create(emptyChar, TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_WHITE);
+	theme->pixels[TREE_THEME_PID_ACTIVE_SCROLL_AREA] = TREE_Pixel_Create(emptyChar, TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_BRIGHT_WHITE);
+	theme->pixels[TREE_THEME_PID_NORMAL_SCROLL_BAR] = TREE_Pixel_Create(emptyChar, TREE_COLOR_BLACK, TREE_COLOR_BRIGHT_BLACK);
+	theme->pixels[TREE_THEME_PID_FOCUSED_SCROLL_BAR] = TREE_Pixel_Create(emptyChar, TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_WHITE);
+	theme->pixels[TREE_THEME_PID_ACTIVE_SCROLL_BAR] = TREE_Pixel_Create(emptyChar, TREE_COLOR_WHITE, TREE_COLOR_BRIGHT_BLACK);
+	theme->pixels[TREE_THEME_PID_CURSOR] = TREE_Pixel_Create(emptyChar, TREE_COLOR_BRIGHT_WHITE, TREE_COLOR_BRIGHT_BLACK);
+
+	return TREE_OK;
+}
+
+void TREE_Theme_Free(TREE_Theme* theme)
+{
+	// validate
+	if (!theme)
+	{
+		return;
+	}
+
+	// nothing to free
 }
 
 TREE_Result TREE_Image_Init(TREE_Image* image, TREE_Extent extent)
@@ -2665,7 +2729,7 @@ TREE_Result _TREE_Control_Refresh_Text(TREE_Image* target, TREE_Offset controlOf
 	return TREE_OK;
 }
 
-TREE_Result TREE_Control_LabelData_Init(TREE_Control_LabelData* data, TREE_String text)
+TREE_Result TREE_Control_LabelData_Init(TREE_Control_LabelData* data, TREE_String text, TREE_Theme const* theme)
 {
 	// validate
 	if (!data || !text)
@@ -2686,8 +2750,7 @@ TREE_Result TREE_Control_LabelData_Init(TREE_Control_LabelData* data, TREE_Strin
 	memcpy(data->text, text, textSize);
 	data->text[textLength] = '\0'; // null terminator
 	data->alignment = TREE_ALIGNMENT_TOPLEFT;
-	data->normal.character = ' ';
-	data->normal.colorPair = TREE_DEFAULT_COLOR_PAIR_NORMAL_TEXT;
+	data->normal = theme->pixels[TREE_THEME_PID_NORMAL_TEXT];
 
 	return TREE_OK;
 }
@@ -2777,6 +2840,73 @@ TREE_String TREE_Control_Label_GetText(TREE_Control* control)
 
 	// return text
 	return labelData->text;
+}
+
+TREE_Result TREE_Control_Label_SetAlignment(TREE_Control* control, TREE_Alignment alignment)
+{
+	// validate
+	if (!control)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	// get data
+	TREE_Control_LabelData* labelData = (TREE_Control_LabelData*)control->data;
+
+	// set data
+	labelData->alignment = alignment;
+
+	// mark as dirty to get redrawn
+	control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+
+	return TREE_OK;
+}
+
+TREE_Alignment TREE_Control_Label_GetAlignment(TREE_Control* control)
+{
+	// validate
+	if (!control)
+	{
+		return TREE_ALIGNMENT_NONE;
+	}
+
+	// get data
+	TREE_Control_LabelData* labelData = (TREE_Control_LabelData*)control->data;
+
+	// return alignment
+	return labelData->alignment;
+}
+
+TREE_Result TREE_Control_Label_SetPixel(TREE_Control* control, TREE_Pixel pixel)
+{
+	// validate
+	if (!control)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	// get data
+	TREE_Control_LabelData* labelData = (TREE_Control_LabelData*)control->data;
+
+	// set data
+	labelData->normal = pixel;
+
+	return TREE_OK;
+}
+
+TREE_Pixel TREE_Control_Label_GetPixel(TREE_Control* control)
+{
+	// validate
+	if (!control)
+	{
+		return (TREE_Pixel) { 0, 0 };
+	}
+
+	// get data
+	TREE_Control_LabelData* labelData = (TREE_Control_LabelData*)control->data;
+
+	// return pixel
+	return labelData->normal;
 }
 
 TREE_Result _TREE_Control_Draw(TREE_Image* target, TREE_Rect const* dirtyRect, TREE_Rect const* globalRect, TREE_Image const* image)
@@ -2873,7 +3003,7 @@ TREE_Result TREE_Control_Label_EventHandler(TREE_Event const* event)
 	return TREE_OK;
 }
 
-TREE_Result TREE_Control_ButtonData_Init(TREE_Control_ButtonData* data, TREE_String text, TREE_ControlEventHandler onSubmit)
+TREE_Result TREE_Control_ButtonData_Init(TREE_Control_ButtonData* data, TREE_String text, TREE_ControlEventHandler onSubmit, TREE_Theme const* theme)
 {
 	// validate
 	if (!data || !text)
@@ -2893,12 +3023,9 @@ TREE_Result TREE_Control_ButtonData_Init(TREE_Control_ButtonData* data, TREE_Str
 	memcpy(data->text, text, (textLength + 1) * sizeof(TREE_Char)); // +1 for null terminator
 	data->text[textLength] = '\0'; // null terminator
 	data->alignment = TREE_ALIGNMENT_CENTER;
-	data->normal.character = ' ';
-	data->normal.colorPair = TREE_DEFAULT_COLOR_PAIR_NORMAL;
-	data->focused.character = ' ';
-	data->focused.colorPair = TREE_DEFAULT_COLOR_PAIR_FOCUSED;
-	data->active.character = ' ';
-	data->active.colorPair = TREE_DEFAULT_COLOR_PAIR_ACTIVE;
+	data->normal = theme->pixels[TREE_THEME_PID_NORMAL];
+	data->focused = theme->pixels[TREE_THEME_PID_FOCUSED];
+	data->active = theme->pixels[TREE_THEME_PID_ACTIVE];
 	data->onSubmit = onSubmit;
 
 	return TREE_OK;
@@ -2940,7 +3067,7 @@ TREE_Result TREE_Control_Button_Init(TREE_Control* control, TREE_Transform* pare
 	return TREE_OK;
 }
 
-TREE_Result TREE_Control_Button_SetText(TREE_Control* control, TREE_String text, TREE_ColorPair colorPair)
+TREE_Result TREE_Control_Button_SetText(TREE_Control* control, TREE_String text)
 {
 	// validate
 	if (!control || !text)
@@ -2983,6 +3110,134 @@ TREE_String TREE_Control_Button_GetText(TREE_Control* control)
 
 	// return text
 	return buttonData->text;
+}
+
+TREE_Result TREE_Control_Button_SetAlignment(TREE_Control* control, TREE_Alignment alignment)
+{
+	// validate
+	if (!control)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	// get data
+	TREE_Control_ButtonData* buttonData = (TREE_Control_ButtonData*)control->data;
+
+	// set data
+	buttonData->alignment = alignment;
+
+	// mark as dirty to get redrawn
+	control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+
+	return TREE_OK;
+}
+
+TREE_Alignment TREE_Control_Button_GetAlignment(TREE_Control* control)
+{
+	// validate
+	if (!control)
+	{
+		return TREE_ALIGNMENT_NONE;
+	}
+
+	// get data
+	TREE_Control_ButtonData* buttonData = (TREE_Control_ButtonData*)control->data;
+
+	// return alignment
+	return buttonData->alignment;
+}
+
+TREE_Result TREE_Control_Button_SetPixel(TREE_Control* control, TREE_ThemePixelID id, TREE_Pixel pixel)
+{
+	// validate
+	if (!control)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	// get data
+	TREE_Control_ButtonData* buttonData = (TREE_Control_ButtonData*)control->data;
+
+	// set data
+	switch (id)
+	{
+	case TREE_THEME_PID_NORMAL:
+		buttonData->normal = pixel;
+		break;
+	case TREE_THEME_PID_FOCUSED:
+		buttonData->focused = pixel;
+		break;
+	case TREE_THEME_PID_ACTIVE:
+		buttonData->active = pixel;
+		break;
+	default:
+		return TREE_ERROR_ARG_INVALID;
+	}
+
+	// mark as dirty to get redrawn
+	control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+
+	return TREE_OK;
+}
+
+TREE_Pixel TREE_Control_Button_GetPixel(TREE_Control* control, TREE_ThemePixelID id)
+{
+	// validate
+	if (!control)
+	{
+		return (TREE_Pixel) { 0, 0 };
+	}
+
+	// get data
+	TREE_Control_ButtonData* buttonData = (TREE_Control_ButtonData*)control->data;
+	
+	// return pixel
+	switch (id)
+	{
+	case TREE_THEME_PID_NORMAL:
+		return buttonData->normal;
+	case TREE_THEME_PID_FOCUSED:
+		return buttonData->focused;
+	case TREE_THEME_PID_ACTIVE:
+		return buttonData->active;
+	default:
+		return (TREE_Pixel) { 0, 0 };
+	}
+}
+
+TREE_Result TREE_Control_Button_SetOnSubmit(TREE_Control* control, TREE_ControlEventHandler onSubmit)
+{
+	// validate
+	if (!control)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+	if (control->type != TREE_CONTROL_TYPE_BUTTON)
+	{
+		return TREE_ERROR_ARG_INVALID;
+	}
+
+	// get data
+	TREE_Control_ButtonData* buttonData = (TREE_Control_ButtonData*)control->data;
+
+	// set data
+	buttonData->onSubmit = onSubmit;
+
+	return TREE_OK;
+}
+
+TREE_ControlEventHandler TREE_Control_Button_GetOnSubmit(TREE_Control* control)
+{
+	// validate
+	if (!control || control->type != TREE_CONTROL_TYPE_BUTTON)
+	{
+		return NULL;
+	}
+
+	// get data
+	TREE_Control_ButtonData* buttonData = (TREE_Control_ButtonData*)control->data;
+	// return onSubmit function
+	return buttonData->onSubmit;
 }
 
 TREE_Result TREE_Control_Button_EventHandler(TREE_Event const* event)
@@ -3099,7 +3354,7 @@ TREE_Result TREE_Control_Button_EventHandler(TREE_Event const* event)
 	return TREE_OK;
 }
 
-TREE_Result TREE_Control_TextInputData_Init(TREE_Control_TextInputData* data, TREE_String text, TREE_Size capacity, TREE_String placeholder, TREE_Control_TextInputType type, TREE_ControlEventHandler onChange, TREE_ControlEventHandler onSubmit)
+TREE_Result TREE_Control_TextInputData_Init(TREE_Control_TextInputData* data, TREE_String text, TREE_Size capacity, TREE_String placeholder, TREE_Control_TextInputType type, TREE_ControlEventHandler onChange, TREE_ControlEventHandler onSubmit, TREE_Theme const* theme)
 {
 	// validate
 	if (!data || !text || !placeholder)
@@ -3130,19 +3385,16 @@ TREE_Result TREE_Control_TextInputData_Init(TREE_Control_TextInputData* data, TR
 	memcpy(data->placeholder, placeholder, placeholderLength * sizeof(TREE_Char));
 	data->placeholder[placeholderLength] = '\0'; // null terminator
 
-	data->normal.character = ' ';
-	data->normal.colorPair = TREE_DEFAULT_COLOR_PAIR_NORMAL;
-	data->focused.character = ' ';
-	data->focused.colorPair = TREE_DEFAULT_COLOR_PAIR_FOCUSED;
-	data->active.character = ' ';
-	data->active.colorPair = TREE_DEFAULT_COLOR_PAIR_ACTIVE;
-	data->cursor = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_WHITE, TREE_COLOR_BRIGHT_BLACK);
+	data->normal = theme->pixels[TREE_THEME_PID_NORMAL];
+	data->focused = theme->pixels[TREE_THEME_PID_FOCUSED];
+	data->active = theme->pixels[TREE_THEME_PID_ACTIVE];
+	data->cursor = theme->pixels[TREE_THEME_PID_CURSOR];
 	// set cursor position to end of starting text
 	data->cursorPosition = 0;
 	data->cursorOffset = (TREE_Offset){ 0, 0 };
 	data->cursorTimer = 0;
 	data->scroll = 0;
-	data->selection = TREE_DEFAULT_COLOR_PAIR_HIGHLIGHTED_TEXT;
+	data->selection = theme->pixels[TREE_THEME_PID_ACTIVE_SELECTED];
 	data->selectionOrigin = 0;
 	data->selectionStart = textLength;
 	data->selectionEnd = textLength;
@@ -3280,6 +3532,49 @@ TREE_Result TREE_Control_TextInput_Init(TREE_Control* control, TREE_Transform* p
 	return TREE_OK;
 }
 
+TREE_Result TREE_Control_TextInput_SetType(TREE_Control* control, TREE_Control_TextInputType type)
+{
+	// validate
+	if (!control)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+	if (control->type != TREE_CONTROL_TYPE_TEXT_INPUT)
+	{
+		return TREE_ERROR_ARG_INVALID;
+	}
+
+	// get data
+	TREE_Control_TextInputData* textInputData = (TREE_Control_TextInputData*)control->data;
+
+	// set data
+	textInputData->type = type;
+
+	// mark as dirty to get redrawn
+	control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+
+	return TREE_OK;
+}
+
+TREE_Control_TextInputType TREE_Control_TextInput_GetType(TREE_Control* control)
+{
+	// validate
+	if (!control)
+	{
+		return TREE_CONTROL_TEXT_INPUT_TYPE_NONE;
+	}
+	if (control->type != TREE_CONTROL_TYPE_TEXT_INPUT)
+	{
+		return TREE_CONTROL_TEXT_INPUT_TYPE_NONE;
+	}
+
+	// get data
+	TREE_Control_TextInputData* textInputData = (TREE_Control_TextInputData*)control->data;
+
+	// return type
+	return textInputData->type;
+}
+
 TREE_Result TREE_Control_TextInput_SetText(TREE_Control* control, TREE_String text)
 {
 	// validate
@@ -3295,18 +3590,17 @@ TREE_Result TREE_Control_TextInput_SetText(TREE_Control* control, TREE_String te
 	// get data
 	TREE_Control_TextInputData* textInputData = (TREE_Control_TextInputData*)control->data;
 
-	// allocate new text
+	// get size, limited by the capacity
 	TREE_Size textLength = strlen(text);
-	TREE_Char* newText = TREE_NEW_ARRAY(TREE_Char, textLength + 1);
-	if (!newText)
+	TREE_Size capacity = textInputData->capacity;
+	if (textLength > capacity)
 	{
-		return TREE_ERROR_ALLOC;
+		textLength = capacity;
 	}
 
-	// set data
-	memcpy(newText, text, textLength * sizeof(TREE_Char));
-	newText[textLength] = '\0'; // null terminator
-	TREE_REPLACE(textInputData->text, newText);
+	// copy the text
+	memcpy(textInputData->text, text, textLength * sizeof(TREE_Char));
+	textInputData->text[textLength] = '\0'; // null terminator
 
 	// mark as dirty to get redrawn
 	control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
@@ -3327,6 +3621,254 @@ TREE_String TREE_Control_TextInput_GetText(TREE_Control* control)
 
 	// return text
 	return textInputData->text;
+}
+
+TREE_Result TREE_Control_TextInput_SetCapacity(TREE_Control* control, TREE_Size capacity)
+{
+	// validate
+	if (!control)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+	if (control->type != TREE_CONTROL_TYPE_TEXT_INPUT)
+	{
+		return TREE_ERROR_ARG_INVALID;
+	}
+
+	// get data
+	TREE_Control_TextInputData* textInputData = (TREE_Control_TextInputData*)control->data;
+
+	// set data
+	textInputData->capacity = capacity;
+
+	// reallocate text
+	TREE_Char* copy;
+	TREE_Result result = TREE_String_CreateClampedCopy(&copy, textInputData->text, capacity);
+	if (result)
+	{
+		return result;
+	}
+	TREE_REPLACE(textInputData->text, copy);
+
+	// mark as dirty to get redrawn
+	control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+
+	return TREE_OK;
+}
+
+TREE_Size TREE_Control_TextInput_GetCapacity(TREE_Control* control)
+{
+	// validate
+	if (!control)
+	{
+		return 0;
+	}
+	if (control->type != TREE_CONTROL_TYPE_TEXT_INPUT)
+	{
+		return 0;
+	}
+
+	// get data
+	TREE_Control_TextInputData* textInputData = (TREE_Control_TextInputData*)control->data;
+
+	// return capacity
+	return textInputData->capacity;
+}
+
+TREE_Result TREE_Control_TextInput_SetPlaceholder(TREE_Control* control, TREE_String placeholder)
+{
+	// validate
+	if (!control || !placeholder)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+	if (control->type != TREE_CONTROL_TYPE_TEXT_INPUT)
+	{
+		return TREE_ERROR_ARG_INVALID;
+	}
+	// get data
+	TREE_Control_TextInputData* textInputData = (TREE_Control_TextInputData*)control->data;
+
+	// create copy
+	TREE_Char* copy;
+	TREE_Result result = TREE_String_CreateCopy(&copy, placeholder);
+	if (result)
+	{
+		return result;
+	}
+
+	// set data
+	TREE_REPLACE(textInputData->placeholder, copy);
+
+	// mark as dirty to get redrawn
+	control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+
+	return TREE_OK;
+}
+
+TREE_String TREE_Control_TextInput_GetPlaceholder(TREE_Control* control)
+{
+	// validate
+	if (!control)
+	{
+		return NULL;
+	}
+	if (control->type != TREE_CONTROL_TYPE_TEXT_INPUT)
+	{
+		return NULL;
+	}
+
+	// get data
+	TREE_Control_TextInputData* textInputData = (TREE_Control_TextInputData*)control->data;
+
+	// return placeholder
+	return textInputData->placeholder;
+}
+
+TREE_Result TREE_Control_TextInput_SetPixel(TREE_Control* control, TREE_ThemePixelID id, TREE_Pixel pixel)
+{
+	// validate
+	if (!control)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	// get data
+	TREE_Control_TextInputData* textInputData = (TREE_Control_TextInputData*)control->data;
+
+	// set data
+	switch (id)
+	{
+	case TREE_THEME_PID_NORMAL:
+		textInputData->normal = pixel;
+		break;
+	case TREE_THEME_PID_FOCUSED:
+		textInputData->focused = pixel;
+		break;
+	case TREE_THEME_PID_ACTIVE:
+		textInputData->active = pixel;
+		break;
+	case TREE_THEME_PID_ACTIVE_SELECTED:
+		textInputData->selection = pixel;
+		break;
+	case TREE_THEME_PID_CURSOR:
+		textInputData->cursor = pixel;
+		break;
+	default:
+		return TREE_ERROR_ARG_INVALID;
+	}
+
+	// mark as dirty to get redrawn
+	control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+
+	return TREE_OK;
+}
+
+TREE_Pixel TREE_Control_TextInput_GetPixel(TREE_Control* control, TREE_ThemePixelID id)
+{
+	// validate
+	if (!control)
+	{
+		return (TREE_Pixel) { 0, 0 };
+	}
+
+	// get data
+	TREE_Control_TextInputData* textInputData = (TREE_Control_TextInputData*)control->data;
+
+	// return pixel
+	switch (id)
+	{
+	case TREE_THEME_PID_NORMAL:
+		return textInputData->normal;
+	case TREE_THEME_PID_FOCUSED:
+		return textInputData->focused;
+	case TREE_THEME_PID_ACTIVE:
+		return textInputData->active;
+	case TREE_THEME_PID_ACTIVE_SELECTED:
+		return textInputData->selection;
+	case TREE_THEME_PID_CURSOR:
+		return textInputData->cursor;
+	default:
+		return (TREE_Pixel) { 0, 0 };
+	}
+}
+
+TREE_Result TREE_Control_TextInput_SetOnChange(TREE_Control* control, TREE_ControlEventHandler onChange)
+{
+	// validate
+	if (!control)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+	if (control->type != TREE_CONTROL_TYPE_TEXT_INPUT)
+	{
+		return TREE_ERROR_ARG_INVALID;
+	}
+
+	// get data
+	TREE_Control_TextInputData* textInputData = (TREE_Control_TextInputData*)control->data;
+
+	// set data
+	textInputData->onChange = onChange;
+	return TREE_OK;
+}
+
+TREE_ControlEventHandler TREE_Control_TextInput_GetOnChange(TREE_Control* control)
+{
+	// validate
+	if (!control)
+	{
+		return NULL;
+	}
+	if (control->type != TREE_CONTROL_TYPE_TEXT_INPUT)
+	{
+		return NULL;
+	}
+
+	// get data
+	TREE_Control_TextInputData* textInputData = (TREE_Control_TextInputData*)control->data;
+
+	// return onChange function
+	return textInputData->onChange;
+}
+
+TREE_Result TREE_Control_TextInput_SetOnSubmit(TREE_Control* control, TREE_ControlEventHandler onSubmit)
+{
+	// validate
+	if (!control)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+	if (control->type != TREE_CONTROL_TYPE_TEXT_INPUT)
+	{
+		return TREE_ERROR_ARG_INVALID;
+	}
+
+	// get data
+	TREE_Control_TextInputData* textInputData = (TREE_Control_TextInputData*)control->data;
+
+	// set data
+	textInputData->onSubmit = onSubmit;
+	return TREE_OK;
+}
+
+TREE_ControlEventHandler TREE_Control_TextInput_GetOnSubmit(TREE_Control* control)
+{
+	// validate
+	if (!control)
+	{
+		return NULL;
+	}
+	if (control->type != TREE_CONTROL_TYPE_TEXT_INPUT)
+	{
+		return NULL;
+	}
+
+	// get data
+	TREE_Control_TextInputData* textInputData = (TREE_Control_TextInputData*)control->data;
+
+	// return onSubmit function
+	return textInputData->onSubmit;
 }
 
 TREE_Bool _TREE_IsCharSafe(TREE_Char ch)
@@ -3389,6 +3931,19 @@ TREE_Size _TREE_SeekDifferentCharTypeReverse(TREE_Char* text, TREE_Size textLeng
 		}
 	}
 	return 0;
+}
+
+TREE_Pixel _TREE_GetCursorPixel(TREE_Pixel design, TREE_Bool insert, TREE_Size index, TREE_String text, TREE_Size textLength)
+{
+	TREE_Pixel cursorPixel = design;
+
+	// if inserting, and index is over a character, and the character is safe, use it
+	if (insert && index < textLength && _TREE_IsCharSafe(text[index]))
+	{
+		cursorPixel.character = text[index];
+	}
+
+	return cursorPixel;
 }
 
 TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
@@ -4085,7 +4640,7 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 					lineEndIndex <= data->selectionEnd)
 				{
 					// all selected
-					lineColor = data->selection;
+					lineColor = data->selection.colorPair;
 				}
 				else
 				{
@@ -4138,7 +4693,7 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 						control->image,
 						selectionPos,
 						selectionText,
-						data->selection
+						data->selection.colorPair
 					);
 					TREE_DELETE(selectionText);
 					if (result)
@@ -4151,17 +4706,14 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 			// draw cursor if active
 			if (active)
 			{
-				// calculate the cursor character
-				TREE_Pixel cursorPixel;
-				cursorPixel.colorPair = data->cursor;
-				if (data->cursorPosition == textLength || !_TREE_IsCharSafe(text[data->cursorPosition]))
-				{
-					cursorPixel.character = ' ';
-				}
-				else
-				{
-					cursorPixel.character = text[data->cursorPosition];
-				}
+				// get the cursor
+				TREE_Pixel cursorPixel = _TREE_GetCursorPixel(
+					data->cursor,
+					data->inserting,
+					data->cursorPosition,
+					text,
+					textLength
+				);
 
 				// draw the cursor
 				result = TREE_Image_Set(
@@ -4258,7 +4810,7 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 						control->image,
 						selectionOffset,
 						selectionText,
-						data->selection
+						data->selection.colorPair
 					);
 					if (result)
 					{
@@ -4266,18 +4818,14 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 					}
 				}
 
-				// draw cursor
-				// calculate the cursor character
-				TREE_Pixel cursorPixel;
-				cursorPixel.colorPair = data->cursor;
-				if (data->cursorPosition == textLength || !_TREE_IsCharSafe(text[data->cursorPosition]))
-				{
-					cursorPixel.character = ' ';
-				}
-				else
-				{
-					cursorPixel.character = text[data->cursorPosition];
-				}
+				// get the cursor
+				TREE_Pixel cursorPixel = _TREE_GetCursorPixel(
+					data->cursor,
+					data->inserting,
+					data->cursorPosition,
+					text,
+					textLength
+				);
 
 				// draw the cursor
 				TREE_Offset cursorOffset;
@@ -4327,7 +4875,7 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 	return TREE_OK;
 }
 
-TREE_Result TREE_Control_ScrollbarData_Init(TREE_Control_ScrollbarData* data, TREE_Control_ScrollbarType type, TREE_Bool vertical)
+TREE_Result TREE_Control_ScrollbarData_Init(TREE_Control_ScrollbarData* data, TREE_Control_ScrollbarType type, TREE_Bool vertical, TREE_Theme const* theme)
 {
 	// validate
 	if (!data)
@@ -4339,18 +4887,18 @@ TREE_Result TREE_Control_ScrollbarData_Init(TREE_Control_ScrollbarData* data, TR
 	data->type = type;
 	if (vertical)
 	{
-		data->top = '^';
-		data->bottom = 'v';
-		data->line = '|';
+		data->top = theme->characters[TREE_THEME_CID_SCROLL_V_TOP];
+		data->bottom = theme->characters[TREE_THEME_CID_SCROLL_V_BOTTOM];
+		data->line = theme->characters[TREE_THEME_CID_SCROLL_V_AREA];
+		data->bar = theme->characters[TREE_THEME_CID_SCROLL_V_BAR];
 	}
 	else
 	{
-		data->top = '<';
-		data->bottom = '>';
-		data->line = '-';
+		data->top = theme->characters[TREE_THEME_CID_SCROLL_H_LEFT];
+		data->bottom = theme->characters[TREE_THEME_CID_SCROLL_H_RIGHT];
+		data->line = theme->characters[TREE_THEME_CID_SCROLL_H_AREA];
+		data->bar = theme->characters[TREE_THEME_CID_SCROLL_H_BAR];
 	}
-	data->bar = '#';
-	data->showEnds = TREE_TRUE;
 
 	return TREE_OK;
 }
@@ -4397,41 +4945,36 @@ TREE_Result TREE_Control_Scrollbar_Draw(TREE_Image* target, TREE_Offset scrollba
 		return result;
 	}
 
-	// if supposed to, draw the top and bottom
-	if (data->showEnds)
+	// draw the top
+	scrollbarPixel.character = data->top;
+	result = TREE_Image_Set(
+		target,
+		offset,
+		scrollbarPixel
+	);
+	if (result)
 	{
-		// draw the top
-		scrollbarPixel.character = data->top;
-		result = TREE_Image_Set(
-			target,
-			offset,
-			scrollbarPixel
-		);
-		if (result)
-		{
-			return result;
-		}
+		return result;
+	}
 
-		// draw the bottom
-		scrollbarPixel.character = data->bottom;
-		if (vertical)
-		{
-			offset.y = scrollbarOffset.y + (TREE_Int)(scrollbarExtent.height - 1);
-		}
-		else
-		{
-			offset.x = scrollbarOffset.x + (TREE_Int)(scrollbarExtent.width - 1);
-		}
-
-		result = TREE_Image_Set(
-			target,
-			offset,
-			scrollbarPixel
-		);
-		if (result)
-		{
-			return result;
-		}
+	// draw the bottom
+	scrollbarPixel.character = data->bottom;
+	if (vertical)
+	{
+		offset.y = scrollbarOffset.y + (TREE_Int)(scrollbarExtent.height - 1);
+	}
+	else
+	{
+		offset.x = scrollbarOffset.x + (TREE_Int)(scrollbarExtent.width - 1);
+	}
+	result = TREE_Image_Set(
+		target,
+		offset,
+		scrollbarPixel
+	);
+	if (result)
+	{
+		return result;
 	}
 
 	// draw the bar, if it is needed
@@ -4481,7 +5024,17 @@ TREE_Result TREE_Control_Scrollbar_Draw(TREE_Image* target, TREE_Offset scrollba
 	return TREE_OK;
 }
 
-TREE_Result TREE_Control_ListData_Init(TREE_Control_ListData* data, TREE_Control_ListFlags flags, TREE_String* options, TREE_Size optionsSize, TREE_ControlEventHandler onChange, TREE_ControlEventHandler onSubmit)
+void TREE_Control_ScrollbarData_Free(TREE_Control_ScrollbarData* data)
+{
+	if (!data)
+	{
+		return;
+	}
+
+	// nothing to free
+}
+
+TREE_Result TREE_Control_ListData_Init(TREE_Control_ListData* data, TREE_Control_ListFlags flags, TREE_String* options, TREE_Size optionsSize, TREE_ControlEventHandler onChange, TREE_ControlEventHandler onSubmit, TREE_Theme const* theme)
 {
 	// validate
 	if (!data || !options)
@@ -4501,33 +5054,25 @@ TREE_Result TREE_Control_ListData_Init(TREE_Control_ListData* data, TREE_Control
 	}
 
 	// set data
-	data->normalSelected.character = ' ';
-	data->normalSelected.colorPair = TREE_ColorPair_Create(TREE_COLOR_BLACK, TREE_COLOR_BRIGHT_BLUE);
-	data->normalUnselected.character = ' ';
-	data->normalUnselected.colorPair = TREE_DEFAULT_COLOR_PAIR_NORMAL;
-	data->normalScrollbarColorPair = TREE_DEFAULT_COLOR_PAIR_NORMAL;
-	data->normalScrollbarBarColorPair = TREE_DEFAULT_COLOR_PAIR_NORMAL;
+	data->normalSelected = theme->pixels[TREE_THEME_PID_NORMAL_SELECTED];
+	data->normalUnselected = theme->pixels[TREE_THEME_PID_NORMAL];
+	data->normalScrollbarColorPair = theme->pixels[TREE_THEME_PID_NORMAL_SCROLL_AREA].colorPair;
+	data->normalScrollbarBarColorPair = theme->pixels[TREE_THEME_PID_NORMAL_SCROLL_BAR].colorPair;
 
-	data->focusedSelected.character = ' ';
-	data->focusedSelected.colorPair = TREE_ColorPair_Create(TREE_COLOR_WHITE, TREE_COLOR_BRIGHT_BLUE);
-	data->focusedUnselected.character = ' ';
-	data->focusedUnselected.colorPair = TREE_DEFAULT_COLOR_PAIR_FOCUSED;
-	data->focusedScrollbarColorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_WHITE);
-	data->focusedScrollbarBarColorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_WHITE);
+	data->focusedSelected = theme->pixels[TREE_THEME_PID_FOCUSED_SELECTED];
+	data->focusedUnselected = theme->pixels[TREE_THEME_PID_FOCUSED];
+	data->focusedScrollbarColorPair = theme->pixels[TREE_THEME_PID_FOCUSED_SCROLL_AREA].colorPair;
+	data->focusedScrollbarBarColorPair = theme->pixels[TREE_THEME_PID_FOCUSED_SCROLL_BAR].colorPair;
 
-	data->activeSelected.character = ' ';
-	data->activeSelected.colorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_WHITE, TREE_COLOR_BLUE);
-	data->activeUnselected.character = ' ';
-	data->activeUnselected.colorPair = TREE_DEFAULT_COLOR_PAIR_ACTIVE;
-	data->activeScrollbarColorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_BRIGHT_WHITE);
-	data->activeScrollbarBarColorPair = TREE_ColorPair_Create(TREE_COLOR_WHITE, TREE_COLOR_BRIGHT_BLACK);
+	data->activeSelected = theme->pixels[TREE_THEME_PID_ACTIVE_SELECTED];
+	data->activeUnselected = theme->pixels[TREE_THEME_PID_ACTIVE];
+	data->activeScrollbarColorPair = theme->pixels[TREE_THEME_PID_ACTIVE_SCROLL_AREA].colorPair;
+	data->activeScrollbarBarColorPair = theme->pixels[TREE_THEME_PID_ACTIVE_SCROLL_BAR].colorPair;
 
-	data->hoveredSelected.character = ' ';
-	data->hoveredSelected.colorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_WHITE, TREE_COLOR_BRIGHT_BLUE);
-	data->hoveredUnselected.character = ' ';
-	data->hoveredUnselected.colorPair = TREE_ColorPair_Create(TREE_COLOR_BLACK, TREE_COLOR_BRIGHT_WHITE);
+	data->hoveredSelected = theme->pixels[TREE_THEME_PID_HOVERED_SELECTED];
+	data->hoveredUnselected = theme->pixels[TREE_THEME_PID_HOVERED];
 
-	result = TREE_Control_ScrollbarData_Init(&data->scrollbar, TREE_CONTROL_SCROLLBAR_TYPE_DYNAMIC, TREE_TRUE);
+	result = TREE_Control_ScrollbarData_Init(&data->scrollbar, TREE_CONTROL_SCROLLBAR_TYPE_DYNAMIC, TREE_TRUE, theme);
 	if (result)
 	{
 		return result;
@@ -4749,6 +5294,193 @@ TREE_Result TREE_Control_List_Init(TREE_Control* control, TREE_Transform* parent
 	control->transform->localExtent.height = 10;
 
 	return TREE_OK;
+}
+
+TREE_Result TREE_Control_List_SetFlags(TREE_Control* control, TREE_Control_ListFlags flags)
+{
+	// validate
+	if (!control)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	// set flags
+	TREE_Control_ListData* data = (TREE_Control_ListData*)control->data;
+	data->flags = flags;
+
+	// redraw
+	control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+
+	return TREE_OK;
+}
+
+TREE_Control_ListFlags TREE_Control_List_GetFlags(TREE_Control* control)
+{
+	// validate
+	if (!control)
+	{
+		return TREE_CONTROL_LIST_FLAGS_NONE;
+	}
+
+	// get flags
+	TREE_Control_ListData* data = (TREE_Control_ListData*)control->data;
+	return data->flags;
+}
+
+TREE_Result TREE_Control_List_SetOptions(TREE_Control* control, TREE_String* options, TREE_Size optionsSize)
+{
+	// validate
+	if (!control)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	// set options
+	TREE_Control_ListData* data = (TREE_Control_ListData*)control->data;
+	TREE_Result result = TREE_Control_ListData_SetOptions(data, options, optionsSize);
+	if (result)
+	{
+		return result;
+	}
+
+	// redraw
+	control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+
+	return TREE_OK;
+}
+
+TREE_String* TREE_Control_List_GetOptions(TREE_Control* control)
+{
+	// validate
+	if (!control)
+	{
+		return NULL;
+	}
+
+	// get options
+	TREE_Control_ListData* data = (TREE_Control_ListData*)control->data;
+	return data->options;
+}
+
+TREE_Size TREE_Control_List_GetOptionsSize(TREE_Control* control)
+{
+	// validate
+	if (!control)
+	{
+		return 0;
+	}
+
+	// get options size
+	TREE_Control_ListData* data = (TREE_Control_ListData*)control->data;
+	return data->optionsSize;
+}
+
+TREE_Result TREE_Control_List_SetSelected(TREE_Control* control, TREE_Size index, TREE_Bool selected)
+{
+	// validate
+	if (!control)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	// set selected
+	TREE_Control_ListData* data = (TREE_Control_ListData*)control->data;
+	TREE_Result result = TREE_Control_ListData_SetSelected(data, index, selected);
+	if (result)
+	{
+		return result;
+	}
+
+	// redraw
+	control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+
+	return TREE_OK;
+}
+
+TREE_Bool TREE_Control_List_IsSelected(TREE_Control* control, TREE_Size index)
+{
+	// validate
+	if (!control)
+	{
+		return TREE_FALSE;
+	}
+
+	// get selected
+	TREE_Control_ListData* data = (TREE_Control_ListData*)control->data;
+	return TREE_Control_ListData_IsSelected(data, index);
+}
+
+TREE_Size TREE_Control_List_GetSelected(TREE_Control* control)
+{
+	// validate
+	if (!control)
+	{
+		return 0;
+	}
+
+	// get selected
+	TREE_Control_ListData* data = (TREE_Control_ListData*)control->data;
+	if (data->flags & TREE_CONTROL_LIST_FLAGS_MULTISELECT)
+	{
+		return 0;
+	}
+	return data->selectedIndex;
+}
+
+TREE_Result TREE_Control_List_SetOnChange(TREE_Control* control, TREE_ControlEventHandler onChange)
+{
+	// validate
+	if (!control)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	// set onChange
+	TREE_Control_ListData* data = (TREE_Control_ListData*)control->data;
+	data->onChange = onChange;
+
+	return TREE_OK;
+}
+
+TREE_ControlEventHandler TREE_Control_List_GetOnChange(TREE_Control* control)
+{
+	// validate
+	if (!control)
+	{
+		return NULL;
+	}
+
+	// get onChange
+	TREE_Control_ListData* data = (TREE_Control_ListData*)control->data;
+	return data->onChange;
+}
+
+TREE_Result TREE_Control_List_SetOnSubmit(TREE_Control* control, TREE_ControlEventHandler onSubmit)
+{
+	// validate
+	if (!control)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	// set onSubmit
+	TREE_Control_ListData* data = (TREE_Control_ListData*)control->data;
+	data->onSubmit = onSubmit;
+
+	return TREE_OK;
+}
+
+TREE_ControlEventHandler TREE_Control_List_GetOnSubmit(TREE_Control* control)
+{
+	// validate
+	if (!control)
+	{
+		return NULL;
+	}
+
+	// get onSubmit
+	TREE_Control_ListData* data = (TREE_Control_ListData*)control->data;
+	return data->onSubmit;
 }
 
 TREE_Result _TREE_Control_List_Draw(TREE_Image* target, TREE_Offset controlOffset, TREE_Extent controlExtent, TREE_ControlStateFlags stateFlags, TREE_Control_ListData* data)
@@ -5109,7 +5841,7 @@ TREE_Result TREE_Control_List_EventHandler(TREE_Event const* event)
 	return TREE_OK;
 }
 
-TREE_Result TREE_Control_DropdownData_Init(TREE_Control_DropdownData* data, TREE_String* options, TREE_Size optionsSize, TREE_Size selectedIndex, TREE_Int drop, TREE_ControlEventHandler onSubmit)
+TREE_Result TREE_Control_DropdownData_Init(TREE_Control_DropdownData* data, TREE_String* options, TREE_Size optionsSize, TREE_Size selectedIndex, TREE_Int drop, TREE_ControlEventHandler onSubmit, TREE_Theme const* theme)
 {
 	// validate
 	if (!data || !options)
@@ -5138,24 +5870,17 @@ TREE_Result TREE_Control_DropdownData_Init(TREE_Control_DropdownData* data, TREE
 	data->dropType = drop == 0 ? TREE_CONTROL_DROPDOWN_TYPE_DYNAMIC : TREE_CONTROL_DROPDOWN_TYPE_STATIC;
 	data->drop = drop;
 
-	data->normal.character = ' ';
-	data->normal.colorPair = TREE_DEFAULT_COLOR_PAIR_NORMAL;
+	data->normal = theme->pixels[TREE_THEME_PID_NORMAL];
 
-	data->focused.character = ' ';
-	data->focused.colorPair = TREE_DEFAULT_COLOR_PAIR_FOCUSED;
+	data->focused = theme->pixels[TREE_THEME_PID_FOCUSED];
 
-	data->active.character = ' ';
-	data->active.colorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_WHITE);
+	data->active = theme->pixels[TREE_THEME_PID_FOCUSED];
 
-	data->selected.character = ' ';
-	data->selected.colorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_WHITE, TREE_COLOR_BLUE);
-	data->unselected.character = ' ';
-	data->unselected.colorPair = TREE_DEFAULT_COLOR_PAIR_ACTIVE;
+	data->selected = theme->pixels[TREE_THEME_PID_ACTIVE_SELECTED];
+	data->unselected = theme->pixels[TREE_THEME_PID_ACTIVE];
 
-	data->hoveredSelected.character = ' ';
-	data->hoveredSelected.colorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_WHITE, TREE_COLOR_BRIGHT_BLUE);
-	data->hoveredUnselected.character = ' ';
-	data->hoveredUnselected.colorPair = TREE_ColorPair_Create(TREE_COLOR_BLACK, TREE_COLOR_BRIGHT_WHITE);
+	data->hoveredSelected = theme->pixels[TREE_THEME_PID_HOVERED_SELECTED];
+	data->hoveredUnselected = theme->pixels[TREE_THEME_PID_HOVERED];
 
 	data->onSubmit = onSubmit;
 
@@ -5556,6 +6281,13 @@ TREE_Result TREE_Control_Dropdown_EventHandler(TREE_Event const* event)
 		// if active, draw the dropdown
 		if (active)
 		{
+			// populate a theme data structure using the dropdown's theme
+			TREE_Theme theme;
+			theme.pixels[TREE_THEME_PID_ACTIVE] = data->active;
+			theme.pixels[TREE_THEME_PID_ACTIVE_SELECTED] = data->selected;
+			theme.pixels[TREE_THEME_PID_HOVERED] = data->hoveredUnselected;
+			theme.pixels[TREE_THEME_PID_HOVERED_SELECTED] = data->hoveredSelected;
+
 			// populate a list data structure using the dropdown's data
 			TREE_Control_ListData listData;
 			listData.flags = TREE_CONTROL_LIST_FLAGS_NONE;
@@ -5568,7 +6300,8 @@ TREE_Result TREE_Control_Dropdown_EventHandler(TREE_Event const* event)
 			result = TREE_Control_ScrollbarData_Init(
 				&listData.scrollbar,
 				TREE_CONTROL_SCROLLBAR_TYPE_DYNAMIC,
-				TREE_TRUE
+				TREE_TRUE,
+				&theme
 			);
 			listData.activeSelected = data->selected;
 			listData.activeUnselected = data->unselected;
@@ -5628,7 +6361,7 @@ TREE_Result TREE_Control_Dropdown_EventHandler(TREE_Event const* event)
 	return TREE_OK;
 }
 
-TREE_Result TREE_Control_CheckboxData_Init(TREE_Control_CheckboxData* data, TREE_String text, TREE_Byte checked, TREE_ControlEventHandler onCheck)
+TREE_Result TREE_Control_CheckboxData_Init(TREE_Control_CheckboxData* data, TREE_String text, TREE_Byte checked, TREE_ControlEventHandler onCheck, TREE_Theme const* theme)
 {
 	// validate
 	if (!data || !text)
@@ -5646,13 +6379,15 @@ TREE_Result TREE_Control_CheckboxData_Init(TREE_Control_CheckboxData* data, TREE
 	data->checked = checked;
 	data->reverse = TREE_FALSE;
 
-	data->normal = TREE_DEFAULT_COLOR_PAIR_NORMAL;
-	data->focused = TREE_DEFAULT_COLOR_PAIR_FOCUSED;
-	data->normalText = TREE_DEFAULT_COLOR_PAIR_NORMAL_TEXT;
-	data->focusedText = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_WHITE, TREE_COLOR_BLACK);
+	data->normal = theme->pixels[TREE_THEME_PID_NORMAL].colorPair;
+	data->focused = theme->pixels[TREE_THEME_PID_FOCUSED].colorPair;
+	data->normalText = theme->pixels[TREE_THEME_PID_NORMAL_TEXT].colorPair;
+	data->focusedText = theme->pixels[TREE_THEME_PID_FOCUSED_TEXT].colorPair;
 
-	data->uncheckedChar = ' ';
-	data->checkedChar = 'X';
+	data->checkedChar = theme->characters[TREE_THEME_CID_CHECKBOX_CHECKED];
+	data->uncheckedChar = theme->characters[TREE_THEME_CID_CHECKBOX_UNCHECKED];
+	data->left = theme->characters[TREE_THEME_CID_CHECKBOX_LEFT];
+	data->right = theme->characters[TREE_THEME_CID_CHECKBOX_RIGHT];
 
 	data->onCheck = onCheck;
 
@@ -5803,7 +6538,7 @@ TREE_Result TREE_Control_Checkbox_EventHandler(TREE_Event const* event)
 
 		// draw the checkbox
 		TREE_Pixel pixel;
-		pixel.character = '[';
+		pixel.character = data->left;
 		pixel.colorPair = color;
 		result = TREE_Image_Set(
 			control->image,
@@ -5826,7 +6561,7 @@ TREE_Result TREE_Control_Checkbox_EventHandler(TREE_Event const* event)
 			return result;
 		}
 		offset.x++;
-		pixel.character = ']';
+		pixel.character = data->right;
 		result = TREE_Image_Set(
 			control->image,
 			offset,

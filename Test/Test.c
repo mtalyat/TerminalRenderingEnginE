@@ -36,6 +36,14 @@ int main()
 		return 1;
 	}
 
+	TREE_Theme theme;
+	result = TREE_Theme_Init(&theme);
+	if (result)
+	{
+		printf("Failed to initialize theme: %s\n", TREE_Result_ToString(result));
+		return 1;
+	}
+
 	result = TREE_Window_SetTitle("TREE Test");
 	if (result)
 	{
@@ -64,7 +72,7 @@ int main()
 
 	// create button data
 	TREE_Control_ButtonData quitButtonData;
-	result = TREE_Control_ButtonData_Init(&quitButtonData, "Quit", Button_Quit);
+	result = TREE_Control_ButtonData_Init(&quitButtonData, "Quit", Button_Quit, &theme);
 	if (result)
 	{
 		printf("Failed to initialize quit button data: %s\n", TREE_Result_ToString(result));
@@ -85,7 +93,7 @@ int main()
 
 	// create single line text box
 	TREE_Control_TextInputData textInputData;
-	result = TREE_Control_TextInputData_Init(&textInputData, "Enter text here", 256, "Placeholder", TREE_CONTROL_TEXT_INPUT_TYPE_NORMAL, NULL, NULL);
+	result = TREE_Control_TextInputData_Init(&textInputData, "Enter text here", 256, "Placeholder", TREE_CONTROL_TEXT_INPUT_TYPE_NORMAL, NULL, NULL, &theme);
 	if (result)
 	{
 		printf("Failed to initialize text input data: %s\n", TREE_Result_ToString(result));
@@ -115,7 +123,7 @@ int main()
 
 	// create list data
 	TREE_Control_ListData listData;
-	result = TREE_Control_ListData_Init(&listData, TREE_CONTROL_LIST_FLAGS_MULTISELECT, options, 30, NULL, NULL);
+	result = TREE_Control_ListData_Init(&listData, TREE_CONTROL_LIST_FLAGS_MULTISELECT, options, 30, NULL, NULL, &theme);
 	if (result)
 	{
 		printf("Failed to initialize list data: %s\n", TREE_Result_ToString(result));
@@ -136,7 +144,7 @@ int main()
 
 	// create multi line text box
 	TREE_Control_TextInputData multiLineTextInputData;
-	result = TREE_Control_TextInputData_Init(&multiLineTextInputData, "Enter multi-line text here.\n\nHello world!", 256, "Placeholder", TREE_CONTROL_TEXT_INPUT_TYPE_NORMAL, NULL, NULL);
+	result = TREE_Control_TextInputData_Init(&multiLineTextInputData, "Enter multi-line text here.\n\nHello world!", 256, "Placeholder", TREE_CONTROL_TEXT_INPUT_TYPE_NORMAL, NULL, NULL, &theme);
 	if (result)
 	{
 		printf("Failed to initialize multi-line text input data: %s\n", TREE_Result_ToString(result));
@@ -160,7 +168,7 @@ int main()
 	TREE_Control_DropdownData dropDatas[3];
 	for (TREE_Size i = 0; i < 3; i++)
 	{
-		result = TREE_Control_DropdownData_Init(&dropDatas[i], options, 30, 0, 0, NULL);
+		result = TREE_Control_DropdownData_Init(&dropDatas[i], options, 30, 0, 0, NULL, &theme);
 		if (result)
 		{
 			printf("Failed to initialize dropdown data: %s\n", TREE_Result_ToString(result));
@@ -187,7 +195,7 @@ int main()
 	TREE_Control_CheckboxData checkboxDatas[CHECKBOX_COUNT];
 	for (TREE_Size i = 0; i < CHECKBOX_COUNT; i++)
 	{
-		result = TREE_Control_CheckboxData_Init(&checkboxDatas[i], (i & 2) == 0 ? " Normal" : "Reversed ", i & 1, NULL);
+		result = TREE_Control_CheckboxData_Init(&checkboxDatas[i], (i & 2) == 0 ? " Normal" : "Reversed ", i & 1, NULL, &theme);
 		if (result)
 		{
 			printf("Failed to initialize checkbox data: %s\n", TREE_Result_ToString(result));
@@ -212,7 +220,7 @@ int main()
 
 	// create label data
 	TREE_Control_LabelData labelData;
-	result = TREE_Control_LabelData_Init(&labelData, "Checkboxes:");
+	result = TREE_Control_LabelData_Init(&labelData, "Checkboxes:", &theme);
 	if (result)
 	{
 		printf("Failed to initialize label data: %s\n", TREE_Result_ToString(result));
@@ -341,8 +349,10 @@ int main()
 	}
 
 	// cleanup
-	TREE_Control_Free(&listControl);
+	TREE_Control_LabelData_Free(&labelData);
+	TREE_Control_Free(&label);
 	TREE_Control_ListData_Free(&listData);
+	TREE_Control_Free(&listControl);
 	TREE_Control_TextInputData_Free(&textInputData);
 	TREE_Control_Free(&textInput);
 	TREE_Control_TextInputData_Free(&multiLineTextInputData);
@@ -361,6 +371,7 @@ int main()
 	}
 	TREE_Application_Free(&app);
 	TREE_Surface_Free(&surface);
+	TREE_Theme_Free(&theme);
 	TREE_Free();
 
 	printf("Application ran successfully!\n");
