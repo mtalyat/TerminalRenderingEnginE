@@ -7432,10 +7432,10 @@ TREE_Result TREE_Control_NumberInput_EventHandler(TREE_Event const* event)
 	return TREE_OK;
 }
 
-TREE_Result TREE_Application_Init(TREE_Application* application, TREE_Surface* surface, TREE_Size capacity, TREE_EventHandler eventHandler)
+TREE_Result TREE_Application_Init(TREE_Application* application, TREE_Size capacity, TREE_EventHandler eventHandler)
 {
 	// validate
-	if (!application || !surface)
+	if (!application)
 	{
 		return TREE_ERROR_ARG_NULL;
 	}
@@ -7448,6 +7448,12 @@ TREE_Result TREE_Application_Init(TREE_Application* application, TREE_Surface* s
 	application->controls = TREE_NEW_ARRAY(TREE_Control*, capacity);
 	if (!application->controls)
 	{
+		return TREE_ERROR_ALLOC;
+	}
+	application->surface = TREE_NEW(TREE_Surface);
+	if (!application->surface)
+	{
+		TREE_DELETE(application->controls);
 		return TREE_ERROR_ALLOC;
 	}
 
@@ -7465,7 +7471,14 @@ TREE_Result TREE_Application_Init(TREE_Application* application, TREE_Surface* s
 		return result;
 	}
 	application->eventHandler = eventHandler;
-	application->surface = surface;
+	TREE_Extent extent = TREE_Window_GetExtent();
+	result = TREE_Surface_Init(application->surface, extent);
+	if (result)
+	{
+		TREE_DELETE(application->controls);
+		TREE_Input_Free(&application->input);
+		return result;
+	}
 
 	return TREE_OK;
 }
@@ -7479,6 +7492,7 @@ void TREE_Application_Free(TREE_Application* application)
 
 	TREE_DELETE(application->controls);
 	TREE_Input_Free(&application->input);
+	TREE_Surface_Free(application->surface);
 }
 
 TREE_Result TREE_Application_AddControl(TREE_Application* application, TREE_Control* control)
@@ -7671,10 +7685,55 @@ TREE_Result TREE_Application_Run(TREE_Application* application)
 	TREE_Time currentTime;
 	TREE_Time keyTick = startTime;
 	TREE_Time const keyInterval = CLOCKS_PER_SEC / 20;
+	TREE_Extent extent = application->surface->image.extent;
 	while (application->running)
 	{
 		// get current time
 		currentTime = clock();
+
+		// check for resize
+		TREE_Extent newExtent = TREE_Window_GetExtent();
+		if (newExtent.width != extent.width || newExtent.height != extent.height)
+		{
+			extent = newExtent;
+
+			// resize the surface
+			result = TREE_Image_Resize(&application->surface->image, extent);
+			if (result)
+			{
+				application->running = TREE_FALSE;
+				return result;
+			}
+
+			// trigger event
+			TREE_EventData_WindowResize eventData;
+			eventData.extent = extent;
+			TREE_Event event;
+			event.type = TREE_EVENT_TYPE_WINDOW_RESIZE;
+			event.data = &eventData;
+			event.control = NULL;
+			event.application = application;
+			result = TREE_Application_DispatchEvent(application, &event);
+			if (result)
+			{
+				application->running = TREE_FALSE;
+				return result;
+			}
+
+			// set the dirty rect to the whole surface
+			dirtyRect.offset.x = 0;
+			dirtyRect.offset.y = 0;
+			dirtyRect.extent.width = extent.width;
+			dirtyRect.extent.height = extent.height;
+		}
+		else
+		{
+			// clear the dirty rect
+			dirtyRect.offset.x = (TREE_Int)application->surface->image.extent.width;
+			dirtyRect.offset.y = (TREE_Int)application->surface->image.extent.height;
+			dirtyRect.extent.width = 0;
+			dirtyRect.extent.height = 0;
+		}
 
 		// update the dirty controls/transforms
 		{
@@ -7684,11 +7743,6 @@ TREE_Result TREE_Application_Run(TREE_Application* application)
 			event.data = NULL;
 			event.control = NULL;
 			event.application = application;
-
-			dirtyRect.offset.x = (TREE_Int)application->surface->image.extent.width;
-			dirtyRect.offset.y = (TREE_Int)application->surface->image.extent.height;
-			dirtyRect.extent.width = 0;
-			dirtyRect.extent.height = 0;
 
 			TREE_Control* control;
 			TREE_Bool dirty;

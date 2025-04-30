@@ -36,6 +36,7 @@ int main()
 		return 1;
 	}
 
+	// create the theme
 	TREE_Theme theme;
 	result = TREE_Theme_Init(&theme);
 	if (result)
@@ -51,19 +52,10 @@ int main()
 		return 1;
 	}
 
-	// create the surface to draw to
-	TREE_Surface surface;
-	result = TREE_Surface_Init(&surface, TREE_Window_GetExtent());
-	if (result)
-	{
-		printf("Failed to initialize surface: %s\n", TREE_Result_ToString(result));
-		return 1;
-	}
-
 	// create the application
 	TREE_Application app;
 	g_application = &app; // Store the application globally for the event handler
-	result = TREE_Application_Init(&app, &surface, 32, ApplicationEventHandler);
+	result = TREE_Application_Init(&app, 32, ApplicationEventHandler);
 	if (result)
 	{
 		printf("Failed to initialize application: %s\n", TREE_Result_ToString(result));
@@ -404,7 +396,6 @@ int main()
 		TREE_Control_DropdownData_Free(&dropDatas[i]);
 	}
 	TREE_Application_Free(&app);
-	TREE_Surface_Free(&surface);
 	TREE_Theme_Free(&theme);
 	TREE_Free();
 

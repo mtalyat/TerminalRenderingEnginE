@@ -657,11 +657,12 @@ typedef enum _TREE_Alignment
 typedef enum _TREE_EventType
 {
 	TREE_EVENT_TYPE_NONE = 0,
-	TREE_EVENT_TYPE_REFRESH = 1,
-	TREE_EVENT_TYPE_DRAW = 2,
-	TREE_EVENT_TYPE_KEY_DOWN = 3,
-	TREE_EVENT_TYPE_KEY_HELD = 4,
-	TREE_EVENT_TYPE_KEY_UP = 5,
+	TREE_EVENT_TYPE_REFRESH,
+	TREE_EVENT_TYPE_DRAW,
+	TREE_EVENT_TYPE_KEY_DOWN,
+	TREE_EVENT_TYPE_KEY_HELD,
+	TREE_EVENT_TYPE_KEY_UP,
+	TREE_EVENT_TYPE_WINDOW_RESIZE,
 } TREE_EventType;
 
 typedef struct _TREE_Application TREE_Application;
@@ -688,6 +689,11 @@ typedef struct _TREE_EventData_Key
 	TREE_Key key;
 	TREE_KeyModifierFlags modifiers;
 } TREE_EventData_Key;
+
+typedef struct _TREE_EventData_WindowResize
+{
+	TREE_Extent extent;
+} TREE_EventData_WindowResize;
 
 ///////////////////////////////////////
 // Transform                         //
@@ -1213,7 +1219,7 @@ typedef struct _TREE_Application
 	TREE_Surface* surface;
 } TREE_Application;
 
-TREE_EXTERN TREE_Result TREE_Application_Init(TREE_Application* application, TREE_Surface* surface, TREE_Size capacity, TREE_EventHandler eventHandler);
+TREE_EXTERN TREE_Result TREE_Application_Init(TREE_Application* application, TREE_Size capacity, TREE_EventHandler eventHandler);
 
 TREE_EXTERN void TREE_Application_Free(TREE_Application* application);
 
