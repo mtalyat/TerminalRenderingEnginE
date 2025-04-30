@@ -5972,6 +5972,138 @@ TREE_Result TREE_Control_Dropdown_Init(TREE_Control* control, TREE_Transform* pa
 	return TREE_OK;
 }
 
+TREE_Result TREE_Control_Dropdown_SetOptions(TREE_Control* control, TREE_String* options, TREE_Size optionsSize)
+{
+	// validate
+	if (!control)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	// set options
+	TREE_Control_DropdownData* data = (TREE_Control_DropdownData*)control->data;
+	TREE_Result result = TREE_Control_DropdownData_SetOptions(data, options, optionsSize);
+	if (result)
+	{
+		return result;
+	}
+
+	// redraw
+	control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+
+	return TREE_OK;
+}
+
+TREE_String* TREE_Control_Dropdown_GetOptions(TREE_Control* control)
+{
+	// validate
+	if (!control)
+	{
+		return NULL;
+	}
+
+	// get options
+	TREE_Control_DropdownData* data = (TREE_Control_DropdownData*)control->data;
+	return data->options;
+}
+
+TREE_Size TREE_Control_Dropdown_GetOptionsSize(TREE_Control* control)
+{
+	// validate
+	if (!control)
+	{
+		return 0;
+	}
+
+	// get options size
+	TREE_Control_DropdownData* data = (TREE_Control_DropdownData*)control->data;
+	return data->optionsSize;
+}
+
+TREE_Result TREE_Control_Dropdown_SetSelected(TREE_Control* control, TREE_Size index)
+{
+	// validate
+	if (!control)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	// set selected
+	TREE_Control_DropdownData* data = (TREE_Control_DropdownData*)control->data;
+	if (index >= data->optionsSize)
+	{
+		return TREE_ERROR_ARG_OUT_OF_RANGE;
+	}
+	data->selectedIndex = index;
+	data->hoverIndex = index;
+
+	// redraw
+	control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+
+	return TREE_OK;
+}
+
+TREE_Bool TREE_Control_Dropdown_IsSelected(TREE_Control* control, TREE_Size index)
+{
+	// validate
+	if (!control)
+	{
+		return TREE_FALSE;
+	}
+
+	// get selected
+	TREE_Control_DropdownData* data = (TREE_Control_DropdownData*)control->data;
+	if (index >= data->optionsSize)
+	{
+		return TREE_FALSE;
+	}
+
+	return data->selectedIndex == index;
+}
+
+TREE_Size TREE_Control_Dropdown_GetSelected(TREE_Control* control)
+{
+	// validate
+	if (!control)
+	{
+		return 0;
+	}
+
+	// get selected
+	TREE_Control_DropdownData* data = (TREE_Control_DropdownData*)control->data;
+
+	return data->selectedIndex;
+}
+
+TREE_Result TREE_Control_Dropdown_SetOnSubmit(TREE_Control* control, TREE_ControlEventHandler onSubmit)
+{
+	// validate
+	if (!control)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	// set onSubmit
+	TREE_Control_DropdownData* data = (TREE_Control_DropdownData*)control->data;
+	data->onSubmit = onSubmit;
+
+	return TREE_OK;
+}
+
+TREE_ControlEventHandler TREE_Control_Dropdown_GetOnSubmit(TREE_Control* control)
+{
+	// validate
+	if (!control)
+	{
+		return NULL;
+	}
+
+	// get onSubmit
+	TREE_Control_DropdownData* data = (TREE_Control_DropdownData*)control->data;
+
+	return data->onSubmit;
+}
+
 TREE_Result TREE_Control_Dropdown_EventHandler(TREE_Event const* event)
 {
 	// validate

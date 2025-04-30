@@ -1076,6 +1076,22 @@ TREE_Result TREE_Control_DropdownData_SetOptions(TREE_Control_DropdownData* data
 
 TREE_Result TREE_Control_Dropdown_Init(TREE_Control* control, TREE_Transform* parent, TREE_Control_DropdownData* data);
 
+TREE_Result TREE_Control_Dropdown_SetOptions(TREE_Control* control, TREE_String* options, TREE_Size optionsSize);
+
+TREE_String* TREE_Control_Dropdown_GetOptions(TREE_Control* control);
+
+TREE_Size TREE_Control_Dropdown_GetOptionsSize(TREE_Control* control);
+
+TREE_Result TREE_Control_Dropdown_SetSelected(TREE_Control* control, TREE_Size index);
+
+TREE_Bool TREE_Control_Dropdown_IsSelected(TREE_Control* control, TREE_Size index);
+
+TREE_Size TREE_Control_Dropdown_GetSelected(TREE_Control* control);
+
+TREE_Result TREE_Control_Dropdown_SetOnSubmit(TREE_Control* control, TREE_ControlEventHandler onSubmit);
+
+TREE_ControlEventHandler TREE_Control_Dropdown_GetOnSubmit(TREE_Control* control);
+
 TREE_Result TREE_Control_Dropdown_EventHandler(TREE_Event const* event);
 
 ///////////////////////////////////////
