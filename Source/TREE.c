@@ -1196,18 +1196,18 @@ TREE_Result TREE_Image_DrawImage(TREE_Image* image, TREE_Offset offset, TREE_Ima
 	}
 
 	// calculate sizes
-	TREE_UInt otherOffsetX = offset.x < -otherOffset.x ? otherOffset.x - offset.x : otherOffset.x;
-	TREE_UInt otherOffsetY = offset.y < -otherOffset.y ? otherOffset.y - offset.y : otherOffset.y;
-	TREE_UInt offsetX = offset.x < 0 ? 0 : offset.x;
-	TREE_UInt offsetY = offset.y < 0 ? 0 : offset.y;
-	TREE_UInt width = MIN(extent.width, image->extent.width - offsetX);
-	TREE_UInt height = MIN(extent.height, image->extent.height - offsetY);
+	TREE_Int otherOffsetX = offset.x < -otherOffset.x ? otherOffset.x - offset.x : otherOffset.x;
+	TREE_Int otherOffsetY = offset.y < -otherOffset.y ? otherOffset.y - offset.y : otherOffset.y;
+	TREE_Int offsetX = offset.x < 0 ? 0 : offset.x;
+	TREE_Int offsetY = offset.y < 0 ? 0 : offset.y;
+	TREE_Int width = MIN(extent.width, image->extent.width - offsetX);
+	TREE_Int height = MIN(extent.height, image->extent.height - offsetY);
 	TREE_Size textCopySize = width * sizeof(TREE_Char);
 	TREE_Size colorCopySize = width * sizeof(TREE_ColorPair);
 
 	// draw the image
 	TREE_UInt index, otherIndex;
-	for (TREE_UInt row = 0; row < height; ++row)
+	for (TREE_Int row = 0; row < height; ++row)
 	{
 		// get indexes to "pixel"
 		index = (row + offsetY) * image->extent.width + offsetX;
@@ -2139,7 +2139,7 @@ TREE_Result TREE_Transform_DisconnectChildren(TREE_Transform* transform)
 	return TREE_OK;
 }
 
-TREE_Result TREE_Transform_Refresh(TREE_Transform* transform)
+TREE_Result TREE_Transform_Refresh(TREE_Transform* transform, TREE_Extent surfaceExtent)
 {
 	// validate
 	if (!transform)
@@ -2149,67 +2149,71 @@ TREE_Result TREE_Transform_Refresh(TREE_Transform* transform)
 
 	// calculate global rectangle
 
-	// parent: use parent data
+	// is parent offset and extent if there is one
+	// otherwise use origin and window extent
 	TREE_Transform* parent = transform->parent;
+	TREE_Offset offset;
+	TREE_Extent extent;
 	if (parent)
 	{
-		TREE_Alignment alignment = transform->localAlignment;
-		TREE_Rect result;
-
-		// top<-->bottom
-		if (alignment & TREE_ALIGNMENT_VERTICALSTRETCH)
-		{
-			result.offset.y = parent->globalRect.offset.y - transform->localOffset.y;
-			result.extent.height = parent->globalRect.extent.height + transform->localOffset.y * 2;
-		}
-		else if (alignment & TREE_ALIGNMENT_TOP)
-		{
-			result.offset.y = parent->globalRect.offset.y + transform->localOffset.y - (TREE_Int)(transform->localPivot.y * transform->localExtent.height);
-			result.extent.height = transform->localExtent.height;
-		}
-		else if (alignment & TREE_ALIGNMENT_BOTTOM)
-		{
-			result.offset.y = parent->globalRect.offset.y + parent->globalRect.extent.height + transform->localOffset.y - (TREE_Int)(transform->localPivot.y * transform->localExtent.height);
-			result.extent.height = transform->localExtent.height;
-		}
-		else
-		{
-			result.offset.y = parent->globalRect.offset.y + (parent->globalRect.extent.height + transform->localExtent.height) / 2 + transform->localOffset.y - (TREE_Int)(transform->localPivot.y * transform->localExtent.height);
-			result.extent.height = transform->localExtent.height;
-		}
-
-		// left<-->right
-		if (alignment & TREE_ALIGNMENT_HORIZONTALSTRETCH)
-		{
-			result.offset.x = parent->globalRect.offset.x - transform->localOffset.x;
-			result.extent.width = parent->globalRect.extent.width + transform->localOffset.x * 2;
-		}
-		else if (alignment & TREE_ALIGNMENT_LEFT)
-		{
-			result.offset.x = parent->globalRect.offset.x + transform->localOffset.x - (TREE_Int)(transform->localPivot.x * transform->localExtent.width);
-			result.extent.width = transform->localExtent.width;
-		}
-		else if (alignment & TREE_ALIGNMENT_RIGHT)
-		{
-			result.offset.x = parent->globalRect.offset.x + parent->globalRect.extent.width + transform->localOffset.x - (TREE_Int)(transform->localPivot.x * transform->localExtent.width);
-			result.extent.width = transform->localExtent.width;
-		}
-		else
-		{
-			result.offset.x = parent->globalRect.offset.x + (parent->globalRect.extent.width + transform->localExtent.width) / 2 + transform->localOffset.x - (TREE_Int)(transform->localPivot.x * transform->localExtent.width);
-			result.extent.width = transform->localExtent.width;
-		}
-
-		// set global rectangle
-		transform->globalRect = result;
-
-		return TREE_OK;
+		offset = parent->globalRect.offset;
+		extent = parent->globalRect.extent;
+	}
+	else
+	{
+		offset = (TREE_Offset){ 0, 0 };
+		extent = surfaceExtent;
 	}
 
-	// no parent: use local data
-	transform->globalRect.offset.y = transform->localOffset.y - (TREE_Int)(transform->localPivot.y * transform->localExtent.height);
-	transform->globalRect.offset.x = transform->localOffset.x - (TREE_Int)(transform->localPivot.x * transform->localExtent.width);
-	transform->globalRect.extent = transform->localExtent;
+	TREE_Alignment alignment = transform->localAlignment;
+	TREE_Rect result;
+
+	// top<-->bottom
+	if ((alignment & TREE_ALIGNMENT_VERTICALSTRETCH) == TREE_ALIGNMENT_VERTICALSTRETCH)
+	{
+		result.offset.y = offset.y + transform->localOffset.y;
+		result.extent.height = extent.height - transform->localExtent.height - transform->localOffset.y;
+	}
+	else if (alignment & TREE_ALIGNMENT_TOP)
+	{
+		result.offset.y = offset.y + transform->localOffset.y - (TREE_Int)(transform->localPivot.y * transform->localExtent.height);
+		result.extent.height = transform->localExtent.height;
+	}
+	else if (alignment & TREE_ALIGNMENT_BOTTOM)
+	{
+		result.offset.y = offset.y + extent.height + transform->localOffset.y - (TREE_Int)(transform->localPivot.y * transform->localExtent.height);
+		result.extent.height = transform->localExtent.height;
+	}
+	else
+	{
+		result.offset.y = offset.y + (extent.height + transform->localExtent.height) / 2 + transform->localOffset.y - (TREE_Int)(transform->localPivot.y * transform->localExtent.height);
+		result.extent.height = transform->localExtent.height;
+	}
+
+	// left<-->right
+	if ((alignment & TREE_ALIGNMENT_HORIZONTALSTRETCH) == TREE_ALIGNMENT_HORIZONTALSTRETCH)
+	{
+		result.offset.x = offset.x + transform->localOffset.x;
+		result.extent.width = extent.width - transform->localExtent.width - transform->localOffset.x;
+	}
+	else if (alignment & TREE_ALIGNMENT_LEFT)
+	{
+		result.offset.x = offset.x + transform->localOffset.x - (TREE_Int)(transform->localPivot.x * transform->localExtent.width);
+		result.extent.width = transform->localExtent.width;
+	}
+	else if (alignment & TREE_ALIGNMENT_RIGHT)
+	{
+		result.offset.x = offset.x + extent.width + transform->localOffset.x - (TREE_Int)(transform->localPivot.x * transform->localExtent.width);
+		result.extent.width = transform->localExtent.width;
+	}
+	else
+	{
+		result.offset.x = offset.x + (extent.width + transform->localExtent.width) / 2 + transform->localOffset.x - (TREE_Int)(transform->localPivot.x * transform->localExtent.width);
+		result.extent.width = transform->localExtent.width;
+	}
+
+	// set global rectangle
+	transform->globalRect = result;
 
 	return TREE_OK;
 }
@@ -6187,12 +6191,12 @@ TREE_Result TREE_Control_Dropdown_EventHandler(TREE_Event const* event)
 				// move transform (if needed) to account for dropdown
 				if (data->drop < 0)
 				{
-					control->transform->localOffset.y += data->drop + 1;
+					control->transform->localOffset.y += data->drop;
 				}
 
 				// resize transform as well
 				TREE_UInt dropSize = (TREE_UInt)(data->drop > 0 ? data->drop : -data->drop);
-				control->transform->localExtent.height = dropSize;
+				control->transform->localExtent.height = dropSize + 1;
 				control->transform->dirty = TREE_TRUE;
 			}
 			break;
@@ -6425,6 +6429,10 @@ TREE_Result TREE_Control_Dropdown_EventHandler(TREE_Event const* event)
 			theme.pixels[TREE_THEME_PID_ACTIVE_SELECTED] = data->selected;
 			theme.pixels[TREE_THEME_PID_HOVERED] = data->hoveredUnselected;
 			theme.pixels[TREE_THEME_PID_HOVERED_SELECTED] = data->hoveredSelected;
+			theme.characters[TREE_THEME_CID_SCROLL_V_AREA] = '|';
+			theme.characters[TREE_THEME_CID_SCROLL_V_BAR] = '#';
+			theme.characters[TREE_THEME_CID_UP] = '^';
+			theme.characters[TREE_THEME_CID_DOWN] = 'v';
 
 			// populate a list data structure using the dropdown's data
 			TREE_Control_ListData listData;
@@ -7232,6 +7240,7 @@ TREE_Result TREE_Control_NumberInput_EventHandler(TREE_Event const* event)
 		}
 		case TREE_KEY_ENTER: // submit
 		case TREE_KEY_SPACE:
+		case TREE_KEY_ESCAPE:
 		{
 			control->stateFlags &= ~TREE_CONTROL_STATE_FLAGS_ACTIVE;
 			control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
@@ -7720,19 +7729,11 @@ TREE_Result TREE_Application_Run(TREE_Application* application)
 				return result;
 			}
 
-			// set the dirty rect to the whole surface
-			dirtyRect.offset.x = 0;
-			dirtyRect.offset.y = 0;
-			dirtyRect.extent.width = extent.width;
-			dirtyRect.extent.height = extent.height;
-		}
-		else
-		{
-			// clear the dirty rect
-			dirtyRect.offset.x = (TREE_Int)application->surface->image.extent.width;
-			dirtyRect.offset.y = (TREE_Int)application->surface->image.extent.height;
-			dirtyRect.extent.width = 0;
-			dirtyRect.extent.height = 0;
+			// dirty every transform
+			for (TREE_Size i = 0; i < application->controlsSize; ++i)
+			{
+				application->controls[i]->transform->dirty = TREE_TRUE;
+			}
 		}
 
 		// update the dirty controls/transforms
@@ -7743,6 +7744,12 @@ TREE_Result TREE_Application_Run(TREE_Application* application)
 			event.data = NULL;
 			event.control = NULL;
 			event.application = application;
+
+			// clear the dirty rect
+			dirtyRect.offset.x = (TREE_Int)application->surface->image.extent.width;
+			dirtyRect.offset.y = (TREE_Int)application->surface->image.extent.height;
+			dirtyRect.extent.width = 0;
+			dirtyRect.extent.height = 0;
 
 			TREE_Control* control;
 			TREE_Bool dirty;
@@ -7759,7 +7766,7 @@ TREE_Result TREE_Application_Run(TREE_Application* application)
 					TREE_Rect oldGlobalRect = control->transform->globalRect;
 
 					// refresh the transform
-					result = TREE_Transform_Refresh(control->transform);
+					result = TREE_Transform_Refresh(control->transform, extent);
 					if (result)
 					{
 						application->running = TREE_FALSE;

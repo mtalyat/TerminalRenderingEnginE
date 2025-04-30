@@ -104,18 +104,17 @@ int main()
 	textInput.transform->localOffset.y = 1;
 
 	// create list data
-	TREE_String options[] = {
+#define OPTIONS_COUNT 20
+	TREE_String options[OPTIONS_COUNT] = {
 		"Option 1", "Option 2", "Option 3", "Option 4", "Option 5",
 		"Option 6", "Option 7", "Option 8", "Option 9", "Option 10",
 		"Option 11", "Option 12", "Option 13", "Option 14", "Option 15",
-		"Option 16", "Option 17", "Option 18", "Option 19", "Option 20",
-		"Option 21", "Option 22", "Option 23", "Option 24", "Option 25",
-		"Option 26", "Option 27", "Option 28", "Option 29", "Option 30"
+		"Option 16", "Option 17", "Option 18", "Option 19", "Option 20"
 	};
 
 	// create list data
 	TREE_Control_ListData listData;
-	result = TREE_Control_ListData_Init(&listData, TREE_CONTROL_LIST_FLAGS_MULTISELECT, options, 30, NULL, NULL, &theme);
+	result = TREE_Control_ListData_Init(&listData, TREE_CONTROL_LIST_FLAGS_MULTISELECT, options, OPTIONS_COUNT, NULL, NULL, &theme);
 	if (result)
 	{
 		printf("Failed to initialize list data: %s\n", TREE_Result_ToString(result));
@@ -130,9 +129,11 @@ int main()
 		printf("Failed to initialize list control: %s\n", TREE_Result_ToString(result));
 		return 1;
 	}
+	listControl.transform->localAlignment = TREE_ALIGNMENT_LEFTSTRETCH;
 	listControl.transform->localOffset.x = 1;
-	listControl.transform->localOffset.y = 6;
-	listControl.transform->localExtent.height = 20;
+	listControl.transform->localOffset.y = 5;
+	listControl.transform->localExtent.height = 3;
+	listControl.transform->localExtent.width = 20;
 
 	// create multi line text box
 	TREE_Control_TextInputData multiLineTextInputData;
@@ -160,7 +161,7 @@ int main()
 	TREE_Control_DropdownData dropDatas[3];
 	for (TREE_Size i = 0; i < 3; i++)
 	{
-		result = TREE_Control_DropdownData_Init(&dropDatas[i], options, 30, 0, 0, NULL, &theme);
+		result = TREE_Control_DropdownData_Init(&dropDatas[i], options, OPTIONS_COUNT, 0, 0, NULL, &theme);
 		if (result)
 		{
 			printf("Failed to initialize dropdown data: %s\n", TREE_Result_ToString(result));
@@ -247,8 +248,13 @@ int main()
 		printf("Failed to initialize number input: %s\n", TREE_Result_ToString(result));
 		return 1;
 	}
-	numberInput.transform->localOffset.x = 100;
-	numberInput.transform->localOffset.y = 3;
+	numberInput.transform->localExtent.width = 7;
+	numberInput.transform->localExtent.height = 1;
+	numberInput.transform->localPivot.x = 0.0f;
+	numberInput.transform->localPivot.y = 1.0f;
+	numberInput.transform->localOffset.x = 1;
+	numberInput.transform->localOffset.y = -1;
+	numberInput.transform->localAlignment = TREE_ALIGNMENT_BOTTOMLEFT;
 
 	// link controls
 	result = TREE_Control_Link(&listControl, TREE_DIRECTION_NORTH, TREE_CONTROL_LINK_DOUBLE, &quitButton);

@@ -249,8 +249,8 @@ typedef struct _TREE_Coords
 
 typedef struct _TREE_Extent
 {
-	TREE_UInt width;
-	TREE_UInt height;
+	TREE_Int width;
+	TREE_Int height;
 } TREE_Extent;
 
 ///////////////////////////////////////
@@ -728,7 +728,7 @@ TREE_EXTERN TREE_Result TREE_Transform_SetParent(TREE_Transform* transform, TREE
 TREE_EXTERN TREE_Result TREE_Transform_DisconnectChildren(TREE_Transform* transform);
 
 // calculate the global rectangle based on the local transform and parent
-TREE_EXTERN TREE_Result TREE_Transform_Refresh(TREE_Transform* transform);
+TREE_EXTERN TREE_Result TREE_Transform_Refresh(TREE_Transform* transform, TREE_Extent surfaceExtent);
 
 ///////////////////////////////////////
 // Control                           //
