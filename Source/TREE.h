@@ -1,4 +1,4 @@
-#ifndef __TREE_H__
+﻿#ifndef __TREE_H__
 #define __TREE_H__
 
 ///////////////////////////////////////
@@ -28,6 +28,8 @@ typedef long TREE_Time;
 #define TREE_DELETE_ARRAY(ptr, count) do { for(TREE_Size i = 0; i < (count); i++) { free((ptr)[i]); } TREE_DELETE(ptr); } while (0)
 #define TREE_COPY(dest, src, type) memcpy(dest, src, sizeof(type))
 #define TREE_COPY_ARRAY(dest, src, type, count) memcpy(dest, src, (count) * sizeof(type))
+
+#define TREE_EXTERN extern
 
 ///////////////////////////////////////
 // Result                            //
@@ -81,7 +83,7 @@ typedef enum _TREE_Result
 	TREE_ERROR_WINDOW_SET_TITLE = 1000,
 
 	//		Windows specific errors
-	
+
 	// Global
 	TREE_ERROR_WINDOWS_GLOBAL_ALLOC = 10000,
 	TREE_ERROR_WINDOWS_GLOBAL_LOCK = 10001,
@@ -101,7 +103,7 @@ typedef enum _TREE_Result
 
 } TREE_Result;
 
-TREE_String TREE_Result_ToString(TREE_Result code);
+TREE_EXTERN TREE_String TREE_Result_ToString(TREE_Result code);
 
 ///////////////////////////////////////
 // TREE                              //
@@ -110,28 +112,28 @@ TREE_String TREE_Result_ToString(TREE_Result code);
 /// <summary>
 /// Initializes the TREE library.
 /// </summary>
-TREE_Result TREE_Init();
+TREE_EXTERN TREE_Result TREE_Init();
 
 /// <summary>
 /// Closes the TREE library.
 /// </summary>
-void TREE_Free();
+TREE_EXTERN void TREE_Free();
 
 ///////////////////////////////////////
 // String                            //
 ///////////////////////////////////////
 
-TREE_Result TREE_String_CreateCopy(TREE_Char** dest, TREE_String src);
+TREE_EXTERN TREE_Result TREE_String_CreateCopy(TREE_Char** dest, TREE_String src);
 
-TREE_Result TREE_String_CreateClampedCopy(TREE_Char** dest, TREE_String src, TREE_Size maxSize);
+TREE_EXTERN TREE_Result TREE_String_CreateClampedCopy(TREE_Char** dest, TREE_String src, TREE_Size maxSize);
 
 ///////////////////////////////////////
 // Clipboard                         //
 ///////////////////////////////////////
 
-TREE_Result TREE_Clipboard_SetText(TREE_String text);
+TREE_EXTERN TREE_Result TREE_Clipboard_SetText(TREE_String text);
 
-TREE_Result TREE_Clipboard_GetText(TREE_Char** text);
+TREE_EXTERN TREE_Result TREE_Clipboard_GetText(TREE_Char** text);
 
 ///////////////////////////////////////
 // Color and ColorPair               //
@@ -162,27 +164,27 @@ typedef enum _TREE_Color
 
 typedef TREE_Byte TREE_ColorPair;
 
-TREE_ColorPair TREE_ColorPair_Create(TREE_Color foreground, TREE_Color background);
+TREE_EXTERN TREE_ColorPair TREE_ColorPair_Create(TREE_Color foreground, TREE_Color background);
 
-TREE_ColorPair TREE_ColorPair_CreateDefault();
+TREE_EXTERN TREE_ColorPair TREE_ColorPair_CreateDefault();
 
-TREE_Color TREE_ColorPair_GetForeground(TREE_ColorPair colorPair);
+TREE_EXTERN TREE_Color TREE_ColorPair_GetForeground(TREE_ColorPair colorPair);
 
-TREE_Color TREE_ColorPair_GetBackground(TREE_ColorPair colorPair);
+TREE_EXTERN TREE_Color TREE_ColorPair_GetBackground(TREE_ColorPair colorPair);
 
-TREE_String TREE_Color_GetForegroundString(TREE_Color color);
+TREE_EXTERN TREE_String TREE_Color_GetForegroundString(TREE_Color color);
 
-TREE_String TREE_Color_GetBackgroundString(TREE_Color color);
+TREE_EXTERN TREE_String TREE_Color_GetBackgroundString(TREE_Color color);
 
-TREE_String TREE_Color_GetResetString();
+TREE_EXTERN TREE_String TREE_Color_GetResetString();
 
 ///////////////////////////////////////
 // Path                              //
 ///////////////////////////////////////
 
-TREE_String TREE_Path_Absolute(TREE_String path);
+TREE_EXTERN TREE_String TREE_Path_Absolute(TREE_String path);
 
-TREE_String TREE_Path_Parent(TREE_String path);
+TREE_EXTERN TREE_String TREE_Path_Parent(TREE_String path);
 
 ///////////////////////////////////////
 // File                              //
@@ -197,29 +199,29 @@ typedef enum _TREE_FileTypeFlags
 	TREE_FILE_TYPE_FLAGS_ALL = 0x7,
 } TREE_FileTypeFlags;
 
-TREE_Bool TREE_File_Exists(TREE_String path);
+TREE_EXTERN TREE_Bool TREE_File_Exists(TREE_String path);
 
-TREE_Size TREE_File_Size(TREE_String path);
+TREE_EXTERN TREE_Size TREE_File_Size(TREE_String path);
 
-TREE_Result TREE_File_Read(TREE_String path, TREE_Char* text, TREE_Size size);
+TREE_EXTERN TREE_Result TREE_File_Read(TREE_String path, TREE_Char* text, TREE_Size size);
 
-TREE_Result TREE_File_Write(TREE_String path, TREE_String text);
+TREE_EXTERN TREE_Result TREE_File_Write(TREE_String path, TREE_String text);
 
-TREE_Result TREE_File_Create(TREE_String path);
+TREE_EXTERN TREE_Result TREE_File_Create(TREE_String path);
 
-TREE_Result TREE_File_Delete(TREE_String path);
+TREE_EXTERN TREE_Result TREE_File_Delete(TREE_String path);
 
 ///////////////////////////////////////
 // Directory                         //
 ///////////////////////////////////////
 
-TREE_Bool TREE_Directory_Exists(TREE_String path);
+TREE_EXTERN TREE_Bool TREE_Directory_Exists(TREE_String path);
 
-TREE_Result TREE_Directory_Create(TREE_String path);
+TREE_EXTERN TREE_Result TREE_Directory_Create(TREE_String path);
 
-TREE_Result TREE_Directory_Delete(TREE_String path);
+TREE_EXTERN TREE_Result TREE_Directory_Delete(TREE_String path);
 
-TREE_Result TREE_Directory_Enumerate(TREE_String path, TREE_Char*** files, TREE_Size* count, TREE_FileTypeFlags flags);
+TREE_EXTERN TREE_Result TREE_Directory_Enumerate(TREE_String path, TREE_Char*** files, TREE_Size* count, TREE_FileTypeFlags flags);
 
 ///////////////////////////////////////
 // Offset                            //
@@ -261,11 +263,11 @@ typedef struct _TREE_Rect
 	TREE_Extent extent;
 } TREE_Rect;
 
-TREE_Bool TREE_Rect_IsOverlapping(TREE_Rect const* rectA, TREE_Rect const* rectB);
+TREE_EXTERN TREE_Bool TREE_Rect_IsOverlapping(TREE_Rect const* rectA, TREE_Rect const* rectB);
 
-TREE_Rect TREE_Rect_Combine(TREE_Rect const* rectA, TREE_Rect const* rectB);
+TREE_EXTERN TREE_Rect TREE_Rect_Combine(TREE_Rect const* rectA, TREE_Rect const* rectB);
 
-TREE_Rect TREE_Rect_GetIntersection(TREE_Rect const* rectA, TREE_Rect const* rectB);
+TREE_EXTERN TREE_Rect TREE_Rect_GetIntersection(TREE_Rect const* rectA, TREE_Rect const* rectB);
 
 ///////////////////////////////////////
 // Pixel                             //
@@ -277,9 +279,9 @@ typedef struct _TREE_Pixel
 	TREE_ColorPair colorPair;
 } TREE_Pixel;
 
-TREE_Pixel TREE_Pixel_Create(TREE_Char character, TREE_Color foreground, TREE_Color background);
+TREE_EXTERN TREE_Pixel TREE_Pixel_Create(TREE_Char character, TREE_Color foreground, TREE_Color background);
 
-TREE_Pixel TREE_Pixel_CreateDefault();
+TREE_EXTERN TREE_Pixel TREE_Pixel_CreateDefault();
 
 ///////////////////////////////////////
 // Pattern                           //
@@ -291,15 +293,15 @@ typedef struct _TREE_Pattern
 	TREE_Pixel* pixels;
 } TREE_Pattern;
 
-TREE_Result TREE_Pattern_Init(TREE_Pattern* pattern, TREE_UInt size);
+TREE_EXTERN TREE_Result TREE_Pattern_Init(TREE_Pattern* pattern, TREE_UInt size);
 
-TREE_Result TREE_Pattern_InitFromString(TREE_Pattern* pattern, TREE_String string, TREE_ColorPair colorPair);
+TREE_EXTERN TREE_Result TREE_Pattern_InitFromString(TREE_Pattern* pattern, TREE_String string, TREE_ColorPair colorPair);
 
-TREE_Result TREE_Pattern_Set(TREE_Pattern* pattern, TREE_UInt index, TREE_Pixel pixel);
+TREE_EXTERN TREE_Result TREE_Pattern_Set(TREE_Pattern* pattern, TREE_UInt index, TREE_Pixel pixel);
 
-TREE_Result TREE_Pattern_Get(TREE_Pattern* pattern, TREE_UInt index, TREE_Pixel* pixel);
+TREE_EXTERN TREE_Result TREE_Pattern_Get(TREE_Pattern* pattern, TREE_UInt index, TREE_Pixel* pixel);
 
-void TREE_Pattern_Free(TREE_Pattern* pattern);
+TREE_EXTERN void TREE_Pattern_Free(TREE_Pattern* pattern);
 
 ///////////////////////////////////////
 // Theme                             //
@@ -357,9 +359,9 @@ typedef struct _TREE_Theme
 	TREE_Pixel pixels[TREE_THEME_PID_COUNT];
 } TREE_Theme;
 
-TREE_Result TREE_Theme_Init(TREE_Theme* theme);
+TREE_EXTERN TREE_Result TREE_Theme_Init(TREE_Theme* theme);
 
-void TREE_Theme_Free(TREE_Theme* theme);
+TREE_EXTERN void TREE_Theme_Free(TREE_Theme* theme);
 
 ///////////////////////////////////////
 // Image                             //
@@ -372,27 +374,27 @@ typedef struct _TREE_Image
 	TREE_ColorPair* colors;
 } TREE_Image;
 
-TREE_Result TREE_Image_Init(TREE_Image* image, TREE_Extent size);
+TREE_EXTERN TREE_Result TREE_Image_Init(TREE_Image* image, TREE_Extent size);
 
-void TREE_Image_Free(TREE_Image* image);
+TREE_EXTERN void TREE_Image_Free(TREE_Image* image);
 
-TREE_Result TREE_Image_Set(TREE_Image* image, TREE_Offset offset, TREE_Pixel pixel);
+TREE_EXTERN TREE_Result TREE_Image_Set(TREE_Image* image, TREE_Offset offset, TREE_Pixel pixel);
 
-TREE_Pixel TREE_Image_Get(TREE_Image* image, TREE_Offset offset);
+TREE_EXTERN TREE_Pixel TREE_Image_Get(TREE_Image* image, TREE_Offset offset);
 
-TREE_Result TREE_Image_Resize(TREE_Image* image, TREE_Extent extent);
+TREE_EXTERN TREE_Result TREE_Image_Resize(TREE_Image* image, TREE_Extent extent);
 
-TREE_Result TREE_Image_DrawImage(TREE_Image* image, TREE_Offset offset, TREE_Image const* other, TREE_Offset otherOffset, TREE_Extent extent);
+TREE_EXTERN TREE_Result TREE_Image_DrawImage(TREE_Image* image, TREE_Offset offset, TREE_Image const* other, TREE_Offset otherOffset, TREE_Extent extent);
 
-TREE_Result TREE_Image_DrawString(TREE_Image* image, TREE_Offset offset, TREE_String string, TREE_ColorPair colorPair);
+TREE_EXTERN TREE_Result TREE_Image_DrawString(TREE_Image* image, TREE_Offset offset, TREE_String string, TREE_ColorPair colorPair);
 
-TREE_Result TREE_Image_DrawLine(TREE_Image* image, TREE_Offset start, TREE_Offset end, TREE_Pattern* pattern);
+TREE_EXTERN TREE_Result TREE_Image_DrawLine(TREE_Image* image, TREE_Offset start, TREE_Offset end, TREE_Pattern* pattern);
 
-TREE_Result TREE_Image_DrawRect(TREE_Image* image, TREE_Offset start, TREE_Extent size, TREE_Pattern* pattern);
+TREE_EXTERN TREE_Result TREE_Image_DrawRect(TREE_Image* image, TREE_Offset start, TREE_Extent size, TREE_Pattern* pattern);
 
-TREE_Result TREE_Image_FillRect(TREE_Image* image, TREE_Offset start, TREE_Extent size, TREE_Pixel pixel);
+TREE_EXTERN TREE_Result TREE_Image_FillRect(TREE_Image* image, TREE_Offset start, TREE_Extent size, TREE_Pixel pixel);
 
-TREE_Result TREE_Image_Clear(TREE_Image* image, TREE_Pixel pixel);
+TREE_EXTERN TREE_Result TREE_Image_Clear(TREE_Image* image, TREE_Pixel pixel);
 
 ///////////////////////////////////////
 // Surface                           //
@@ -404,27 +406,27 @@ typedef struct _TREE_Surface
 	TREE_Char* text;
 } TREE_Surface;
 
-TREE_Result TREE_Surface_Init(TREE_Surface* surface, TREE_Extent size);
+TREE_EXTERN TREE_Result TREE_Surface_Init(TREE_Surface* surface, TREE_Extent size);
 
-void TREE_Surface_Free(TREE_Surface* surface);
+TREE_EXTERN void TREE_Surface_Free(TREE_Surface* surface);
 
-TREE_Result TREE_Surface_Refresh(TREE_Surface* surface);
+TREE_EXTERN TREE_Result TREE_Surface_Refresh(TREE_Surface* surface);
 
 ///////////////////////////////////////
 // Window                            //
 ///////////////////////////////////////
 
-TREE_Result TREE_Window_SetTitle(TREE_String title);
+TREE_EXTERN TREE_Result TREE_Window_SetTitle(TREE_String title);
 
-TREE_Result TREE_Window_Present(TREE_Surface* surface);
+TREE_EXTERN TREE_Result TREE_Window_Present(TREE_Surface* surface);
 
-TREE_Extent TREE_Window_GetExtent();
+TREE_EXTERN TREE_Extent TREE_Window_GetExtent();
 
 ///////////////////////////////////////
 // Cursor                            //
 ///////////////////////////////////////
 
-TREE_Result TREE_Cursor_SetVisible(TREE_Bool visible);
+TREE_EXTERN TREE_Result TREE_Cursor_SetVisible(TREE_Bool visible);
 
 ///////////////////////////////////////
 // Key                               //
@@ -535,7 +537,7 @@ typedef enum _TREE_Key
 	TREE_KEY_COUNT = 97,
 } TREE_Key;
 
-TREE_String TREE_Key_ToString(TREE_Key key);
+TREE_EXTERN TREE_String TREE_Key_ToString(TREE_Key key);
 
 ///////////////////////////////////////
 // Char Type                         //
@@ -550,7 +552,7 @@ typedef enum _TREE_CharType
 	TREE_CHAR_TYPE_SYMBOL,
 } TREE_CharType;
 
-TREE_CharType TREE_Char_GetType(TREE_Char character);
+TREE_EXTERN TREE_CharType TREE_Char_GetType(TREE_Char character);
 
 ///////////////////////////////////////
 // Key Modifier Flags                //
@@ -568,7 +570,7 @@ typedef enum TREE_KeyModifierFlags
 	TREE_KEY_MODIFIER_FLAGS_CAPS_LOCK = 0x40,
 } TREE_KeyModifierFlags;
 
-TREE_Char TREE_Key_ToChar(TREE_Key key, TREE_KeyModifierFlags modifierFlags);
+TREE_EXTERN TREE_Char TREE_Key_ToChar(TREE_Key key, TREE_KeyModifierFlags modifierFlags);
 
 ///////////////////////////////////////
 // Input                             //
@@ -590,9 +592,9 @@ typedef struct _TREE_Input
 	TREE_KeyModifierFlags modifiers;
 } TREE_Input;
 
-TREE_Result TREE_Input_Init(TREE_Input* input);
+TREE_EXTERN TREE_Result TREE_Input_Init(TREE_Input* input);
 
-void TREE_Input_Free(TREE_Input* input);
+TREE_EXTERN void TREE_Input_Free(TREE_Input* input);
 
 ///////////////////////////////////////
 // Direction                         //
@@ -607,7 +609,7 @@ typedef enum _TREE_Direction
 	TREE_DIRECTION_SOUTH,
 } TREE_Direction;
 
-TREE_Direction TREE_Direction_Opposite(TREE_Direction direction);
+TREE_EXTERN TREE_Direction TREE_Direction_Opposite(TREE_Direction direction);
 
 ///////////////////////////////////////
 // Alignment                         //
@@ -708,19 +710,19 @@ typedef struct _TREE_Transform
 	TREE_Rect globalRect;
 } TREE_Transform;
 
-TREE_Result TREE_Transform_Init(TREE_Transform* transform, TREE_Offset localOffset, TREE_Coords localPivot, TREE_Extent localExtent, TREE_Alignment localAlignment);
+TREE_EXTERN TREE_Result TREE_Transform_Init(TREE_Transform* transform, TREE_Offset localOffset, TREE_Coords localPivot, TREE_Extent localExtent, TREE_Alignment localAlignment);
 
-void TREE_Transform_Free(TREE_Transform* transform);
+TREE_EXTERN void TREE_Transform_Free(TREE_Transform* transform);
 
 // marks the transform (and children) as dirty
-TREE_Result TREE_Transform_Dirty(TREE_Transform* transform);
+TREE_EXTERN TREE_Result TREE_Transform_Dirty(TREE_Transform* transform);
 
-TREE_Result TREE_Transform_SetParent(TREE_Transform* transform, TREE_Transform* parent);
+TREE_EXTERN TREE_Result TREE_Transform_SetParent(TREE_Transform* transform, TREE_Transform* parent);
 
-TREE_Result TREE_Transform_DisconnectChildren(TREE_Transform* transform);
+TREE_EXTERN TREE_Result TREE_Transform_DisconnectChildren(TREE_Transform* transform);
 
 // calculate the global rectangle based on the local transform and parent
-TREE_Result TREE_Transform_Refresh(TREE_Transform* transform);
+TREE_EXTERN TREE_Result TREE_Transform_Refresh(TREE_Transform* transform);
 
 ///////////////////////////////////////
 // Control                           //
@@ -774,13 +776,13 @@ typedef struct _TREE_Control
 
 typedef void(*TREE_ControlEventHandler)(void*, void const*); // sender, value
 
-TREE_Result TREE_Control_Init(TREE_Control* control, TREE_Transform* parent, TREE_EventHandler eventHandler, TREE_Data data);
+TREE_EXTERN TREE_Result TREE_Control_Init(TREE_Control* control, TREE_Transform* parent, TREE_EventHandler eventHandler, TREE_Data data);
 
-void TREE_Control_Free(TREE_Control* control);
+TREE_EXTERN void TREE_Control_Free(TREE_Control* control);
 
-TREE_Result TREE_Control_Link(TREE_Control* control, TREE_Direction direction, TREE_ControlLink link, TREE_Control* other);
+TREE_EXTERN TREE_Result TREE_Control_Link(TREE_Control* control, TREE_Direction direction, TREE_ControlLink link, TREE_Control* other);
 
-TREE_Result TREE_Control_HandleEvent(TREE_Control* control, TREE_Event const* event);
+TREE_EXTERN TREE_Result TREE_Control_HandleEvent(TREE_Control* control, TREE_Event const* event);
 
 ///////////////////////////////////////
 // Control: Label                    //
@@ -793,25 +795,25 @@ typedef struct _TREE_Control_LabelData
 	TREE_Pixel normal;
 } TREE_Control_LabelData;
 
-TREE_Result TREE_Control_LabelData_Init(TREE_Control_LabelData* data, TREE_String text, TREE_Theme const* theme);
+TREE_EXTERN TREE_Result TREE_Control_LabelData_Init(TREE_Control_LabelData* data, TREE_String text, TREE_Theme const* theme);
 
-void TREE_Control_LabelData_Free(TREE_Control_LabelData* data);
+TREE_EXTERN void TREE_Control_LabelData_Free(TREE_Control_LabelData* data);
 
-TREE_Result TREE_Control_Label_Init(TREE_Control* control, TREE_Transform* parent, TREE_Control_LabelData* data);
+TREE_EXTERN TREE_Result TREE_Control_Label_Init(TREE_Control* control, TREE_Transform* parent, TREE_Control_LabelData* data);
 
-TREE_Result TREE_Control_Label_SetText(TREE_Control* control, TREE_String text);
+TREE_EXTERN TREE_Result TREE_Control_Label_SetText(TREE_Control* control, TREE_String text);
 
-TREE_String TREE_Control_Label_GetText(TREE_Control* control);
+TREE_EXTERN TREE_String TREE_Control_Label_GetText(TREE_Control* control);
 
-TREE_Result TREE_Control_Label_SetAlignment(TREE_Control* control, TREE_Alignment alignment);
+TREE_EXTERN TREE_Result TREE_Control_Label_SetAlignment(TREE_Control* control, TREE_Alignment alignment);
 
-TREE_Alignment TREE_Control_Label_GetAlignment(TREE_Control* control);
+TREE_EXTERN TREE_Alignment TREE_Control_Label_GetAlignment(TREE_Control* control);
 
-TREE_Result TREE_Control_Label_SetPixel(TREE_Control* control, TREE_Pixel pixel);
+TREE_EXTERN TREE_Result TREE_Control_Label_SetPixel(TREE_Control* control, TREE_Pixel pixel);
 
-TREE_Pixel TREE_Control_Label_GetPixel(TREE_Control* control);
+TREE_EXTERN TREE_Pixel TREE_Control_Label_GetPixel(TREE_Control* control);
 
-TREE_Result TREE_Control_Label_EventHandler(TREE_Event const* event);
+TREE_EXTERN TREE_Result TREE_Control_Label_EventHandler(TREE_Event const* event);
 
 ///////////////////////////////////////
 // Control: Button                   //
@@ -828,29 +830,29 @@ typedef struct _TREE_Control_ButtonData
 	TREE_ControlEventHandler onSubmit;
 } TREE_Control_ButtonData;
 
-TREE_Result TREE_Control_ButtonData_Init(TREE_Control_ButtonData* data, TREE_String text, TREE_ControlEventHandler onSubmit, TREE_Theme const* theme);
+TREE_EXTERN TREE_Result TREE_Control_ButtonData_Init(TREE_Control_ButtonData* data, TREE_String text, TREE_ControlEventHandler onSubmit, TREE_Theme const* theme);
 
-void TREE_Control_ButtonData_Free(TREE_Control_ButtonData* data);
+TREE_EXTERN void TREE_Control_ButtonData_Free(TREE_Control_ButtonData* data);
 
-TREE_Result TREE_Control_Button_Init(TREE_Control* control, TREE_Transform* parent, TREE_Control_ButtonData* data);
+TREE_EXTERN TREE_Result TREE_Control_Button_Init(TREE_Control* control, TREE_Transform* parent, TREE_Control_ButtonData* data);
 
-TREE_Result TREE_Control_Button_SetText(TREE_Control* control, TREE_String text);
+TREE_EXTERN TREE_Result TREE_Control_Button_SetText(TREE_Control* control, TREE_String text);
 
-TREE_String TREE_Control_Button_GetText(TREE_Control* control);
+TREE_EXTERN TREE_String TREE_Control_Button_GetText(TREE_Control* control);
 
-TREE_Result TREE_Control_Button_SetAlignment(TREE_Control* control, TREE_Alignment alignment);
+TREE_EXTERN TREE_Result TREE_Control_Button_SetAlignment(TREE_Control* control, TREE_Alignment alignment);
 
-TREE_Alignment TREE_Control_Button_GetAlignment(TREE_Control* control);
+TREE_EXTERN TREE_Alignment TREE_Control_Button_GetAlignment(TREE_Control* control);
 
-TREE_Result TREE_Control_Button_SetPixel(TREE_Control* control, TREE_ThemePixelID id, TREE_Pixel pixel);
+TREE_EXTERN TREE_Result TREE_Control_Button_SetPixel(TREE_Control* control, TREE_ThemePixelID id, TREE_Pixel pixel);
 
-TREE_Pixel TREE_Control_Button_GetPixel(TREE_Control* control, TREE_ThemePixelID id);
+TREE_EXTERN TREE_Pixel TREE_Control_Button_GetPixel(TREE_Control* control, TREE_ThemePixelID id);
 
-TREE_Result TREE_Control_Button_SetOnSubmit(TREE_Control* control, TREE_ControlEventHandler onSubmit);
+TREE_EXTERN TREE_Result TREE_Control_Button_SetOnSubmit(TREE_Control* control, TREE_ControlEventHandler onSubmit);
 
-TREE_ControlEventHandler TREE_Control_Button_GetOnSubmit(TREE_Control* control);
+TREE_EXTERN TREE_ControlEventHandler TREE_Control_Button_GetOnSubmit(TREE_Control* control);
 
-TREE_Result TREE_Control_Button_EventHandler(TREE_Event const* event);
+TREE_EXTERN TREE_Result TREE_Control_Button_EventHandler(TREE_Event const* event);
 
 ///////////////////////////////////////
 // Control: TextInput                //
@@ -882,52 +884,52 @@ typedef struct _TREE_Control_TextInputData
 	TREE_Size selectionOrigin;
 	TREE_Size selectionStart;
 	TREE_Size selectionEnd;
-	
+
 	TREE_ControlEventHandler onChange;
 	TREE_ControlEventHandler onSubmit;
 } TREE_Control_TextInputData;
 
-TREE_Result TREE_Control_TextInputData_Init(TREE_Control_TextInputData* data, TREE_String text, TREE_Size capacity, TREE_String placeholder, TREE_Control_TextInputType type, TREE_ControlEventHandler onChange, TREE_ControlEventHandler onSubmit, TREE_Theme const* theme);
+TREE_EXTERN TREE_Result TREE_Control_TextInputData_Init(TREE_Control_TextInputData* data, TREE_String text, TREE_Size capacity, TREE_String placeholder, TREE_Control_TextInputType type, TREE_ControlEventHandler onChange, TREE_ControlEventHandler onSubmit, TREE_Theme const* theme);
 
-void TREE_Control_TextInputData_Free(TREE_Control_TextInputData* data);
+TREE_EXTERN void TREE_Control_TextInputData_Free(TREE_Control_TextInputData* data);
 
 TREE_Char* TREE_Control_TextInputData_GetSelectedText(TREE_Control_TextInputData* data);
 
-TREE_Result TREE_Control_TextInputData_RemoveSelectedText(TREE_Control_TextInputData* data);
+TREE_EXTERN TREE_Result TREE_Control_TextInputData_RemoveSelectedText(TREE_Control_TextInputData* data);
 
-TREE_Result TREE_Control_TextInputData_InsertText(TREE_Control_TextInputData* data, TREE_String text);
+TREE_EXTERN TREE_Result TREE_Control_TextInputData_InsertText(TREE_Control_TextInputData* data, TREE_String text);
 
-TREE_Result TREE_Control_TextInput_Init(TREE_Control* control, TREE_Transform* parent, TREE_Control_TextInputData* data);
+TREE_EXTERN TREE_Result TREE_Control_TextInput_Init(TREE_Control* control, TREE_Transform* parent, TREE_Control_TextInputData* data);
 
-TREE_Result TREE_Control_TextInput_SetType(TREE_Control* control, TREE_Control_TextInputType type);
+TREE_EXTERN TREE_Result TREE_Control_TextInput_SetType(TREE_Control* control, TREE_Control_TextInputType type);
 
-TREE_Control_TextInputType TREE_Control_TextInput_GetType(TREE_Control* control);
+TREE_EXTERN TREE_Control_TextInputType TREE_Control_TextInput_GetType(TREE_Control* control);
 
-TREE_Result TREE_Control_TextInput_SetText(TREE_Control* control, TREE_String text);
+TREE_EXTERN TREE_Result TREE_Control_TextInput_SetText(TREE_Control* control, TREE_String text);
 
-TREE_String TREE_Control_TextInput_GetText(TREE_Control* control);
+TREE_EXTERN TREE_String TREE_Control_TextInput_GetText(TREE_Control* control);
 
-TREE_Result TREE_Control_TextInput_SetCapacity(TREE_Control* control, TREE_Size capacity);
+TREE_EXTERN TREE_Result TREE_Control_TextInput_SetCapacity(TREE_Control* control, TREE_Size capacity);
 
-TREE_Size TREE_Control_TextInput_GetCapacity(TREE_Control* control);
+TREE_EXTERN TREE_Size TREE_Control_TextInput_GetCapacity(TREE_Control* control);
 
-TREE_Result TREE_Control_TextInput_SetPlaceholder(TREE_Control* control, TREE_String placeholder);
+TREE_EXTERN TREE_Result TREE_Control_TextInput_SetPlaceholder(TREE_Control* control, TREE_String placeholder);
 
-TREE_String TREE_Control_TextInput_GetPlaceholder(TREE_Control* control);
+TREE_EXTERN TREE_String TREE_Control_TextInput_GetPlaceholder(TREE_Control* control);
 
-TREE_Result TREE_Control_TextInput_SetPixel(TREE_Control* control, TREE_ThemePixelID id, TREE_Pixel pixel);
+TREE_EXTERN TREE_Result TREE_Control_TextInput_SetPixel(TREE_Control* control, TREE_ThemePixelID id, TREE_Pixel pixel);
 
-TREE_Pixel TREE_Control_TextInput_GetPixel(TREE_Control* control, TREE_ThemePixelID id);
+TREE_EXTERN TREE_Pixel TREE_Control_TextInput_GetPixel(TREE_Control* control, TREE_ThemePixelID id);
 
-TREE_Result TREE_Control_TextInput_SetOnChange(TREE_Control* control, TREE_ControlEventHandler onChange);
+TREE_EXTERN TREE_Result TREE_Control_TextInput_SetOnChange(TREE_Control* control, TREE_ControlEventHandler onChange);
 
-TREE_ControlEventHandler TREE_Control_TextInput_GetOnChange(TREE_Control* control);
+TREE_EXTERN TREE_ControlEventHandler TREE_Control_TextInput_GetOnChange(TREE_Control* control);
 
-TREE_Result TREE_Control_TextInput_SetOnSubmit(TREE_Control* control, TREE_ControlEventHandler onSubmit);
+TREE_EXTERN TREE_Result TREE_Control_TextInput_SetOnSubmit(TREE_Control* control, TREE_ControlEventHandler onSubmit);
 
-TREE_ControlEventHandler TREE_Control_TextInput_GetOnSubmit(TREE_Control* control);
+TREE_EXTERN TREE_ControlEventHandler TREE_Control_TextInput_GetOnSubmit(TREE_Control* control);
 
-TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event);
+TREE_EXTERN TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event);
 
 ///////////////////////////////////////
 // Control: Scrollbar                //
@@ -949,11 +951,11 @@ typedef struct _TREE_Control_ScrollbarData
 	TREE_Char bar; // scroll bar
 } TREE_Control_ScrollbarData;
 
-TREE_Result TREE_Control_ScrollbarData_Init(TREE_Control_ScrollbarData* data, TREE_Control_ScrollbarType type, TREE_Bool vertical, TREE_Theme const* theme);
+TREE_EXTERN TREE_Result TREE_Control_ScrollbarData_Init(TREE_Control_ScrollbarData* data, TREE_Control_ScrollbarType type, TREE_Bool vertical, TREE_Theme const* theme);
 
-TREE_Result TREE_Control_Scrollbar_Draw(TREE_Image* target, TREE_Offset offset, TREE_Extent extent, TREE_Control_ScrollbarData* data, TREE_Size scroll, TREE_Size maxScroll, TREE_ColorPair colorPair, TREE_ColorPair barColorPair);
+TREE_EXTERN TREE_Result TREE_Control_Scrollbar_Draw(TREE_Image* target, TREE_Offset offset, TREE_Extent extent, TREE_Control_ScrollbarData* data, TREE_Size scroll, TREE_Size maxScroll, TREE_ColorPair colorPair, TREE_ColorPair barColorPair);
 
-void TREE_Control_ScrollbarData_Free(TREE_Control_ScrollbarData* data);
+TREE_EXTERN void TREE_Control_ScrollbarData_Free(TREE_Control_ScrollbarData* data);
 
 ///////////////////////////////////////
 // Control: List                     //
@@ -994,46 +996,46 @@ typedef struct _TREE_Control_ListData
 	TREE_ControlEventHandler onSubmit; // when editing done
 } TREE_Control_ListData;
 
-TREE_Result TREE_Control_ListData_Init(TREE_Control_ListData* data, TREE_Control_ListFlags flags, TREE_String* options, TREE_Size optionsSize, TREE_ControlEventHandler onChange, TREE_ControlEventHandler onSubmit, TREE_Theme const* theme);
+TREE_EXTERN TREE_Result TREE_Control_ListData_Init(TREE_Control_ListData* data, TREE_Control_ListFlags flags, TREE_String* options, TREE_Size optionsSize, TREE_ControlEventHandler onChange, TREE_ControlEventHandler onSubmit, TREE_Theme const* theme);
 
-void TREE_Control_ListData_Free(TREE_Control_ListData* data);
+TREE_EXTERN void TREE_Control_ListData_Free(TREE_Control_ListData* data);
 
-TREE_Result TREE_Control_ListData_SetOptions(TREE_Control_ListData* data, TREE_String* options, TREE_Size optionsSize);
+TREE_EXTERN TREE_Result TREE_Control_ListData_SetOptions(TREE_Control_ListData* data, TREE_String* options, TREE_Size optionsSize);
 
-TREE_Result TREE_Control_ListData_SetSelected(TREE_Control_ListData* data, TREE_Size index, TREE_Bool selected);
+TREE_EXTERN TREE_Result TREE_Control_ListData_SetSelected(TREE_Control_ListData* data, TREE_Size index, TREE_Bool selected);
 
-TREE_Result TREE_Control_ListData_GetSelected(TREE_Control_ListData* data, TREE_Size** indices, TREE_Size* indexCount);
+TREE_EXTERN TREE_Result TREE_Control_ListData_GetSelected(TREE_Control_ListData* data, TREE_Size** indices, TREE_Size* indexCount);
 
-TREE_Bool TREE_Control_ListData_IsSelected(TREE_Control_ListData* data, TREE_Size index);
+TREE_EXTERN TREE_Bool TREE_Control_ListData_IsSelected(TREE_Control_ListData* data, TREE_Size index);
 
-TREE_Result TREE_Control_List_Init(TREE_Control* control, TREE_Transform* parent, TREE_Control_ListData* data);
+TREE_EXTERN TREE_Result TREE_Control_List_Init(TREE_Control* control, TREE_Transform* parent, TREE_Control_ListData* data);
 
-TREE_Result TREE_Control_List_SetFlags(TREE_Control* control, TREE_Control_ListFlags flags);
+TREE_EXTERN TREE_Result TREE_Control_List_SetFlags(TREE_Control* control, TREE_Control_ListFlags flags);
 
-TREE_Control_ListFlags TREE_Control_List_GetFlags(TREE_Control* control);
+TREE_EXTERN TREE_Control_ListFlags TREE_Control_List_GetFlags(TREE_Control* control);
 
-TREE_Result TREE_Control_List_SetOptions(TREE_Control* control, TREE_String* options, TREE_Size optionsSize);
+TREE_EXTERN TREE_Result TREE_Control_List_SetOptions(TREE_Control* control, TREE_String* options, TREE_Size optionsSize);
 
 TREE_String* TREE_Control_List_GetOptions(TREE_Control* control);
 
-TREE_Size TREE_Control_List_GetOptionsSize(TREE_Control* control);
+TREE_EXTERN TREE_Size TREE_Control_List_GetOptionsSize(TREE_Control* control);
 
-TREE_Result TREE_Control_List_SetSelected(TREE_Control* control, TREE_Size index, TREE_Bool selected);
+TREE_EXTERN TREE_Result TREE_Control_List_SetSelected(TREE_Control* control, TREE_Size index, TREE_Bool selected);
 
-TREE_Bool TREE_Control_List_IsSelected(TREE_Control* control, TREE_Size index);
+TREE_EXTERN TREE_Bool TREE_Control_List_IsSelected(TREE_Control* control, TREE_Size index);
 
 // returns selected index, or 0 if multiselect
-TREE_Size TREE_Control_List_GetSelected(TREE_Control* control);
+TREE_EXTERN TREE_Size TREE_Control_List_GetSelected(TREE_Control* control);
 
-TREE_Result TREE_Control_List_SetOnChange(TREE_Control* control, TREE_ControlEventHandler onChange);
+TREE_EXTERN TREE_Result TREE_Control_List_SetOnChange(TREE_Control* control, TREE_ControlEventHandler onChange);
 
-TREE_ControlEventHandler TREE_Control_List_GetOnChange(TREE_Control* control);
+TREE_EXTERN TREE_ControlEventHandler TREE_Control_List_GetOnChange(TREE_Control* control);
 
-TREE_Result TREE_Control_List_SetOnSubmit(TREE_Control* control, TREE_ControlEventHandler onSubmit);
+TREE_EXTERN TREE_Result TREE_Control_List_SetOnSubmit(TREE_Control* control, TREE_ControlEventHandler onSubmit);
 
-TREE_ControlEventHandler TREE_Control_List_GetOnSubmit(TREE_Control* control);
+TREE_EXTERN TREE_ControlEventHandler TREE_Control_List_GetOnSubmit(TREE_Control* control);
 
-TREE_Result TREE_Control_List_EventHandler(TREE_Event const* event);
+TREE_EXTERN TREE_Result TREE_Control_List_EventHandler(TREE_Event const* event);
 
 ///////////////////////////////////////
 // Control: Dropdown                 //
@@ -1068,31 +1070,31 @@ typedef struct _TREE_Control_DropdownData
 	TREE_ControlEventHandler onSubmit;
 } TREE_Control_DropdownData;
 
-TREE_Result TREE_Control_DropdownData_Init(TREE_Control_DropdownData* data, TREE_String* options, TREE_Size optionsSize, TREE_Size selectedIndex, TREE_Int drop, TREE_ControlEventHandler onSubmit, TREE_Theme const* theme);
+TREE_EXTERN TREE_Result TREE_Control_DropdownData_Init(TREE_Control_DropdownData* data, TREE_String* options, TREE_Size optionsSize, TREE_Size selectedIndex, TREE_Int drop, TREE_ControlEventHandler onSubmit, TREE_Theme const* theme);
 
-void TREE_Control_DropdownData_Free(TREE_Control_DropdownData* data);
+TREE_EXTERN void TREE_Control_DropdownData_Free(TREE_Control_DropdownData* data);
 
-TREE_Result TREE_Control_DropdownData_SetOptions(TREE_Control_DropdownData* data, TREE_String* options, TREE_Size optionsSize);
+TREE_EXTERN TREE_Result TREE_Control_DropdownData_SetOptions(TREE_Control_DropdownData* data, TREE_String* options, TREE_Size optionsSize);
 
-TREE_Result TREE_Control_Dropdown_Init(TREE_Control* control, TREE_Transform* parent, TREE_Control_DropdownData* data);
+TREE_EXTERN TREE_Result TREE_Control_Dropdown_Init(TREE_Control* control, TREE_Transform* parent, TREE_Control_DropdownData* data);
 
-TREE_Result TREE_Control_Dropdown_SetOptions(TREE_Control* control, TREE_String* options, TREE_Size optionsSize);
+TREE_EXTERN TREE_Result TREE_Control_Dropdown_SetOptions(TREE_Control* control, TREE_String* options, TREE_Size optionsSize);
 
 TREE_String* TREE_Control_Dropdown_GetOptions(TREE_Control* control);
 
-TREE_Size TREE_Control_Dropdown_GetOptionsSize(TREE_Control* control);
+TREE_EXTERN TREE_Size TREE_Control_Dropdown_GetOptionsSize(TREE_Control* control);
 
-TREE_Result TREE_Control_Dropdown_SetSelected(TREE_Control* control, TREE_Size index);
+TREE_EXTERN TREE_Result TREE_Control_Dropdown_SetSelected(TREE_Control* control, TREE_Size index);
 
-TREE_Bool TREE_Control_Dropdown_IsSelected(TREE_Control* control, TREE_Size index);
+TREE_EXTERN TREE_Bool TREE_Control_Dropdown_IsSelected(TREE_Control* control, TREE_Size index);
 
-TREE_Size TREE_Control_Dropdown_GetSelected(TREE_Control* control);
+TREE_EXTERN TREE_Size TREE_Control_Dropdown_GetSelected(TREE_Control* control);
 
-TREE_Result TREE_Control_Dropdown_SetOnSubmit(TREE_Control* control, TREE_ControlEventHandler onSubmit);
+TREE_EXTERN TREE_Result TREE_Control_Dropdown_SetOnSubmit(TREE_Control* control, TREE_ControlEventHandler onSubmit);
 
-TREE_ControlEventHandler TREE_Control_Dropdown_GetOnSubmit(TREE_Control* control);
+TREE_EXTERN TREE_ControlEventHandler TREE_Control_Dropdown_GetOnSubmit(TREE_Control* control);
 
-TREE_Result TREE_Control_Dropdown_EventHandler(TREE_Event const* event);
+TREE_EXTERN TREE_Result TREE_Control_Dropdown_EventHandler(TREE_Event const* event);
 
 ///////////////////////////////////////
 // Control: Checkbox                 //
@@ -1116,17 +1118,17 @@ typedef struct _TREE_Control_CheckboxData
 	TREE_ControlEventHandler onCheck;
 } TREE_Control_CheckboxData;
 
-TREE_Result TREE_Control_CheckboxData_Init(TREE_Control_CheckboxData* data, TREE_String text, TREE_Byte checked, TREE_Bool radio, TREE_ControlEventHandler onCheck, TREE_Theme const* theme);
+TREE_EXTERN TREE_Result TREE_Control_CheckboxData_Init(TREE_Control_CheckboxData* data, TREE_String text, TREE_Byte checked, TREE_Bool radio, TREE_ControlEventHandler onCheck, TREE_Theme const* theme);
 
-void TREE_Control_CheckboxData_Free(TREE_Control_CheckboxData* data);
+TREE_EXTERN void TREE_Control_CheckboxData_Free(TREE_Control_CheckboxData* data);
 
-TREE_Result TREE_Control_Checkbox_Init(TREE_Control* control, TREE_Transform* parent, TREE_Control_CheckboxData* data);
+TREE_EXTERN TREE_Result TREE_Control_Checkbox_Init(TREE_Control* control, TREE_Transform* parent, TREE_Control_CheckboxData* data);
 
-TREE_Result TREE_Control_Checkbox_SetChecked(TREE_Control* control, TREE_Byte checked);
+TREE_EXTERN TREE_Result TREE_Control_Checkbox_SetChecked(TREE_Control* control, TREE_Byte checked);
 
-TREE_Bool TREE_Control_Checkbox_GetChecked(TREE_Control* control);
+TREE_EXTERN TREE_Bool TREE_Control_Checkbox_GetChecked(TREE_Control* control);
 
-TREE_Result TREE_Control_Checkbox_EventHandler(TREE_Event const* event);
+TREE_EXTERN TREE_Result TREE_Control_Checkbox_EventHandler(TREE_Event const* event);
 
 ///////////////////////////////////////
 // NumberInput                       //
@@ -1151,45 +1153,45 @@ typedef struct _TREE_Control_NumberInputData
 	TREE_ControlEventHandler onSubmit;
 } TREE_Control_NumberInputData;
 
-TREE_Result TREE_Control_NumberInputData_Init(TREE_Control_NumberInputData* data, TREE_Float value, TREE_Float min, TREE_Float max, TREE_Float increment, TREE_Int decimalPlaces, TREE_ControlEventHandler onChange, TREE_ControlEventHandler onSubmit, TREE_Theme const* theme);
+TREE_EXTERN TREE_Result TREE_Control_NumberInputData_Init(TREE_Control_NumberInputData* data, TREE_Float value, TREE_Float min, TREE_Float max, TREE_Float increment, TREE_Int decimalPlaces, TREE_ControlEventHandler onChange, TREE_ControlEventHandler onSubmit, TREE_Theme const* theme);
 
-void TREE_Control_NumberInputData_Free(TREE_Control_NumberInputData* data);
+TREE_EXTERN void TREE_Control_NumberInputData_Free(TREE_Control_NumberInputData* data);
 
-TREE_Result TREE_Control_NumberInput_Init(TREE_Control* control, TREE_Transform* parent, TREE_Control_NumberInputData* data);
+TREE_EXTERN TREE_Result TREE_Control_NumberInput_Init(TREE_Control* control, TREE_Transform* parent, TREE_Control_NumberInputData* data);
 
-TREE_Result TREE_Control_NumberInput_SetValue(TREE_Control* control, TREE_Float value);
+TREE_EXTERN TREE_Result TREE_Control_NumberInput_SetValue(TREE_Control* control, TREE_Float value);
 
-TREE_Float TREE_Control_NumberInput_GetValue(TREE_Control* control);
+TREE_EXTERN TREE_Float TREE_Control_NumberInput_GetValue(TREE_Control* control);
 
-TREE_Result TREE_Control_NumberInput_SetMin(TREE_Control* control, TREE_Float minValue);
+TREE_EXTERN TREE_Result TREE_Control_NumberInput_SetMin(TREE_Control* control, TREE_Float minValue);
 
-TREE_Float TREE_Control_NumberInput_GetMin(TREE_Control* control);
+TREE_EXTERN TREE_Float TREE_Control_NumberInput_GetMin(TREE_Control* control);
 
-TREE_Result TREE_Control_NumberInput_SetMax(TREE_Control* control, TREE_Float maxValue);
+TREE_EXTERN TREE_Result TREE_Control_NumberInput_SetMax(TREE_Control* control, TREE_Float maxValue);
 
-TREE_Float TREE_Control_NumberInput_GetMax(TREE_Control* control);
+TREE_EXTERN TREE_Float TREE_Control_NumberInput_GetMax(TREE_Control* control);
 
-TREE_Result TREE_Control_NumberInput_SetIncrement(TREE_Control* control, TREE_Float increment);
+TREE_EXTERN TREE_Result TREE_Control_NumberInput_SetIncrement(TREE_Control* control, TREE_Float increment);
 
-TREE_Float TREE_Control_NumberInput_GetIncrement(TREE_Control* control);
+TREE_EXTERN TREE_Float TREE_Control_NumberInput_GetIncrement(TREE_Control* control);
 
-TREE_Result TREE_Control_NumberInput_SetDecimalPlaces(TREE_Control* control, TREE_Int decimalPlaces);
+TREE_EXTERN TREE_Result TREE_Control_NumberInput_SetDecimalPlaces(TREE_Control* control, TREE_Int decimalPlaces);
 
-TREE_Int TREE_Control_NumberInput_GetDecimalPlaces(TREE_Control* control);
+TREE_EXTERN TREE_Int TREE_Control_NumberInput_GetDecimalPlaces(TREE_Control* control);
 
-TREE_Result TREE_Control_NumberInput_SetPixel(TREE_Control* control, TREE_ThemePixelID id, TREE_Pixel pixel);
+TREE_EXTERN TREE_Result TREE_Control_NumberInput_SetPixel(TREE_Control* control, TREE_ThemePixelID id, TREE_Pixel pixel);
 
-TREE_Pixel TREE_Control_NumberInput_GetPixel(TREE_Control* control, TREE_ThemePixelID id);
+TREE_EXTERN TREE_Pixel TREE_Control_NumberInput_GetPixel(TREE_Control* control, TREE_ThemePixelID id);
 
-TREE_Result TREE_Control_NumberInput_SetOnChange(TREE_Control* control, TREE_ControlEventHandler onChange);
+TREE_EXTERN TREE_Result TREE_Control_NumberInput_SetOnChange(TREE_Control* control, TREE_ControlEventHandler onChange);
 
-TREE_ControlEventHandler TREE_Control_NumberInput_GetOnChange(TREE_Control* control);
+TREE_EXTERN TREE_ControlEventHandler TREE_Control_NumberInput_GetOnChange(TREE_Control* control);
 
-TREE_Result TREE_Control_NumberInput_SetOnSubmit(TREE_Control* control, TREE_ControlEventHandler onSubmit);
+TREE_EXTERN TREE_Result TREE_Control_NumberInput_SetOnSubmit(TREE_Control* control, TREE_ControlEventHandler onSubmit);
 
-TREE_ControlEventHandler TREE_Control_NumberInput_GetOnSubmit(TREE_Control* control);
+TREE_EXTERN TREE_ControlEventHandler TREE_Control_NumberInput_GetOnSubmit(TREE_Control* control);
 
-TREE_Result TREE_Control_NumberInput_EventHandler(TREE_Event const* event);
+TREE_EXTERN TREE_Result TREE_Control_NumberInput_EventHandler(TREE_Event const* event);
 
 ///////////////////////////////////////
 // Application                       //
@@ -1211,19 +1213,19 @@ typedef struct _TREE_Application
 	TREE_Surface* surface;
 } TREE_Application;
 
-TREE_Result TREE_Application_Init(TREE_Application* application, TREE_Surface* surface, TREE_Size capacity, TREE_EventHandler eventHandler);
+TREE_EXTERN TREE_Result TREE_Application_Init(TREE_Application* application, TREE_Surface* surface, TREE_Size capacity, TREE_EventHandler eventHandler);
 
-void TREE_Application_Free(TREE_Application* application);
+TREE_EXTERN void TREE_Application_Free(TREE_Application* application);
 
-TREE_Result TREE_Application_AddControl(TREE_Application* application, TREE_Control* control);
+TREE_EXTERN TREE_Result TREE_Application_AddControl(TREE_Application* application, TREE_Control* control);
 
-TREE_Result TREE_Application_SetFocus(TREE_Application* application, TREE_Control* control);
+TREE_EXTERN TREE_Result TREE_Application_SetFocus(TREE_Application* application, TREE_Control* control);
 
-TREE_Result TREE_Application_DispatchEvent(TREE_Application* application, TREE_Event const* event);
+TREE_EXTERN TREE_Result TREE_Application_DispatchEvent(TREE_Application* application, TREE_Event const* event);
 
-TREE_Result TREE_Application_Run(TREE_Application* application);
+TREE_EXTERN TREE_Result TREE_Application_Run(TREE_Application* application);
 
-void TREE_Application_Quit(TREE_Application* application);
+TREE_EXTERN void TREE_Application_Quit(TREE_Application* application);
 
 ///////////////////////////////////////
 //                                   //
