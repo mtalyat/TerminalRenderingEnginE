@@ -1,4 +1,5 @@
 ﻿#include "TREE.h"
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -2585,7 +2586,7 @@ TREE_Result _TREE_WordWrapAndOffsets(TREE_String text, TREE_Size width, TREE_Cha
 	}
 
 	// get the index offsets for each line
-	*lineOffsets = _TREE_LineOffsets(*lines, *lineCount);
+	*lineOffsets = _TREE_LineOffsets((TREE_String*)*lines, *lineCount);
 	if (!*lineOffsets)
 	{
 		TREE_DELETE_ARRAY(*lines, *lineCount);
@@ -5369,7 +5370,7 @@ TREE_String* TREE_Control_List_GetOptions(TREE_Control* control)
 
 	// get options
 	TREE_Control_ListData* data = (TREE_Control_ListData*)control->data;
-	return data->options;
+	return (TREE_String*)data->options;
 }
 
 TREE_Size TREE_Control_List_GetOptionsSize(TREE_Control* control)
@@ -6007,7 +6008,7 @@ TREE_String* TREE_Control_Dropdown_GetOptions(TREE_Control* control)
 
 	// get options
 	TREE_Control_DropdownData* data = (TREE_Control_DropdownData*)control->data;
-	return data->options;
+	return (TREE_String*)data->options;
 }
 
 TREE_Size TREE_Control_Dropdown_GetOptionsSize(TREE_Control* control)

@@ -18,22 +18,12 @@ if (CMAKE_VERSION VERSION_GREATER 3.12)
   set_property(TARGET Test PROPERTY CXX_STANDARD 20)
 endif()
 
-# Link to the library built from "../Source"
-set(LIBRARY_OUTPUT_PATH "../Source/out/build/x64-debug/")
+# Link to the library built from Source
+set(LIBRARY_OUTPUT_PATH "../Source/Build/")
 find_library(TREE NAMES TREE PATHS ${LIBRARY_OUTPUT_PATH})
 
-message(STATUS "Looking for TREE in ${LIBRARY_OUTPUT_PATH}")
-message(STATUS "TREE library found: ${TREE}")
-
-if (TREE)
-  target_link_libraries(Test PRIVATE ${TREE})
-else()
-  message(WARNING "Library TREE not found in ${LIBRARY_OUTPUT_PATH}. Falling back to manual path.")
-  target_link_libraries(Test PRIVATE "../Source/out/build/x64-debug/TREE.lib")
-endif()
+# Link to the TREE library
+target_link_libraries(Test PRIVATE ${TREE})
 
 # Add include directory for TREE.h
 target_include_directories(Test PRIVATE "../Source/")
-
-# Set the build directory for the executable
-set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "../Source/out/build/x64-debug/")

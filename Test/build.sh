@@ -1,0 +1,6 @@
+mkdir Build
+cd Build
+cmake .. -DCMAKE_BUILD_TYPE=Debug
+cmake .. -DCMAKE_BUILD_TYPE=Release
+cmake --build . --config Debug
+cmake --build . --config Release
