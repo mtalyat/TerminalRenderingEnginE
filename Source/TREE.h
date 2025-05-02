@@ -15,7 +15,7 @@ typedef TREE_Char const* TREE_String;
 typedef unsigned long long TREE_Size;
 typedef void* TREE_Data;
 typedef long TREE_Long;
-typedef long TREE_Time;
+typedef long long TREE_Time;
 
 #define TREE_FALSE 0
 #define TREE_TRUE 1
@@ -101,9 +101,33 @@ typedef enum _TREE_Result
 	TREE_ERROR_WINDOWS_CONSOLE_GET_CURSOR_INFO = 10300,
 	TREE_ERROR_WINDOWS_CONSOLE_SET_CURSOR_INFO = 10301,
 
+	//		Linux
+
+	// Clipboard
+	TREE_ERROR_LINUX_CLIPBOARD_OPEN = 20000,
+	TREE_ERROR_LINUX_CLIPBOARD_CLOSE = 20001,
+
+	// Console
+	TREE_ERROR_LINUX_CONSOLE_INIT = 20100,
+
+	// Input
+	TREE_ERROR_LINUX_INPUT_INIT = 20200,
+
+	// Keyboard
+	TREE_ERROR_LINUX_KEYBOARD_NOT_FOUND = 20300,
+	TREE_ERROR_LINUX_KEYBOARD_OPEN = 20301,
+	TREE_ERROR_LINUX_KEYBOARD_READ = 20302,
+	TREE_ERROR_LINUX_KEYBOARD_POLL = 20303,
+
 } TREE_Result;
 
 TREE_EXTERN TREE_String TREE_Result_ToString(TREE_Result code);
+
+///////////////////////////////////////
+// Time                              //
+///////////////////////////////////////
+
+TREE_Time TREE_Time_Now();
 
 ///////////////////////////////////////
 // TREE                              //
@@ -492,6 +516,9 @@ typedef enum _TREE_Key
 	TREE_KEY_X = 88,
 	TREE_KEY_Y = 89,
 	TREE_KEY_Z = 90,
+	TREE_KEY_LEFT_COMMAND = 91, // Left Command (Windows key)
+	TREE_KEY_RIGHT_COMMAND = 92, // Right Command (Windows key)
+	TREE_KEY_APPLICATION = 93, // Application key (context menu key)
 	TREE_KEY_NUMPAD_0 = 96,
 	TREE_KEY_NUMPAD_1 = 97,
 	TREE_KEY_NUMPAD_2 = 98,
@@ -521,6 +548,12 @@ typedef enum _TREE_Key
 	TREE_KEY_F12 = 123,
 	TREE_KEY_NUM_LOCK = 144,
 	TREE_KEY_SCROLL_LOCK = 145,
+	TREE_KEY_LEFT_SHIFT = 160, // Left Shift
+	TREE_KEY_RIGHT_SHIFT = 161, // Right Shift
+	TREE_KEY_LEFT_CONTROL = 162, // Left Control
+	TREE_KEY_RIGHT_CONTROL = 163, // Right Control
+	TREE_KEY_LEFT_ALT = 164, // Left Alt
+	TREE_KEY_RIGHT_ALT = 165, // Right Alt
 	TREE_KEY_SEMICOLON = 186, // ; and :
 	TREE_KEY_EQUALS = 187, // = and +
 	TREE_KEY_COMMA = 188, // , and <
@@ -540,7 +573,7 @@ typedef enum _TREE_Key
 TREE_EXTERN TREE_String TREE_Key_ToString(TREE_Key key);
 
 ///////////////////////////////////////
-// Char Type                         //
+// Char                              //
 ///////////////////////////////////////
 
 typedef enum _TREE_CharType
@@ -553,6 +586,8 @@ typedef enum _TREE_CharType
 } TREE_CharType;
 
 TREE_EXTERN TREE_CharType TREE_Char_GetType(TREE_Char character);
+
+TREE_EXTERN TREE_Char TREE_Char_ToKey(TREE_Char character);
 
 ///////////////////////////////////////
 // Key Modifier Flags                //

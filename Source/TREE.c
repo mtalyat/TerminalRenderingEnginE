@@ -4,16 +4,35 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <time.h>
 
-#ifdef _WIN32
+#if defined(_WIN32)
 #define TREE_WINDOWS
-#endif // WIN32
+#elif defined(__linux__)
+#define TREE_LINUX
+#else
+#error "Unsupported OS"
+#endif
 
 #ifdef TREE_WINDOWS
-#include <windows.h>
 #include <conio.h>
+#include <windows.h>
 #endif // TREE_WINDOWS
+
+#ifdef TREE_LINUX
+#include <dirent.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <linux/input.h>
+#include <linux/limits.h>
+#include <poll.h>
+#include <signal.h>
+#include <sys/ioctl.h>
+#include <sys/types.h>
+#include <termios.h>
+#include <unistd.h>
+#endif // TREE_LINUX
 
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
@@ -90,9 +109,38 @@ TREE_Char const* TREE_Result_ToString(TREE_Result code)
 		return "Failed to get console cursor info";
 	case TREE_ERROR_WINDOWS_CONSOLE_SET_CURSOR_INFO:
 		return "Failed to set console cursor info";
+
+	case TREE_ERROR_LINUX_CLIPBOARD_OPEN:
+		return "Failed to open clipboard";
+	case TREE_ERROR_LINUX_CLIPBOARD_CLOSE:
+		return "Failed to close clipboard";
+	case TREE_ERROR_LINUX_CONSOLE_INIT:
+		return "Failed to initialize console";
+	case TREE_ERROR_LINUX_INPUT_INIT:
+		return "Failed to initialize input";
+	case TREE_ERROR_LINUX_KEYBOARD_NOT_FOUND:
+		return "Keyboard not found";
+	case TREE_ERROR_LINUX_KEYBOARD_OPEN:
+		return "Failed to open keyboard device";
+	case TREE_ERROR_LINUX_KEYBOARD_READ:
+		return "Failed to read from keyboard device";
+	case TREE_ERROR_LINUX_KEYBOARD_POLL:
+		return "Failed to poll keyboard device";
+
 	default:
 		return "Unknown error";
 	}
+}
+
+TREE_Time TREE_Time_Now()
+{
+	struct timeval tv;
+	if (gettimeofday(&tv, NULL) != 0)
+	{
+		return 0; // return 0 on error
+	}
+	TREE_Time time = (TREE_Time)tv.tv_sec * 1000 + (TREE_Time)tv.tv_usec / 1000;
+	return time;
 }
 
 #ifdef TREE_WINDOWS
@@ -111,8 +159,82 @@ BOOL WINAPI _ConsoleCtrlHandler(DWORD dwCtrlType)
 		return FALSE;
 	}
 }
+#elif defined(TREE_LINUX)
 
-#endif // TREE_WINDOWS
+static struct termios g_originalTermios;
+static TREE_Char* g_keyboardDevicePath = NULL;
+
+void _TREE_HandleSignal(int signal)
+{
+	switch (signal)
+	{
+	case SIGINT:
+	case SIGTERM:
+	case SIGHUP:
+		// Handle the signal gracefully
+		break;
+	default:
+		break;
+	}
+}
+
+TREE_Char* _TREE_FindKeyboard()
+{
+	// open the /dev/input directory
+	DIR* dir = opendir("/dev/input");
+	if (!dir)
+	{
+		return NULL;
+	}
+
+	static char devicePath[PATH_MAX];
+	struct dirent* entry;
+	while ((entry = readdir(dir)) != NULL)
+	{
+		if (strncmp(entry->d_name, "event", 5) != 0)
+		{
+			continue;
+		}
+
+		snprintf(devicePath, sizeof(devicePath), "/dev/input/%s", entry->d_name);
+		int fd = open(devicePath, O_RDONLY | O_NONBLOCK);
+		if(fd < 0)
+		{
+			continue; // skip if we can't open the device
+		}
+
+		char name[256] = "Unknown";
+		if (ioctl(fd, EVIOCGNAME(sizeof(name)), name) >= 0)
+		{
+			if (strstr(name, "keyboard") || strstr(name, "Keyboard"))
+			{
+				close(fd);
+				closedir(dir);
+
+				// found the keyboard
+				TREE_Char* output = TREE_NEW_ARRAY(TREE_Char, strlen(devicePath) + 1);
+				if (!output)
+				{
+					return NULL;
+				}
+
+				TREE_Size devicePathLength = strlen(devicePath);
+				memcpy(output, devicePath, devicePathLength);
+				output[devicePathLength] = '\0';
+
+				return output;
+			}
+		}
+
+		// this file was not a keyboard
+		close(fd);
+	}
+
+	closedir(dir);
+	return NULL;
+}
+
+#endif
 
 TREE_Result TREE_Init()
 {
@@ -124,6 +246,35 @@ TREE_Result TREE_Init()
 	{
 		return TREE_ERROR_WINDOWS_SET_CONTROL_HANDLER;
 	}
+#elif defined(TREE_LINUX)
+	{
+		struct termios newTermios;
+	
+		// get current terminal attributes
+		tcgetattr(STDIN_FILENO, &g_originalTermios);
+
+		// make a copy to modify
+		newTermios = g_originalTermios;
+
+		// disable echoing and canonical mode
+		newTermios.c_lflag &= ~(ECHO | ICANON);
+
+		// set the new terminal attributes
+		if (tcsetattr(STDIN_FILENO, TCSANOW, &newTermios) < 0)
+		{
+			return TREE_ERROR_LINUX_CONSOLE_INIT;
+		}
+	}
+	// find keyboard to use
+	g_keyboardDevicePath = _TREE_FindKeyboard();
+	if(!g_keyboardDevicePath)
+	{
+		return TREE_ERROR_LINUX_KEYBOARD_NOT_FOUND;
+	}
+	// handle signals
+	signal(SIGINT, _TREE_HandleSignal);
+	signal(SIGTERM, _TREE_HandleSignal);
+	signal(SIGHUP, _TREE_HandleSignal);
 #endif
 
 	// hide cursor
@@ -140,6 +291,14 @@ void TREE_Free()
 {
 	// show cursor
 	TREE_Cursor_SetVisible(TREE_TRUE);
+
+	// free keyboard device path
+	free(g_keyboardDevicePath);
+
+#ifdef TREE_LINUX
+	// restore original terminal attributes
+	tcsetattr(STDIN_FILENO, TCSANOW, &g_originalTermios);
+#endif
 }
 
 TREE_Result TREE_String_CreateCopy(TREE_Char** dest, TREE_String src)
@@ -253,9 +412,27 @@ TREE_Result TREE_Clipboard_SetText(TREE_String text)
 	}
 
 	return TREE_OK;
+#elif defined(TREE_LINUX)
+	// open a pipe to xclip
+	FILE* clipboard = popen("xclip -selection clipboard -i", "w");
+	if (!clipboard)
+	{
+		return TREE_ERROR_LINUX_CLIPBOARD_OPEN;
+	}
+
+	// write the text to the pipe
+    if(fprintf(clipboard, "%s", text) < 0)
+	{
+		return TREE_ERROR_CLIPBOARD_SET_TEXT;
+	}
+
+    // close the pipe
+    if (pclose(clipboard) == -1) {
+		return TREE_ERROR_LINUX_CLIPBOARD_CLOSE;
+    }
 #else
 	return TREE_NOT_IMPLEMENTED;
-#endif // TREE_WINDOWS
+#endif
 }
 
 TREE_Result TREE_Clipboard_GetText(TREE_Char** text)
@@ -319,9 +496,57 @@ TREE_Result TREE_Clipboard_GetText(TREE_Char** text)
 	CloseClipboard();
 
 	return TREE_OK;
+#elif defined(TREE_LINUX)
+    // open a pipe to the xclip command
+    FILE* clipboard = popen("xclip -selection clipboard -o", "r");
+    if (!clipboard) {
+		return TREE_ERROR_LINUX_CLIPBOARD_OPEN;
+    }
+
+	// allocate buffer for the text
+	TREE_Size bufferSize = 1024;
+	TREE_Char* buffer = TREE_NEW_ARRAY(TREE_Char, bufferSize);
+	if (!buffer)
+	{
+		pclose(clipboard);
+		return TREE_ERROR_ALLOC;
+	}
+
+	// read the text from the pipe
+	TREE_Size length = 0;
+	int ch;
+	while((ch = fgetc(clipboard)) != EOF)
+	{
+		if(length + 1 >= sizeof(buffer))
+		{
+			// allocate more memory
+			bufferSize *= 2;
+			TREE_Char* newBuffer = (TREE_Char*)realloc(buffer, bufferSize);
+			if (!newBuffer)
+			{
+				pclose(clipboard);
+				free(buffer);
+				return TREE_ERROR_ALLOC;
+			}
+			buffer = newBuffer;
+		}
+		buffer[length++] = (TREE_Char)ch;
+	}
+	buffer[length] = '\0'; // null-terminate the string
+
+	// close the pipe
+	if (pclose(clipboard) == -1) {
+		free(buffer);
+		return TREE_ERROR_LINUX_CLIPBOARD_CLOSE;
+	}
+
+	// set the output text
+	*text = buffer;
+
+	return TREE_OK;
 #else
 	return TREE_NOT_IMPLEMENTED;
-#endif // TREE_WINDOWS
+#endif
 }
 
 TREE_ColorPair TREE_ColorPair_Create(TREE_Color foreground, TREE_Color background)
@@ -425,9 +650,29 @@ TREE_String TREE_Path_Absolute(TREE_String path)
 	// copy the string
 	memcpy(absolutePath, buffer, absoluteSize);
 	return absolutePath;
+#elif defined(TREE_LINUX)
+	// get the absolute path
+	char buffer[PATH_MAX];
+	if (realpath(path, buffer) == NULL)
+	{
+		return NULL;
+	}
+	
+	// allocate memory for the string
+	TREE_Size absoluteSize = strlen(buffer);
+	TREE_Char* absolutePath = TREE_NEW_ARRAY(TREE_Char, absoluteSize + 1);
+	if (!absolutePath)
+	{
+		return NULL;
+	}
+
+	// copy the string
+	memcpy(absolutePath, buffer, absoluteSize);
+	absolutePath[absoluteSize] = '\0'; // ensure null-termination
+	return absolutePath;
 #else
 	return NULL;
-#endif // TREE_WINDOWS
+#endif
 }
 
 TREE_String TREE_Path_Parent(TREE_String path)
@@ -541,10 +786,16 @@ TREE_Result TREE_File_Read(TREE_String path, TREE_Char* text, TREE_Size size)
 	TREE_Size readSize = size > fileSize ? fileSize : size;
 
 	// read the file into memory
-	fread(text, sizeof(TREE_Char), readSize, file);
-	text[readSize] = '\0';
+	TREE_Size actualSize = fread(text, sizeof(TREE_Char), readSize, file);
+	text[actualSize] = '\0';
 
 	fclose(file);
+
+	if(actualSize < readSize)
+	{
+		// an error occurred while reading the file
+		return TREE_ERROR_OVERFLOW;
+	}
 
 	return TREE_OK;
 }
@@ -644,9 +895,15 @@ TREE_Result TREE_Directory_Create(TREE_String path)
 		}
 	}
 	return TREE_OK;
+#elif defined(TREE_LINUX)
+	if (mkdir(path, 0755) != 0)
+	{
+		return TREE_ERROR_DIRECTORY_CREATE;
+	}
+	return TREE_OK;
 #else
 	return TREE_NOT_IMPLEMENTED;
-#endif // TREE_WINDOWS
+#endif
 }
 
 TREE_Result TREE_Directory_Delete(TREE_String path)
@@ -669,9 +926,15 @@ TREE_Result TREE_Directory_Delete(TREE_String path)
 		return TREE_ERROR_DIRECTORY_DELETE;
 	}
 	return TREE_OK;
+#elif defined(TREE_LINUX)
+	if (rmdir(path) != 0)
+	{
+		return TREE_ERROR_DIRECTORY_DELETE;
+	}
+	return TREE_OK;
 #else
 	return TREE_NOT_IMPLEMENTED;
-#endif // TREE_WINDOWS
+#endif
 }
 
 TREE_Bool _TREE_Directory_Filter(TREE_String name, TREE_Bool isDirectory, TREE_FileTypeFlags flags)
@@ -804,9 +1067,99 @@ TREE_Result TREE_Directory_Enumerate(TREE_String path, TREE_Char*** files, TREE_
 	FindClose(hFind);
 	*count = fileCount;
 	return TREE_OK;
+#elif defined(TREE_LINUX)
+	// open the directory
+	struct dirent* entry;
+	DIR* dir = opendir(path);
+	if (!dir)
+	{
+		return TREE_ERROR_DIRECTORY_ENUMERATE;
+	}
+
+	// count the number of entries
+	TREE_Size fileCount = 0;
+	while((entry = readdir(dir)) != NULL)
+	{
+		// filter out files, directories, etc. based on flags
+		if (!_TREE_Directory_Filter(entry->d_name, entry->d_type == DT_DIR, flags))
+		{
+			continue;
+		}
+		fileCount++;
+	}
+
+	// allocate memory for the file names
+	*files = TREE_NEW_ARRAY(TREE_Char*, fileCount);
+	if (!*files)
+	{
+		closedir(dir);
+		return TREE_ERROR_ALLOC;
+	}
+
+	// reset the directory stream
+	rewinddir(dir);
+
+	// iterate through the directory entries and store the names
+	TREE_Size i = 0;
+	while((entry = readdir(dir)) != NULL)
+	{
+		// filter out files, directories, etc. based on flags
+		if (!_TREE_Directory_Filter(entry->d_name, entry->d_type == DT_DIR, flags))
+		{
+			continue;
+		}
+
+		// get the size of the file name
+		TREE_Size fileNameSize = strlen(entry->d_name) + 1;
+
+		TREE_Char fullPath[PATH_MAX];
+		snprintf(fullPath, sizeof(fullPath), "%s/%s", path, entry->d_name);
+
+		// check if directory
+		struct stat statbuf;
+		TREE_Bool isDirectory = (stat(fullPath, &statbuf) == 0 && S_ISDIR(statbuf.st_mode));
+
+		// if directory, add 1 for / at end
+		if (isDirectory)
+		{
+			fileNameSize++;
+		}
+
+		// allocate memory for the new file name
+		TREE_Size filePathSize = strlen(fullPath);
+		TREE_Char* fileName = TREE_NEW_ARRAY(TREE_Char, fileNameSize + 1);
+		if (!fileName)
+		{
+			TREE_DELETE_ARRAY(*files, i);
+			closedir(dir);
+			return TREE_ERROR_ALLOC;
+		}
+
+		// copy the file name
+		memcpy(fileName, entry->d_name, filePathSize);
+		// if directory, add / at end
+		if (isDirectory)
+		{
+			fileName[filePathSize] = '/';
+			fileName[filePathSize + 1] = '\0';
+		}
+		else
+		{
+			fileName[filePathSize] = '\0';
+		}
+
+		// add the file name to the array
+		(*files)[i] = fileName;
+		i++;
+	}
+	
+	closedir(dir);
+	*count = fileCount;
+
+	return TREE_OK;
 #else  
 	return TREE_NOT_IMPLEMENTED;
-#endif // TREE_WINDOWS  
+#endif  
 }
 
 TREE_Bool TREE_Rect_IsOverlapping(TREE_Rect const* rectA, TREE_Rect const* rectB)
@@ -1562,9 +1915,13 @@ TREE_Result TREE_Window_SetTitle(TREE_String title)
 		return TREE_ERROR_WINDOW_SET_TITLE;
 	}
 	return TREE_OK;
+#elif defined(TREE_LINUX)
+	printf("\033]0;%s\007", title);
+	fflush(stdout);
+	return TREE_OK;
 #else
 	return TREE_NOT_IMPLEMENTED;
-#endif // TREE_WINDOWS
+#endif
 }
 
 TREE_Result TREE_Window_Present(TREE_Surface* surface)
@@ -1586,7 +1943,9 @@ TREE_Result TREE_Window_Present(TREE_Surface* surface)
 		COORD coord = { 0, 0 };
 		SetConsoleCursorPosition(hConsole, coord);
 	}
-#endif // TREE_WINDOWS
+#elif defined(TREE_LINUX)
+	printf("\033[H"); // Move cursor to home position (top-left corner)
+#endif
 
 	// print to the console
 	int result = printf("%s", surface->text);
@@ -1618,6 +1977,16 @@ TREE_Extent TREE_Window_GetExtent()
 		extent.width = csbi.srWindow.Right - csbi.srWindow.Left + 1;
 		extent.height = csbi.srWindow.Bottom - csbi.srWindow.Top + 1;
 	}
+#elif defined(TREE_LINUX)
+	struct winsize w;
+	if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &w) == 0)
+	{
+		extent.width = w.ws_col;
+		extent.height = w.ws_row;
+	} else
+	{
+		printf("Error getting terminal size\n");
+	}
 #endif
 
 	return extent;
@@ -1625,23 +1994,17 @@ TREE_Extent TREE_Window_GetExtent()
 
 TREE_Result TREE_Cursor_SetVisible(TREE_Bool visible)
 {
-#ifdef TREE_WINDOWS
-	HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
-	CONSOLE_CURSOR_INFO cursorInfo;
-	if (!GetConsoleCursorInfo(hConsole, &cursorInfo))
+	if (visible)
 	{
-		return TREE_ERROR_WINDOWS_CONSOLE_GET_CURSOR_INFO;
+		printf("\033[?25h"); // Show cursor
 	}
-	cursorInfo.bVisible = visible;
-	if (!SetConsoleCursorInfo(hConsole, &cursorInfo))
+	else
 	{
-		return TREE_ERROR_WINDOWS_CONSOLE_SET_CURSOR_INFO;
+		printf("\033[?25l"); // Hide cursor
 	}
+	fflush(stdout);
 
 	return TREE_OK;
-#else
-	return TREE_NOT_IMPLEMENTED;
-#endif
 }
 
 TREE_String TREE_Key_ToString(TREE_Key key)
@@ -1746,6 +2109,15 @@ TREE_String TREE_Key_ToString(TREE_Key key)
 	case TREE_KEY_BACKSLASH: return "Backslash";
 	case TREE_KEY_RIGHT_BRACKET: return "Right Bracket";
 	case TREE_KEY_APOSTROPHE: return "Apostrophe";
+	case TREE_KEY_LEFT_CONTROL: return "Left Control";
+	case TREE_KEY_LEFT_SHIFT: return "Left Shift";
+	case TREE_KEY_LEFT_ALT: return "Left Alt";
+	case TREE_KEY_LEFT_COMMAND: return "Left Command";
+	case TREE_KEY_RIGHT_CONTROL: return "Right Control";
+	case TREE_KEY_RIGHT_SHIFT: return "Right Shift";
+	case TREE_KEY_RIGHT_ALT: return "Right Alt";
+	case TREE_KEY_RIGHT_COMMAND: return "Right Command";
+	case TREE_KEY_APPLICATION: return "Application";
 	default: return "Unknown";
 	}
 }
@@ -1777,6 +2149,44 @@ TREE_CharType TREE_Char_GetType(TREE_Char character)
 	}
 
 	return TREE_CHAR_TYPE_NONE;
+}
+
+TREE_EXTERN TREE_Char TREE_Char_ToKey(TREE_Char character)
+{
+	// Map raw input to TREE_Key values
+	switch (character) {
+		case '\033': return TREE_KEY_ESCAPE;
+		case '\n': return TREE_KEY_ENTER;
+		case '\r': return TREE_KEY_ENTER; // Handle carriage return as Enter
+		case '\b': return TREE_KEY_BACKSPACE;
+		case '\t': return TREE_KEY_TAB;
+		case ' ': return TREE_KEY_SPACE;
+		case ';': case ':': return TREE_KEY_SEMICOLON;
+		case '=': case '+': return TREE_KEY_EQUALS;
+		case ',': case '<': return TREE_KEY_COMMA;
+		case '-': case '_': return TREE_KEY_MINUS;
+		case '.': case '>': return TREE_KEY_PERIOD;
+		case '/': case '?': return TREE_KEY_SLASH;
+		case '`': case '~': return TREE_KEY_TILDE;
+		case '[': case '{': return TREE_KEY_LEFT_BRACKET;
+		case '\\': case '|': return TREE_KEY_BACKSLASH;
+		case ']': case '}': return TREE_KEY_RIGHT_BRACKET;
+		case '\'': case '"': return TREE_KEY_APOSTROPHE;
+		case '!': return TREE_KEY_1;
+		case '@': return TREE_KEY_2;
+		case '#': return TREE_KEY_3;
+		case '$': return TREE_KEY_4;
+		case '%': return TREE_KEY_5;
+		case '^': return TREE_KEY_6;
+		case '&': return TREE_KEY_7;
+		case '*': return TREE_KEY_8;
+		case '(': return TREE_KEY_9;
+		case ')': return TREE_KEY_0;
+		case 'A' ... 'Z': return (TREE_Key)(TREE_KEY_A + (character - 'A'));
+		case 'a' ... 'z': return (TREE_Key)(TREE_KEY_A + (character - 'a'));
+		case '0' ... '9': return (TREE_Key)(TREE_KEY_0 + (character - '0'));
+		default: return TREE_KEY_NONE;
+	}
 }
 
 TREE_Char TREE_Key_ToChar(TREE_Key key, TREE_KeyModifierFlags modifiers)
@@ -7669,6 +8079,368 @@ TREE_Result TREE_Application_DispatchEvent(TREE_Application* application, TREE_E
 	return TREE_OK;
 }
 
+TREE_Result _TREE_Application_RefreshInput(TREE_Application* application, TREE_Time currentTime)
+{
+	// validate
+	if (!application)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	TREE_Input* input = &application->input;
+
+	// key tick interval data
+	static TREE_Time const keyInterval = 33; // tick every 33 ms
+	static TREE_Time keyTick = 0;
+	if (keyTick == 0)
+	{
+		keyTick = currentTime; // initialize key tick
+	}
+
+	#ifdef TREE_LINUX
+	#endif // TREE_LINUX
+
+	// update key states
+
+	// create key states array
+	TREE_Byte keyStates[TREE_KEY_MAX];
+	memset(keyStates, 0, sizeof(keyStates));
+
+	// get new key states
+#ifdef TREE_WINDOWS
+	for (TREE_Size i = 0; i < TREE_KEY_COUNT; i++)
+	{
+		// get key at index
+		TREE_Key key = application->input.keys[i];
+
+		// set the key state
+		keyStates[key] = (GetAsyncKeyState(key) & 0x8000) ? TREE_TRUE : TREE_FALSE;
+	}
+#else // TREE_LINUX
+	// open the keyboard event file
+	int fd = open(g_keyboardDevicePath, O_RDONLY | O_NONBLOCK); // | O_NONBLOCK
+	if (fd < 0)
+	{
+		return TREE_ERROR_LINUX_KEYBOARD_OPEN;
+	}
+
+	// map KEY_ to TREE_Key
+	// 127 is KEY_COMPOSE, which is the highest key value used in TREE
+	static TREE_Byte keyMap[128] =
+	{
+		TREE_KEY_NONE, // 0
+		TREE_KEY_ESCAPE, // 1
+		TREE_KEY_1, // 2
+		TREE_KEY_2, // 3
+		TREE_KEY_3, // 4
+		TREE_KEY_4, // 5
+		TREE_KEY_5, // 6
+		TREE_KEY_6, // 7
+		TREE_KEY_7, // 8
+		TREE_KEY_8, // 9
+		TREE_KEY_9, // 10
+		TREE_KEY_0, // 11
+		TREE_KEY_MINUS, // 12
+		TREE_KEY_EQUALS, // 13
+		TREE_KEY_BACKSPACE, // 14
+		TREE_KEY_TAB, // 15
+		TREE_KEY_Q, // 16
+		TREE_KEY_W, // 17
+		TREE_KEY_E, // 18
+		TREE_KEY_R, // 19
+		TREE_KEY_T, // 20
+		TREE_KEY_Y, // 21
+		TREE_KEY_U, // 22
+		TREE_KEY_I, // 23
+		TREE_KEY_O, // 24
+		TREE_KEY_P, // 25
+		TREE_KEY_LEFT_BRACKET, // 26
+		TREE_KEY_RIGHT_BRACKET, // 27
+		TREE_KEY_ENTER, // 28
+		TREE_KEY_LEFT_CONTROL, // 29
+		TREE_KEY_A, // 30
+		TREE_KEY_S, // 31
+		TREE_KEY_D, // 32
+		TREE_KEY_F, // 33
+		TREE_KEY_G, // 34
+		TREE_KEY_H, // 35
+		TREE_KEY_J, // 36
+		TREE_KEY_K, // 37
+		TREE_KEY_L, // 38
+		TREE_KEY_SEMICOLON, // 39
+		TREE_KEY_APOSTROPHE, // 40
+		TREE_KEY_TILDE, // 41
+		TREE_KEY_LEFT_SHIFT, // 42
+		TREE_KEY_BACKSLASH, // 43
+		TREE_KEY_Z, // 44
+		TREE_KEY_X, // 45
+		TREE_KEY_C, // 46
+		TREE_KEY_V, // 47
+		TREE_KEY_B, // 48
+		TREE_KEY_N, // 49
+		TREE_KEY_M, // 50
+		TREE_KEY_COMMA, // 51
+		TREE_KEY_PERIOD, // 52
+		TREE_KEY_SLASH, // 53
+		TREE_KEY_RIGHT_SHIFT, // 54
+		TREE_KEY_MULTIPLY, // 55
+		TREE_KEY_LEFT_ALT, // 56
+		TREE_KEY_SPACE, // 57
+		TREE_KEY_CAPS_LOCK, // 58
+		TREE_KEY_F1, // 59
+		TREE_KEY_F2, // 60
+		TREE_KEY_F3, // 61
+		TREE_KEY_F4, // 62
+		TREE_KEY_F5, // 63
+		TREE_KEY_F6, // 64
+		TREE_KEY_F7, // 65
+		TREE_KEY_F8, // 66
+		TREE_KEY_F9, // 67
+		TREE_KEY_F10, // 68
+		TREE_KEY_NUM_LOCK, // 69
+		TREE_KEY_SCROLL_LOCK, // 70
+		TREE_KEY_NUMPAD_7, // 71
+		TREE_KEY_NUMPAD_8, // 72
+		TREE_KEY_NUMPAD_9, // 73
+		TREE_KEY_SUBTRACT, // 74
+		TREE_KEY_NUMPAD_4, // 75
+		TREE_KEY_NUMPAD_5, // 76
+		TREE_KEY_NUMPAD_6, // 77
+		TREE_KEY_ADD, // 78
+		TREE_KEY_NUMPAD_1, // 79
+		TREE_KEY_NUMPAD_2, // 80
+		TREE_KEY_NUMPAD_3, // 81
+		TREE_KEY_NUMPAD_0, // 82
+		TREE_KEY_DECIMAL, // 83
+		TREE_KEY_NONE, // 84
+		TREE_KEY_NONE, // 85
+		TREE_KEY_NONE, // 86
+		TREE_KEY_F11, // 87
+		TREE_KEY_F12, // 88
+		TREE_KEY_NONE, // 89
+		TREE_KEY_NONE, // 90
+		TREE_KEY_NONE, // 91
+		TREE_KEY_NONE, // 92
+		TREE_KEY_NONE, // 93
+		TREE_KEY_NONE, // 94
+		TREE_KEY_NONE, // 95
+		TREE_KEY_ENTER, // 96
+		TREE_KEY_RIGHT_CONTROL, // 97
+		TREE_KEY_DIVIDE, // 98
+		TREE_KEY_PRINT_SCREEN, // 99
+		TREE_KEY_RIGHT_ALT, // 100
+		TREE_KEY_ENTER, // 101
+		TREE_KEY_HOME, // 102
+		TREE_KEY_UP_ARROW, // 103
+		TREE_KEY_PAGE_UP, // 104
+		TREE_KEY_LEFT_ARROW, // 105
+		TREE_KEY_RIGHT_ARROW, // 106
+		TREE_KEY_END, // 107
+		TREE_KEY_DOWN_ARROW, // 108
+		TREE_KEY_PAGE_DOWN, // 109
+		TREE_KEY_INSERT, // 110
+		TREE_KEY_DELETE, // 111
+		TREE_KEY_NONE, // 112
+		TREE_KEY_NONE, // 113
+		TREE_KEY_NONE, // 114
+		TREE_KEY_NONE, // 115
+		TREE_KEY_NONE, // 116
+		TREE_KEY_EQUALS, // 117
+		TREE_KEY_NONE, // 118
+		TREE_KEY_PAUSE, // 119
+		TREE_KEY_NONE, // 120
+
+		TREE_KEY_NONE, // 121
+		TREE_KEY_NONE, // 122
+		TREE_KEY_NONE, // 123
+		TREE_KEY_NONE, // 124
+		TREE_KEY_LEFT_COMMAND, // 125
+		TREE_KEY_RIGHT_COMMAND, // 126
+		TREE_KEY_APPLICATION, // 127
+	};
+	// poll events from the keyboard device
+	struct pollfd pfd;
+	pfd.fd = fd;
+	pfd.events = POLLIN; // only read events
+	int pollResult = poll(&pfd, 1, 1000); // 1 s timeout
+	if (pollResult < 0)
+	{
+		close(fd);
+		return TREE_ERROR_LINUX_KEYBOARD_POLL;
+	}
+	else if (pollResult <= 0)
+	{
+		// no events, return
+		close(fd);
+		return TREE_OK;
+	}
+
+	// read the keyboard events
+	struct input_event ev;
+	while(TREE_TRUE)
+	{
+		ssize_t bytesRead = read(fd, &ev, sizeof(struct input_event));
+		if(bytesRead < 0)
+		{
+			if(errno == EAGAIN)
+			{
+				break;
+			}
+
+			// if not EAGAIN, an error occurred
+			close(fd);
+			return TREE_ERROR_LINUX_KEYBOARD_READ;
+		}
+		if(bytesRead == 0)
+		{
+			// no more events, break
+			break;
+		}
+
+		// handle the event
+		if (ev.type == EV_KEY && ev.code <= 128)
+		{
+			// get the key code as TREE_Key
+			TREE_Key key = (TREE_Key)keyMap[ev.code];
+
+			// save if pressed or released
+			keyStates[key] = ev.value ? TREE_TRUE : TREE_FALSE;
+		}
+	}	
+
+	close(fd);
+#endif
+
+	// get modifiers from new states
+	TREE_KeyModifierFlags modifiers = TREE_KEY_MODIFIER_FLAGS_NONE;
+	if(keyStates[TREE_KEY_LEFT_SHIFT] || keyStates[TREE_KEY_RIGHT_SHIFT])
+	{
+		modifiers |= TREE_KEY_MODIFIER_FLAGS_SHIFT;
+	}
+	if(keyStates[TREE_KEY_LEFT_CONTROL] || keyStates[TREE_KEY_RIGHT_CONTROL])
+	{
+		modifiers |= TREE_KEY_MODIFIER_FLAGS_CONTROL;
+	}
+	if(keyStates[TREE_KEY_LEFT_ALT] || keyStates[TREE_KEY_RIGHT_ALT])
+	{
+		modifiers |= TREE_KEY_MODIFIER_FLAGS_ALT;
+	}
+	if(keyStates[TREE_KEY_LEFT_COMMAND] || keyStates[TREE_KEY_RIGHT_COMMAND])
+	{
+		modifiers |= TREE_KEY_MODIFIER_FLAGS_COMMAND;
+	}
+	if(keyStates[TREE_KEY_CAPS_LOCK])
+	{
+		modifiers |= TREE_KEY_MODIFIER_FLAGS_CAPS_LOCK;
+	}
+	if(keyStates[TREE_KEY_NUM_LOCK])
+	{
+		modifiers |= TREE_KEY_MODIFIER_FLAGS_NUM_LOCK;
+	}
+	if(keyStates[TREE_KEY_SCROLL_LOCK])
+	{
+		modifiers |= TREE_KEY_MODIFIER_FLAGS_SCROLL_LOCK;
+	}
+	input->modifiers = modifiers;
+
+	// create event data
+	TREE_EventData_Key eventData;
+	eventData.key = TREE_KEY_NONE;
+	eventData.modifiers = modifiers;
+
+	// create event
+	TREE_Event event;
+	event.type = TREE_EVENT_TYPE_NONE;
+	event.data = &eventData;
+	event.control = NULL;
+	event.application = application;
+
+	// check if key tick is active
+	TREE_Bool keyTickActive = (currentTime - keyTick) >= keyInterval;
+	if (keyTickActive)
+	{
+		// if active, reset timer
+		keyTick = currentTime;
+	}
+
+	// compare new key states with previous states
+	TREE_Result result;
+	for (TREE_Size i = 0; i < TREE_KEY_COUNT; i++)
+	{
+		// get key at index
+		TREE_Key key = application->input.keys[i];
+
+		// check if being pressed right now
+		TREE_Bool pressed = keyStates[key] == TREE_TRUE;
+
+		// get the old key state
+		TREE_InputState state = input->states[key];
+
+		// check for changes
+		if (pressed)
+		{
+			if (state == TREE_INPUT_STATE_RELEASED)
+			{
+				// key down
+				input->states[key] = TREE_INPUT_STATE_COOLDOWN;
+
+				// trigger key down event
+				event.type = TREE_EVENT_TYPE_KEY_DOWN;
+				eventData.key = key;
+				result = TREE_Application_DispatchEvent(application, &event);
+				if (result)
+				{
+					application->running = TREE_FALSE;
+					return result;
+				}
+			}
+			else if (keyTickActive)
+			{
+				// keep cooling down, if able
+				if (state > TREE_INPUT_STATE_HELD)
+				{
+					state--;
+					application->input.states[key] = state;
+				}
+
+				// held state
+				if (state == TREE_INPUT_STATE_HELD)
+				{
+					// trigger key held event
+					event.type = TREE_EVENT_TYPE_KEY_HELD;
+					eventData.key = key;
+					result = TREE_Application_DispatchEvent(application, &event);
+					if (result)
+					{
+						application->running = TREE_FALSE;
+						return result;
+					}
+				}
+			}
+		}
+		else
+		{
+			if (state)
+			{
+				// key up
+				application->input.states[key] = TREE_INPUT_STATE_RELEASED;
+
+				// trigger key up event
+				event.type = TREE_EVENT_TYPE_KEY_UP;
+				eventData.key = key;
+				result = TREE_Application_DispatchEvent(application, &event);
+				if (result)
+				{
+					application->running = TREE_FALSE;
+					return result;
+				}
+			}
+		}
+	}
+
+	return TREE_OK;
+}
+
 TREE_Result TREE_Application_Run(TREE_Application* application)
 {
 	if (!application)
@@ -7691,15 +8463,13 @@ TREE_Result TREE_Application_Run(TREE_Application* application)
 	TREE_Result result;
 	TREE_Rect dirtyRect;
 	TREE_Bool shouldPresent;
-	TREE_Time startTime = clock();
+	TREE_Time startTime = TREE_Time_Now();
 	TREE_Time currentTime;
-	TREE_Time keyTick = startTime;
-	TREE_Time const keyInterval = CLOCKS_PER_SEC / 20;
 	TREE_Extent extent = application->surface->image.extent;
 	while (application->running)
 	{
 		// get current time
-		currentTime = clock();
+		currentTime = TREE_Time_Now();
 
 		// check for resize
 		TREE_Extent newExtent = TREE_Window_GetExtent();
@@ -7923,135 +8693,12 @@ TREE_Result TREE_Application_Run(TREE_Application* application)
 			}
 		}
 
-		// update key states
+		// handle input and key events
+		result = _TREE_Application_RefreshInput(application, currentTime);
+		if (result)
 		{
-			// update modifiers
-			TREE_KeyModifierFlags modifiers = TREE_KEY_MODIFIER_FLAGS_NONE;
-#ifdef TREE_WINDOWS
-			if (GetAsyncKeyState(VK_SHIFT) & 0x8000)
-			{
-				modifiers |= TREE_KEY_MODIFIER_FLAGS_SHIFT;
-			}
-			if (GetAsyncKeyState(VK_CONTROL) & 0x8000)
-			{
-				modifiers |= TREE_KEY_MODIFIER_FLAGS_CONTROL;
-			}
-			if (GetAsyncKeyState(VK_MENU) & 0x8000)
-			{
-				modifiers |= TREE_KEY_MODIFIER_FLAGS_ALT;
-			}
-			if (GetAsyncKeyState(VK_LWIN) & 0x8000 || GetAsyncKeyState(VK_RWIN) & 0x8000)
-			{
-				modifiers |= TREE_KEY_MODIFIER_FLAGS_COMMAND;
-			}
-			if (GetKeyState(VK_CAPITAL) & 0x0001)
-			{
-				modifiers |= TREE_KEY_MODIFIER_FLAGS_CAPS_LOCK;
-			}
-			if (GetKeyState(VK_NUMLOCK) & 0x0001)
-			{
-				modifiers |= TREE_KEY_MODIFIER_FLAGS_NUM_LOCK;
-			}
-			if (GetKeyState(VK_SCROLL) & 0x0001)
-			{
-				modifiers |= TREE_KEY_MODIFIER_FLAGS_SCROLL_LOCK;
-			}
-#endif
-			application->input.modifiers = modifiers;
-
-			// create event data
-			TREE_EventData_Key eventData;
-			eventData.key = TREE_KEY_NONE;
-			eventData.modifiers = modifiers;
-
-			// create event
-			TREE_Event event;
-			event.type = TREE_EVENT_TYPE_NONE;
-			event.data = &eventData;
-			event.control = NULL;
-			event.application = application;
-
-			// check if key tick is active
-			TREE_Bool keyTickActive = (currentTime - keyTick) >= keyInterval;
-			if (keyTickActive)
-			{
-				// if active, reset timer
-				keyTick = currentTime;
-			}
-
-			// update key states
-#ifdef TREE_WINDOWS
-			for (TREE_Size i = 0; i < TREE_KEY_COUNT; i++)
-			{
-				TREE_Key key = application->input.keys[i];
-				// check if being pressed right now
-				TREE_Bool pressed = (GetAsyncKeyState(key) & 0x8000) ? TREE_TRUE : TREE_FALSE;
-
-				// get the key state
-				TREE_InputState state = application->input.states[key];
-
-				// check for changes
-				if (pressed)
-				{
-					if (state == TREE_INPUT_STATE_RELEASED)
-					{
-						// key down
-						application->input.states[key] = TREE_INPUT_STATE_COOLDOWN;
-
-						// trigger key down event
-						event.type = TREE_EVENT_TYPE_KEY_DOWN;
-						eventData.key = key;
-						result = TREE_Application_DispatchEvent(application, &event);
-						if (result)
-						{
-							application->running = TREE_FALSE;
-							return result;
-						}
-					}
-					else if (keyTickActive)
-					{
-						// keep cooling down, if able
-						if (state > TREE_INPUT_STATE_HELD)
-						{
-							state--;
-							application->input.states[key] = state;
-						}
-
-						// held state
-						if (state == TREE_INPUT_STATE_HELD)
-						{
-							// trigger key held event
-							event.type = TREE_EVENT_TYPE_KEY_HELD;
-							eventData.key = key;
-							result = TREE_Application_DispatchEvent(application, &event);
-							if (result)
-							{
-								application->running = TREE_FALSE;
-								return result;
-							}
-						}
-					}
-				}
-				else
-				{
-					if (state)
-					{
-						// key up
-						application->input.states[key] = TREE_INPUT_STATE_RELEASED;
-
-						// trigger key up event
-						event.type = TREE_EVENT_TYPE_KEY_UP;
-						eventData.key = key;
-						result = TREE_Application_DispatchEvent(application, &event);
-						if (result)
-						{
-							application->running = TREE_FALSE;
-							return result;
-						}
-					}
-				}
-			}
-#endif // TREE_WINDOWS
+			application->running = TREE_FALSE;
+			return result;
 		}
 	}
 
