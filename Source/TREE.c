@@ -1404,6 +1404,8 @@ TREE_Result TREE_Theme_Init(TREE_Theme* theme)
 	theme->pixels[TREE_THEME_PID_FOCUSED_SCROLL_BAR] = TREE_Pixel_Create(emptyChar, TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_WHITE);
 	theme->pixels[TREE_THEME_PID_ACTIVE_SCROLL_BAR] = TREE_Pixel_Create(emptyChar, TREE_COLOR_WHITE, TREE_COLOR_BRIGHT_BLACK);
 	theme->pixels[TREE_THEME_PID_CURSOR] = TREE_Pixel_Create(emptyChar, TREE_COLOR_BRIGHT_WHITE, TREE_COLOR_BRIGHT_BLACK);
+	theme->pixels[TREE_THEME_PID_PROGRESS_BAR] = TREE_Pixel_Create(emptyChar, TREE_COLOR_BRIGHT_WHITE, TREE_COLOR_BRIGHT_GREEN);
+	theme->pixels[TREE_THEME_PID_BACKGROUND] = TREE_Pixel_Create(emptyChar, TREE_COLOR_BRIGHT_WHITE, TREE_COLOR_BRIGHT_BLACK);
 
 	return TREE_OK;
 }
@@ -7801,6 +7803,315 @@ TREE_Result TREE_Control_NumberInput_EventHandler(TREE_Event const* event)
 				fillerOffset,
 				fillerExtent,
 				pixel
+			);
+			if (result)
+			{
+				return result;
+			}
+		}
+
+		break;
+	}
+	case TREE_EVENT_TYPE_DRAW:
+	{
+		// get the event data
+		TREE_EventData_Draw* drawData = (TREE_EventData_Draw*)event->data;
+		TREE_Image* target = drawData->target;
+		TREE_Rect const* dirtyRect = &drawData->dirtyRect;
+
+		// draw the control
+		TREE_Result result = _TREE_Control_Draw(
+			target,
+			dirtyRect,
+			&control->transform->globalRect,
+			control->image
+		);
+		if (result)
+		{
+			return result;
+		}
+
+		break;
+	}
+	}
+
+	return TREE_OK;
+}
+
+TREE_EXTERN TREE_Result TREE_Control_ProgressBarData_Init(TREE_Control_ProgressBarData* data, TREE_Theme const* theme)
+{
+	// validate
+	if (!data || !theme)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	// set data
+	data->value = 0;
+	data->direction = TREE_DIRECTION_EAST;
+	data->background = theme->pixels[TREE_THEME_PID_BACKGROUND];
+	data->bar = theme->pixels[TREE_THEME_PID_PROGRESS_BAR];
+
+	return TREE_OK;
+}
+
+TREE_EXTERN void TREE_Control_ProgressBarData_Free(TREE_Control_ProgressBarData* data)
+{
+	// validate
+	if (!data)
+	{
+		return;
+	}
+
+	// nothing to free
+}
+
+TREE_EXTERN TREE_Result TREE_Control_ProgressBar_Init(TREE_Control* control, TREE_Transform* parent, TREE_Control_ProgressBarData* data)
+{
+	// validate
+	if (!control || !data)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	// control init
+	TREE_Result result = TREE_Control_Init(control, parent, TREE_Control_ProgressBar_EventHandler, data);
+	if (result)
+	{
+		return result;
+	}
+
+	// set data
+	control->type = TREE_CONTROL_TYPE_PROGRESS_BAR;
+	control->flags = TREE_CONTROL_FLAGS_NONE;
+	control->transform->localExtent.width = 20;
+	control->transform->localExtent.height = 1;
+
+	return TREE_OK;
+}
+
+TREE_EXTERN TREE_Result TREE_Control_ProgressBar_SetValue(TREE_Control* control, TREE_Float value)
+{
+	// validate
+	if (!control || control->type != TREE_CONTROL_TYPE_PROGRESS_BAR)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	// set the value
+	TREE_Control_ProgressBarData* data = (TREE_Control_ProgressBarData*)control->data;
+	data->value = CLAMP(value, 0.0f, 1.0f);
+
+	// redraw
+	control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+
+	return TREE_OK;
+}
+
+TREE_EXTERN TREE_Float TREE_Control_ProgressBar_GetValue(TREE_Control* control)
+{
+	// validate
+	if (!control || control->type != TREE_CONTROL_TYPE_PROGRESS_BAR)
+	{
+		return 0.0f;
+	}
+
+	// get the value
+	TREE_Control_ProgressBarData* data = (TREE_Control_ProgressBarData*)control->data;
+	return data->value;
+}
+
+TREE_EXTERN TREE_Result TREE_Control_ProgressBar_SetDirection(TREE_Control* control, TREE_Direction direction)
+{
+	// validate
+	if (!control || control->type != TREE_CONTROL_TYPE_PROGRESS_BAR)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+	if (direction < TREE_DIRECTION_NORTH || direction > TREE_DIRECTION_WEST)
+	{
+		return TREE_ERROR_ARG_OUT_OF_RANGE;
+	}
+
+	// set the direction
+	TREE_Control_ProgressBarData* data = (TREE_Control_ProgressBarData*)control->data;
+	data->direction = direction;
+
+	// redraw
+	control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+	
+	return TREE_OK;
+}
+
+TREE_EXTERN TREE_Direction TREE_Control_ProgressBar_GetDirection(TREE_Control* control)
+{
+	// validate
+	if (!control || control->type != TREE_CONTROL_TYPE_PROGRESS_BAR)
+	{
+		return TREE_DIRECTION_NONE;
+	}
+	
+	// get the direction
+	TREE_Control_ProgressBarData* data = (TREE_Control_ProgressBarData*)control->data;
+	
+	return data->direction;
+}
+
+TREE_EXTERN TREE_Result TREE_Control_ProgressBar_SetPixel(TREE_Control* control, TREE_ThemePixelID id, TREE_Pixel pixel)
+{
+	// validate
+	if (!control || control->type != TREE_CONTROL_TYPE_PROGRESS_BAR)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	// set the pixel
+	TREE_Control_ProgressBarData* data = (TREE_Control_ProgressBarData*)control->data;
+	switch (id)
+	{
+	case TREE_THEME_PID_BACKGROUND:
+		data->background = pixel;
+		break;
+	case TREE_THEME_PID_PROGRESS_BAR:
+		data->bar = pixel;
+		break;
+	default:
+		return TREE_ERROR_ARG_OUT_OF_RANGE;
+	}
+	return TREE_OK;
+}
+
+TREE_EXTERN TREE_Pixel TREE_Control_ProgressBar_GetPixel(TREE_Control* control, TREE_ThemePixelID id)
+{
+	// validate
+	if (!control || control->type != TREE_CONTROL_TYPE_PROGRESS_BAR)
+	{
+		return (TREE_Pixel) { 0 };
+	}
+
+	// get the pixel
+	TREE_Control_ProgressBarData* data = (TREE_Control_ProgressBarData*)control->data;
+	switch (id)
+	{
+	case TREE_THEME_PID_BACKGROUND:
+		return data->background;
+	case TREE_THEME_PID_PROGRESS_BAR:
+		return data->bar;
+	default:
+		return (TREE_Pixel) { 0 };
+	}
+}
+
+TREE_EXTERN TREE_Result TREE_Control_ProgressBar_EventHandler(TREE_Event const* event)
+{
+	// validate
+	if (!event || !event->control)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+	if (event->control->type != TREE_CONTROL_TYPE_PROGRESS_BAR)
+	{
+		return TREE_ERROR_ARG_INVALID;
+	}
+
+	// get data
+	TREE_Result result;
+	TREE_Control* control = event->control;
+	TREE_Control_ProgressBarData* data = (TREE_Control_ProgressBarData*)control->data;
+	TREE_Extent controlExtent = control->transform->globalRect.extent;
+
+	// handle events
+	switch (event->type)
+	{
+	case TREE_EVENT_TYPE_REFRESH:
+	{
+		// resize if needed
+		result = TREE_Image_Resize(control->image, control->transform->globalRect.extent);
+		if (result)
+		{
+			return result;
+		}
+
+		// determine bounds
+		TREE_Offset barOffset;
+		TREE_Extent barExtent;
+		TREE_Offset bgOffset;
+		TREE_Extent bgExtent;
+
+		TREE_Int size;
+		switch (data->direction)
+		{
+		case TREE_DIRECTION_EAST:
+			size = (TREE_Int)(controlExtent.width * data->value);
+			barOffset.x = 0;
+			barOffset.y = 0;
+			barExtent.width = size;
+			barExtent.height = controlExtent.height;
+			bgOffset.x = barExtent.width;
+			bgOffset.y = 0;
+			bgExtent.width = controlExtent.width - size;
+			bgExtent.height = controlExtent.height;
+			break;
+		case TREE_DIRECTION_WEST:
+			size = (TREE_Int)(controlExtent.width * data->value);
+			barOffset.x = controlExtent.width - size;
+			barOffset.y = 0;
+			barExtent.width = size;
+			barExtent.height = controlExtent.height;
+			bgOffset.x = 0;
+			bgOffset.y = 0;
+			bgExtent.width = controlExtent.width - size;
+			bgExtent.height = controlExtent.height;
+			break;
+		case TREE_DIRECTION_NORTH:
+			size = (TREE_Int)(controlExtent.height * data->value);
+			barOffset.x = 0;
+			barOffset.y = controlExtent.height - size;
+			barExtent.width = controlExtent.width;
+			barExtent.height = size;
+			bgOffset.x = 0;
+			bgOffset.y = 0;
+			bgExtent.width = controlExtent.width;
+			bgExtent.height = controlExtent.height - size;
+			break;
+		case TREE_DIRECTION_SOUTH:
+			size = (TREE_Int)(controlExtent.height * data->value);
+			barOffset.x = 0;
+			barOffset.y = 0;
+			barExtent.width = controlExtent.width;
+			barExtent.height = size;
+			bgOffset.x = 0;
+			bgOffset.y = barExtent.height;
+			bgExtent.width = controlExtent.width;
+			bgExtent.height = controlExtent.height - size;
+			break;
+		default:
+			return TREE_NOT_IMPLEMENTED;
+		}
+
+		// draw the background
+		if (bgExtent.width > 0 && bgExtent.height > 0)
+		{
+			result = TREE_Image_FillRect(
+				control->image,
+				bgOffset,
+				bgExtent,
+				data->background
+			);
+			if (result)
+			{
+				return result;
+			}
+		}		
+
+		// draw the bar
+		if (barExtent.width > 0 && barExtent.height > 0)
+		{
+			result = TREE_Image_FillRect(
+				control->image,
+				barOffset,
+				barExtent,
+				data->bar
 			);
 			if (result)
 			{

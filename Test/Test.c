@@ -256,6 +256,36 @@ int main()
 	numberInput.transform->localOffset.y = -1;
 	numberInput.transform->localAlignment = TREE_ALIGNMENT_BOTTOMLEFT;
 
+	// create progress bars
+#define PROGRESS_BAR_COUNT 11
+	TREE_Control_ProgressBarData progressBarDatas[PROGRESS_BAR_COUNT];
+	for (TREE_Size i = 0; i < PROGRESS_BAR_COUNT; i++)
+	{
+		result = TREE_Control_ProgressBarData_Init(&progressBarDatas[i], &theme);
+		if (result)
+		{
+			printf("Failed to initialize progress bar data: %s\n", TREE_Result_ToString(result));
+			return 1;
+		}
+		progressBarDatas[i].value = (TREE_Float)i / (TREE_Float)(PROGRESS_BAR_COUNT - 1);
+	}
+
+	// create progress bars
+	TREE_Control progressBars[PROGRESS_BAR_COUNT];
+	for (TREE_Size i = 0; i < PROGRESS_BAR_COUNT; i++)
+	{
+		result = TREE_Control_ProgressBar_Init(&progressBars[i], NULL, &progressBarDatas[i]);
+		if (result)
+		{
+			printf("Failed to initialize progress bar: %s\n", TREE_Result_ToString(result));
+			return 1;
+		}
+		progressBars[i].transform->localOffset.x = 100;
+		progressBars[i].transform->localOffset.y = 1 + i * 2;
+		progressBars[i].transform->localExtent.width = 20;
+		progressBars[i].transform->localExtent.height = 1;
+	}
+
 	// link controls
 	result = TREE_Control_Link(&listControl, TREE_DIRECTION_NORTH, TREE_CONTROL_LINK_DOUBLE, &quitButton);
 	if (result)
@@ -369,6 +399,15 @@ int main()
 		printf("Failed to add number input to application: %s\n", TREE_Result_ToString(result));
 		return 1;
 	}
+	for (TREE_Size i = 0; i < PROGRESS_BAR_COUNT; i++)
+	{
+		result = TREE_Application_AddControl(&app, &progressBars[i]);
+		if (result)
+		{
+			printf("Failed to add progress bar to application: %s\n", TREE_Result_ToString(result));
+			return 1;
+		}
+	}
 
 	// run the application
 	result = TREE_Application_Run(&app);
@@ -400,6 +439,11 @@ int main()
 	{
 		TREE_Control_Free(&dropControls[i]);
 		TREE_Control_DropdownData_Free(&dropDatas[i]);
+	}
+	for (TREE_Size i = 0; i < PROGRESS_BAR_COUNT; i++)
+	{
+		TREE_Control_Free(&progressBars[i]);
+		TREE_Control_ProgressBarData_Free(&progressBarDatas[i]);
 	}
 	TREE_Application_Free(&app);
 	TREE_Theme_Free(&theme);

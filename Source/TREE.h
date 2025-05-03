@@ -373,6 +373,8 @@ typedef enum _TREE_ThemePixelID
 	TREE_THEME_PID_FOCUSED_SCROLL_BAR,
 	TREE_THEME_PID_ACTIVE_SCROLL_BAR,
 	TREE_THEME_PID_CURSOR,
+	TREE_THEME_PID_PROGRESS_BAR,
+	TREE_THEME_PID_BACKGROUND,
 
 	TREE_THEME_PID_COUNT
 } TREE_ThemePixelID;
@@ -777,6 +779,7 @@ typedef enum _TREE_ControlType
 	TREE_CONTROL_TYPE_LIST,
 	TREE_CONTROL_TYPE_CHECKBOX,
 	TREE_CONTROL_TYPE_NUMBER_INPUT,
+	TREE_CONTROL_TYPE_PROGRESS_BAR,
 } TREE_ControlType;
 
 typedef enum _TREE_ControlFlags
@@ -1231,6 +1234,38 @@ TREE_EXTERN TREE_Result TREE_Control_NumberInput_SetOnSubmit(TREE_Control* contr
 TREE_EXTERN TREE_ControlEventHandler TREE_Control_NumberInput_GetOnSubmit(TREE_Control* control);
 
 TREE_EXTERN TREE_Result TREE_Control_NumberInput_EventHandler(TREE_Event const* event);
+
+///////////////////////////////////////
+// Control: ProgressBar              //
+///////////////////////////////////////
+
+typedef struct _TREE_Control_ProgressBarData
+{
+	TREE_Float value; // 0.0 to 1.0
+	TREE_Direction direction; // direction of the progress bar (e.g., EAST, WEST, NORTH, SOUTH)
+	TREE_Pixel bar;
+	TREE_Pixel background;
+} TREE_Control_ProgressBarData;
+
+TREE_EXTERN TREE_Result TREE_Control_ProgressBarData_Init(TREE_Control_ProgressBarData* data, TREE_Theme const* theme);
+
+TREE_EXTERN void TREE_Control_ProgressBarData_Free(TREE_Control_ProgressBarData* data);
+
+TREE_EXTERN TREE_Result TREE_Control_ProgressBar_Init(TREE_Control* control, TREE_Transform* parent, TREE_Control_ProgressBarData* data);
+
+TREE_EXTERN TREE_Result TREE_Control_ProgressBar_SetValue(TREE_Control* control, TREE_Float value);
+
+TREE_EXTERN TREE_Float TREE_Control_ProgressBar_GetValue(TREE_Control* control);
+
+TREE_EXTERN TREE_Result TREE_Control_ProgressBar_SetDirection(TREE_Control* control, TREE_Direction direction);
+
+TREE_EXTERN TREE_Direction TREE_Control_ProgressBar_GetDirection(TREE_Control* control);
+
+TREE_EXTERN TREE_Result TREE_Control_ProgressBar_SetPixel(TREE_Control* control, TREE_ThemePixelID id, TREE_Pixel pixel);
+
+TREE_EXTERN TREE_Pixel TREE_Control_ProgressBar_GetPixel(TREE_Control* control, TREE_ThemePixelID id);
+
+TREE_EXTERN TREE_Result TREE_Control_ProgressBar_EventHandler(TREE_Event const* event);
 
 ///////////////////////////////////////
 // Application                       //
