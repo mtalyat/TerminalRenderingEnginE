@@ -6072,6 +6072,7 @@ TREE_Result TREE_Control_List_EventHandler(TREE_Event const* event)
 
 	TREE_Control* control = event->control;
 	TREE_Control_ListData* data = (TREE_Control_ListData*)control->data;
+	TREE_Extent extent = control->transform->globalRect.extent;
 
 	switch (event->type)
 	{
@@ -6131,9 +6132,9 @@ TREE_Result TREE_Control_List_EventHandler(TREE_Event const* event)
 			}
 			break;
 		case TREE_KEY_PAGE_UP: // move up a page
-			if (data->hoverIndex > control->transform->localExtent.height)
+			if (data->hoverIndex > extent.height)
 			{
-				data->hoverIndex -= control->transform->localExtent.height;
+				data->hoverIndex -= extent.height;
 			}
 			else
 			{
@@ -6142,9 +6143,9 @@ TREE_Result TREE_Control_List_EventHandler(TREE_Event const* event)
 			control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
 			break;
 		case TREE_KEY_PAGE_DOWN: // move down a page
-			if (data->hoverIndex < data->optionsSize - control->transform->localExtent.height)
+			if (data->hoverIndex < data->optionsSize - extent.height)
 			{
-				data->hoverIndex += control->transform->localExtent.height;
+				data->hoverIndex += extent.height;
 			}
 			else
 			{
@@ -6187,14 +6188,14 @@ TREE_Result TREE_Control_List_EventHandler(TREE_Event const* event)
 		}
 
 		// if needed, update the scroll
-		data->scroll = _TREE_ClampScroll(data->scroll, data->hoverIndex, control->transform->localExtent.height);
+		data->scroll = _TREE_ClampScroll(data->scroll, data->hoverIndex, extent.height);
 
 		break;
 	}
 	case TREE_EVENT_TYPE_REFRESH:
 	{
 		// resize the image if needed
-		TREE_Result result = TREE_Image_Resize(control->image, control->transform->globalRect.extent);
+		TREE_Result result = TREE_Image_Resize(control->image, extent);
 		if (result)
 		{
 			return result;
@@ -6205,7 +6206,7 @@ TREE_Result TREE_Control_List_EventHandler(TREE_Event const* event)
 		result = _TREE_Control_List_Draw(
 			control->image,
 			offset,
-			control->transform->globalRect.extent,
+			extent,
 			control->stateFlags,
 			data);
 		if (result)
@@ -6572,7 +6573,7 @@ TREE_Result TREE_Control_Dropdown_EventHandler(TREE_Event const* event)
 						}
 						else
 						{
-							data->drop = belowSpace;
+							data->drop = belowSpace - 1;
 						}
 					}
 				}
