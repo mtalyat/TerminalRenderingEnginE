@@ -587,8 +587,6 @@ typedef enum _TREE_CharType
 
 TREE_EXTERN TREE_CharType TREE_Char_GetType(TREE_Char character);
 
-TREE_EXTERN TREE_Char TREE_Char_ToKey(TREE_Char character);
-
 ///////////////////////////////////////
 // Key Modifier Flags                //
 ///////////////////////////////////////
@@ -623,7 +621,7 @@ typedef enum _TREE_InputState
 typedef struct _TREE_Input
 {
 	TREE_Key keys[TREE_KEY_COUNT];
-	TREE_Byte states[TREE_KEY_MAX];
+	TREE_Byte states[TREE_KEY_MAX+1];
 	TREE_KeyModifierFlags modifiers;
 } TREE_Input;
 

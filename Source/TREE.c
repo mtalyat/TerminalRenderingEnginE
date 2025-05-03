@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
-#include <sys/time.h>
 #include <time.h>
 
 #if defined(_WIN32)
@@ -29,6 +28,7 @@
 #include <poll.h>
 #include <signal.h>
 #include <sys/ioctl.h>
+#include <sys/time.h>
 #include <sys/types.h>
 #include <termios.h>
 #include <unistd.h>
@@ -134,6 +134,19 @@ TREE_Char const* TREE_Result_ToString(TREE_Result code)
 
 TREE_Time TREE_Time_Now()
 {
+#ifdef TREE_WINDOWS
+	// get the current system time as a FILETIME
+	FILETIME fileTime;
+	GetSystemTimeAsFileTime(&fileTime);
+
+	// convert FILETIME to milliseconds since epoch
+	ULARGE_INTEGER time;
+	time.LowPart = fileTime.dwLowDateTime;
+	time.HighPart = fileTime.dwHighDateTime;
+
+	// convert to milliseconds since epoch
+	return (TREE_Time)(time.QuadPart / 10000);
+#elif defined(TREE_LINUX)
 	struct timeval tv;
 	if (gettimeofday(&tv, NULL) != 0)
 	{
@@ -141,6 +154,9 @@ TREE_Time TREE_Time_Now()
 	}
 	TREE_Time time = (TREE_Time)tv.tv_sec * 1000 + (TREE_Time)tv.tv_usec / 1000;
 	return time;
+#else
+	return 0;
+#endif
 }
 
 #ifdef TREE_WINDOWS
@@ -292,10 +308,10 @@ void TREE_Free()
 	// show cursor
 	TREE_Cursor_SetVisible(TREE_TRUE);
 
+#ifdef TREE_LINUX
 	// free keyboard device path
 	free(g_keyboardDevicePath);
 
-#ifdef TREE_LINUX
 	// restore original terminal attributes
 	tcsetattr(STDIN_FILENO, TCSANOW, &g_originalTermios);
 #endif
@@ -2151,44 +2167,6 @@ TREE_CharType TREE_Char_GetType(TREE_Char character)
 	return TREE_CHAR_TYPE_NONE;
 }
 
-TREE_EXTERN TREE_Char TREE_Char_ToKey(TREE_Char character)
-{
-	// Map raw input to TREE_Key values
-	switch (character) {
-		case '\033': return TREE_KEY_ESCAPE;
-		case '\n': return TREE_KEY_ENTER;
-		case '\r': return TREE_KEY_ENTER; // Handle carriage return as Enter
-		case '\b': return TREE_KEY_BACKSPACE;
-		case '\t': return TREE_KEY_TAB;
-		case ' ': return TREE_KEY_SPACE;
-		case ';': case ':': return TREE_KEY_SEMICOLON;
-		case '=': case '+': return TREE_KEY_EQUALS;
-		case ',': case '<': return TREE_KEY_COMMA;
-		case '-': case '_': return TREE_KEY_MINUS;
-		case '.': case '>': return TREE_KEY_PERIOD;
-		case '/': case '?': return TREE_KEY_SLASH;
-		case '`': case '~': return TREE_KEY_TILDE;
-		case '[': case '{': return TREE_KEY_LEFT_BRACKET;
-		case '\\': case '|': return TREE_KEY_BACKSLASH;
-		case ']': case '}': return TREE_KEY_RIGHT_BRACKET;
-		case '\'': case '"': return TREE_KEY_APOSTROPHE;
-		case '!': return TREE_KEY_1;
-		case '@': return TREE_KEY_2;
-		case '#': return TREE_KEY_3;
-		case '$': return TREE_KEY_4;
-		case '%': return TREE_KEY_5;
-		case '^': return TREE_KEY_6;
-		case '&': return TREE_KEY_7;
-		case '*': return TREE_KEY_8;
-		case '(': return TREE_KEY_9;
-		case ')': return TREE_KEY_0;
-		case 'A' ... 'Z': return (TREE_Key)(TREE_KEY_A + (character - 'A'));
-		case 'a' ... 'z': return (TREE_Key)(TREE_KEY_A + (character - 'a'));
-		case '0' ... '9': return (TREE_Key)(TREE_KEY_0 + (character - '0'));
-		default: return TREE_KEY_NONE;
-	}
-}
-
 TREE_Char TREE_Key_ToChar(TREE_Key key, TREE_KeyModifierFlags modifiers)
 {
 	TREE_Bool isShiftPressed = (modifiers & TREE_KEY_MODIFIER_FLAGS_SHIFT) != 0;
@@ -2367,7 +2345,7 @@ TREE_Result TREE_Input_Init(TREE_Input* input)
 	input->keys[95] = TREE_KEY_RIGHT_BRACKET;
 	input->keys[96] = TREE_KEY_APOSTROPHE;
 
-	for (TREE_Size i = 0; i < TREE_KEY_MAX; i++)
+	for (TREE_Size i = 0; i <= TREE_KEY_MAX; i++)
 	{
 		input->states[i] = TREE_INPUT_STATE_RELEASED;
 	}
@@ -8103,7 +8081,7 @@ TREE_Result _TREE_Application_RefreshInput(TREE_Application* application, TREE_T
 	// update key states
 
 	// create key states array
-	TREE_Byte keyStates[TREE_KEY_MAX];
+	TREE_Byte keyStates[TREE_KEY_MAX+1];
 	memset(keyStates, 0, sizeof(keyStates));
 
 	// get new key states
