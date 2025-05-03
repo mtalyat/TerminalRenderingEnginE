@@ -6104,6 +6104,7 @@ TREE_Result TREE_Control_List_EventHandler(TREE_Event const* event)
 		switch (key)
 		{
 		case TREE_KEY_DOWN_ARROW: // move to next option
+		case TREE_KEY_S:
 			if (data->hoverIndex < data->optionsSize - 1)
 			{
 				data->hoverIndex++;
@@ -6111,6 +6112,7 @@ TREE_Result TREE_Control_List_EventHandler(TREE_Event const* event)
 			}
 			break;
 		case TREE_KEY_UP_ARROW: // move to previous option
+		case TREE_KEY_W:
 			if (data->hoverIndex > 0)
 			{
 				data->hoverIndex--;
@@ -6598,6 +6600,7 @@ TREE_Result TREE_Control_Dropdown_EventHandler(TREE_Event const* event)
 		switch (key)
 		{
 		case TREE_KEY_UP_ARROW: // move to previous option
+		case TREE_KEY_W:
 			if (data->hoverIndex > 0)
 			{
 				data->hoverIndex--;
@@ -6606,6 +6609,7 @@ TREE_Result TREE_Control_Dropdown_EventHandler(TREE_Event const* event)
 			}
 			break;
 		case TREE_KEY_DOWN_ARROW: // move to next option
+		case TREE_KEY_S:
 			if (data->hoverIndex < data->optionsSize - 1)
 			{
 				data->hoverIndex++;
@@ -6654,6 +6658,7 @@ TREE_Result TREE_Control_Dropdown_EventHandler(TREE_Event const* event)
 			cursorMoved = TREE_TRUE;
 			break;
 		case TREE_KEY_ENTER: // submit
+		case TREE_KEY_SPACE:
 		{
 			// move back to origin
 			control->transform->localOffset = data->origin;
