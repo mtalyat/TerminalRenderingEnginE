@@ -1055,7 +1055,7 @@ TREE_EXTERN TREE_Control_ListFlags TREE_Control_List_GetFlags(TREE_Control* cont
 
 TREE_EXTERN TREE_Result TREE_Control_List_SetOptions(TREE_Control* control, TREE_String* options, TREE_Size optionsSize);
 
-TREE_String* TREE_Control_List_GetOptions(TREE_Control* control);
+TREE_EXTERN TREE_String* TREE_Control_List_GetOptions(TREE_Control* control);
 
 TREE_EXTERN TREE_Size TREE_Control_List_GetOptionsSize(TREE_Control* control);
 
