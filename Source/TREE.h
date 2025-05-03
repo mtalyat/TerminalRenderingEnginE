@@ -2,7 +2,7 @@
 #define __TREE_H__
 
 ///////////////////////////////////////
-// Constants and Macros              //
+// Types, Constants and Macros       //
 ///////////////////////////////////////
 
 typedef int TREE_Bool;
