@@ -1316,22 +1316,16 @@ TREE_Result TREE_Pattern_Set(TREE_Pattern* pattern, TREE_UInt index, TREE_Pixel 
 	return TREE_OK;
 }
 
-TREE_Result TREE_Pattern_Get(TREE_Pattern* pattern, TREE_UInt index, TREE_Pixel* pixel)
+TREE_Pixel TREE_Pattern_Get(TREE_Pattern const* pattern, TREE_UInt index)
 {
 	// validate
-	if (!pattern || !pixel)
+	if (!pattern || index >= pattern->size)
 	{
-		return TREE_ERROR_ARG_NULL;
-	}
-	if (index >= pattern->size)
-	{
-		return TREE_ERROR_ARG_OUT_OF_RANGE;
+		return (TREE_Pixel) { 0, 0 };
 	}
 
 	// get data
-	*pixel = pattern->pixels[index];
-
-	return TREE_OK;
+	return pattern->pixels[index];
 }
 
 void TREE_Pattern_Free(TREE_Pattern* pattern)
@@ -1624,7 +1618,7 @@ TREE_Result TREE_Image_DrawString(TREE_Image* image, TREE_Offset offset, TREE_St
 	return TREE_OK;
 }
 
-TREE_Result TREE_Image_DrawLine(TREE_Image* image, TREE_Offset start, TREE_Offset end, TREE_Pattern* pattern)
+TREE_Result TREE_Image_DrawLine(TREE_Image* image, TREE_Offset start, TREE_Offset end, TREE_Pattern const* pattern)
 {
 	// validate
 	if (!image || !pattern)
@@ -1646,10 +1640,9 @@ TREE_Result TREE_Image_DrawLine(TREE_Image* image, TREE_Offset start, TREE_Offse
 	while (1)
 	{
 		// draw the current point
-		TREE_Pattern_Get(
+		pixel = TREE_Pattern_Get(
 			pattern,
-			patternIndex,
-			&pixel
+			patternIndex
 		);
 		TREE_Image_Set(
 			image,
@@ -1684,19 +1677,19 @@ TREE_Result TREE_Image_DrawLine(TREE_Image* image, TREE_Offset start, TREE_Offse
 	return TREE_OK;
 }
 
-TREE_Result TREE_Image_DrawRect(TREE_Image* image, TREE_Offset start, TREE_Extent size, TREE_Pattern* pattern)
+TREE_Result TREE_Image_DrawRect(TREE_Image* image, TREE_Rect const* rect, TREE_Pattern const* pattern)
 {
 	// validate
-	if (!image || !pattern)
+	if (!image || !rect || !pattern)
 	{
 		return TREE_ERROR_ARG_NULL;
 	}
 
 	// draw lines for each side of the rectangle
-	TREE_Offset p0 = start;
-	TREE_Offset p1 = { start.x + (TREE_Int)size.width - 1, start.y };
-	TREE_Offset p2 = { start.x + (TREE_Int)size.width - 1, start.y + (TREE_Int)size.height - 1 };
-	TREE_Offset p3 = { start.x, start.y + (TREE_Int)size.height - 1 };
+	TREE_Offset p0 = rect->offset;
+	TREE_Offset p1 = { p0.x + (TREE_Int)rect->extent.width - 1, p0.y };
+	TREE_Offset p2 = { p0.x + (TREE_Int)rect->extent.width - 1, p0.y + (TREE_Int)rect->extent.height - 1 };
+	TREE_Offset p3 = { p0.x, p0.y + (TREE_Int)rect->extent.height - 1 };
 
 	// draw the lines
 	TREE_Result result = TREE_Image_DrawLine(image, p0, p1, pattern);
@@ -1723,14 +1716,14 @@ TREE_Result TREE_Image_DrawRect(TREE_Image* image, TREE_Offset start, TREE_Exten
 	return TREE_OK;
 }
 
-TREE_Result TREE_Image_FillRect(TREE_Image* image, TREE_Offset start, TREE_Extent size, TREE_Pixel pixel)
+TREE_Result TREE_Image_FillRect(TREE_Image* image, TREE_Rect const* rect, TREE_Pixel pixel)
 {
 	// validate
-	if (!image)
+	if (!image || !rect)
 	{
 		return TREE_ERROR_ARG_NULL;
 	}
-	if (size.width == 0 || size.height == 0)
+	if (rect->extent.width <= 0 || rect->extent.height <= 0)
 	{
 		return TREE_ERROR_ARG_OUT_OF_RANGE;
 	}
@@ -1740,10 +1733,10 @@ TREE_Result TREE_Image_FillRect(TREE_Image* image, TREE_Offset start, TREE_Exten
 	}
 
 	// calculate bounds
-	TREE_Int startX = MAX(start.x, 0);
-	TREE_Int startY = MAX(start.y, 0);
-	TREE_Int endX = MIN(start.x + (TREE_Int)size.width, (TREE_Int)image->extent.width);
-	TREE_Int endY = MIN(start.y + (TREE_Int)size.height, (TREE_Int)image->extent.height);
+	TREE_Int startX = MAX(rect->offset.x, 0);
+	TREE_Int startY = MAX(rect->offset.y, 0);
+	TREE_Int endX = MIN(rect->offset.x + (TREE_Int)rect->extent.width, (TREE_Int)image->extent.width);
+	TREE_Int endY = MIN(rect->offset.y + (TREE_Int)rect->extent.height, (TREE_Int)image->extent.height);
 
 	// fill the rectangle
 	for (TREE_Int y = startY; y < endY; ++y)
@@ -2352,8 +2345,6 @@ TREE_Result TREE_Input_Init(TREE_Input* input)
 		input->states[i] = TREE_INPUT_STATE_RELEASED;
 	}
 
-	input->modifiers = TREE_KEY_MODIFIER_FLAGS_NONE;
-
 	return TREE_OK;
 }
 
@@ -2373,7 +2364,7 @@ TREE_Direction TREE_Direction_Opposite(TREE_Direction direction)
 	return (TREE_Direction)(((TREE_Size)direction + 1) % 4 + 1);
 }
 
-TREE_Result TREE_Transform_Init(TREE_Transform* transform, TREE_Offset localOffset, TREE_Coords localPivot, TREE_Extent localExtent, TREE_Alignment localAlignment)
+TREE_Result TREE_Transform_Init(TREE_Transform* transform, TREE_Offset localOffset, TREE_Pivot localPivot, TREE_Extent localExtent, TREE_Alignment localAlignment)
 {
 	// validate
 	if (!transform)
@@ -2530,7 +2521,7 @@ TREE_Result TREE_Transform_DisconnectChildren(TREE_Transform* transform)
 	return TREE_OK;
 }
 
-TREE_Result TREE_Transform_Refresh(TREE_Transform* transform, TREE_Extent surfaceExtent)
+TREE_Result TREE_Transform_Refresh(TREE_Transform* transform, TREE_Extent windowExtent)
 {
 	// validate
 	if (!transform)
@@ -2553,7 +2544,7 @@ TREE_Result TREE_Transform_Refresh(TREE_Transform* transform, TREE_Extent surfac
 	else
 	{
 		offset = (TREE_Offset){ 0, 0 };
-		extent = surfaceExtent;
+		extent = windowExtent;
 	}
 
 	TREE_Alignment alignment = transform->localAlignment;
@@ -2636,7 +2627,7 @@ TREE_Result TREE_Control_Init(TREE_Control* control, TREE_Transform* parent, TRE
 	control->type = TREE_CONTROL_TYPE_NONE;
 	control->flags = TREE_CONTROL_FLAGS_NONE;
 	control->stateFlags = TREE_CONTROL_STATE_FLAGS_DIRTY;
-	result = TREE_Transform_Init(control->transform, (TREE_Offset) { 0, 0 }, (TREE_Coords) { 0.0f, 0.0f }, (TREE_Extent) { 0, 0 }, TREE_ALIGNMENT_TOPLEFT);
+	result = TREE_Transform_Init(control->transform, (TREE_Offset) { 0, 0 }, (TREE_Pivot) { 0.0f, 0.0f }, (TREE_Extent) { 0, 0 }, TREE_ALIGNMENT_TOPLEFT);
 	if (result)
 	{
 		TREE_DELETE(control->image);
@@ -2721,14 +2712,6 @@ TREE_Result TREE_Control_Link(TREE_Control* control, TREE_Direction direction, T
 		control->adjacent[index] = other;
 		break;
 	case TREE_CONTROL_LINK_DOUBLE:
-		control->adjacent[index] = other;
-		other->adjacent[oppositeIndex] = control;
-		break;
-	case TREE_CONTROL_LINK_UNIQUE:
-		if (old && old->adjacent[oppositeIndex] == control)
-		{
-			old->adjacent[oppositeIndex] = NULL;
-		}
 		control->adjacent[index] = other;
 		other->adjacent[oppositeIndex] = control;
 		break;
@@ -5335,10 +5318,10 @@ TREE_Result TREE_Control_Scrollbar_Draw(TREE_Image* target, TREE_Offset scrollba
 	TREE_Pixel scrollbarPixel;
 	scrollbarPixel.character = data->line;
 	scrollbarPixel.colorPair = colorPair;
+	TREE_Rect rect = { offset, extent };
 	TREE_Result result = TREE_Image_FillRect(
 		target,
-		offset,
-		extent,
+		&rect,
 		scrollbarPixel
 	);
 	if (result)
@@ -5411,10 +5394,11 @@ TREE_Result TREE_Control_Scrollbar_Draw(TREE_Image* target, TREE_Offset scrollba
 		offset.x = scrollbarOffset.x + (TREE_Int)barOffset;
 		extent.width = (TREE_UInt)barSize;
 	}
+	rect.offset = offset;
+	rect.extent = extent;
 	result = TREE_Image_FillRect(
 		target,
-		offset,
-		extent,
+		&rect,
 		scrollbarPixel
 	);
 	if (result)
@@ -6011,10 +5995,10 @@ TREE_Result _TREE_Control_List_Draw(TREE_Image* target, TREE_Offset controlOffse
 			TREE_Extent extent;
 			extent.width = (TREE_UInt)fillerLength;
 			extent.height = 1;
+			TREE_Rect rect = { offset, extent };
 			result = TREE_Image_FillRect(
 				target,
-				offset,
-				extent,
+				&rect,
 				*pixel
 			);
 			if (result)
@@ -6245,7 +6229,7 @@ TREE_Result TREE_Control_List_EventHandler(TREE_Event const* event)
 	return TREE_OK;
 }
 
-TREE_Result TREE_Control_DropdownData_Init(TREE_Control_DropdownData* data, TREE_String* options, TREE_Size optionsSize, TREE_Size selectedIndex, TREE_Int drop, TREE_ControlEventHandler onSubmit, TREE_Theme const* theme)
+TREE_Result TREE_Control_DropdownData_Init(TREE_Control_DropdownData* data, TREE_String* options, TREE_Size optionsSize, TREE_Size selectedIndex, TREE_ControlEventHandler onSubmit, TREE_Theme const* theme)
 {
 	// validate
 	if (!data || !options)
@@ -6271,8 +6255,7 @@ TREE_Result TREE_Control_DropdownData_Init(TREE_Control_DropdownData* data, TREE
 	data->scroll = 0;
 	data->origin.x = 0;
 	data->origin.y = 0;
-	data->dropType = drop == 0 ? TREE_CONTROL_DROPDOWN_TYPE_DYNAMIC : TREE_CONTROL_DROPDOWN_TYPE_STATIC;
-	data->drop = drop;
+	data->drop = 0;
 
 	data->normal = theme->pixels[TREE_THEME_PID_NORMAL];
 
@@ -6544,41 +6527,38 @@ TREE_Result TREE_Control_Dropdown_EventHandler(TREE_Event const* event)
 				data->origin = control->transform->localOffset;
 
 				// calulate drop size if needed
-				if (data->dropType == TREE_CONTROL_DROPDOWN_TYPE_DYNAMIC)
+				// get window size
+				TREE_Offset dropdownOffset = control->transform->globalRect.offset;
+				TREE_Extent windowExtent = TREE_Window_GetExtent();
+
+				// get space above and below the dropdown
+				TREE_Int optionsCount = (TREE_Int)data->optionsSize;
+				TREE_Int belowSpace = (TREE_Int)windowExtent.height - dropdownOffset.y;
+				TREE_Int aboveSpace = (TREE_Int)dropdownOffset.y + 1;
+
+				// if can fit down, go down
+				// if not, go up
+				// if cannot fit in either, pick larger one
+				if (optionsCount < belowSpace)
 				{
-					// get window size
-					TREE_Offset dropdownOffset = control->transform->globalRect.offset;
-					TREE_Extent windowExtent = TREE_Window_GetExtent();
-
-					// get space above and below the dropdown
-					TREE_Int optionsCount = (TREE_Int)data->optionsSize;
-					TREE_Int belowSpace = (TREE_Int)windowExtent.height - dropdownOffset.y;
-					TREE_Int aboveSpace = (TREE_Int)dropdownOffset.y + 1;
-
-					// if can fit down, go down
-					// if not, go up
-					// if cannot fit in either, pick larger one
-					if (optionsCount < belowSpace)
+					// go down
+					data->drop = optionsCount;
+				}
+				else if (optionsCount < aboveSpace)
+				{
+					// go up
+					data->drop = -optionsCount;
+				}
+				else
+				{
+					// go bigger direction, cap at space size
+					if (aboveSpace > belowSpace)
 					{
-						// go down
-						data->drop = optionsCount;
-					}
-					else if (optionsCount < aboveSpace)
-					{
-						// go up
-						data->drop = -optionsCount;
+						data->drop = -aboveSpace;
 					}
 					else
 					{
-						// go bigger direction, cap at space size
-						if (aboveSpace > belowSpace)
-						{
-							data->drop = -aboveSpace;
-						}
-						else
-						{
-							data->drop = belowSpace - 1;
-						}
+						data->drop = belowSpace - 1;
 					}
 				}
 
@@ -6775,10 +6755,10 @@ TREE_Result TREE_Control_Dropdown_EventHandler(TREE_Event const* event)
 			TREE_Extent extent;
 			extent.width = (TREE_UInt)fillerWidth;
 			extent.height = 1;
+			TREE_Rect rect = { offset, extent };
 			result = TREE_Image_FillRect(
 				control->image,
-				offset,
-				extent,
+				&rect,
 				*pixel
 			);
 			if (result)
@@ -7174,10 +7154,10 @@ TREE_Result TREE_Control_Checkbox_EventHandler(TREE_Event const* event)
 
 			pixel.character = ' ';
 			pixel.colorPair = color;
+			TREE_Rect fillerRect = { fillerOffset, fillerExtent };
 			result = TREE_Image_FillRect(
 				control->image,
-				fillerOffset,
-				fillerExtent,
+				&fillerRect,
 				pixel
 			);
 			if (result)
@@ -7798,10 +7778,10 @@ TREE_Result TREE_Control_NumberInput_EventHandler(TREE_Event const* event)
 			fillerExtent.height = 1;
 			pixel.character = ' ';
 			pixel.colorPair = pixel.colorPair;
+			TREE_Rect fillerRect = { fillerOffset, fillerExtent };
 			result = TREE_Image_FillRect(
 				control->image,
-				fillerOffset,
-				fillerExtent,
+				&fillerRect,
 				pixel
 			);
 			if (result)
@@ -8033,69 +8013,65 @@ TREE_EXTERN TREE_Result TREE_Control_ProgressBar_EventHandler(TREE_Event const* 
 		}
 
 		// determine bounds
-		TREE_Offset barOffset;
-		TREE_Extent barExtent;
-		TREE_Offset bgOffset;
-		TREE_Extent bgExtent;
+		TREE_Rect barRect, bgRect;
 
 		TREE_Int size;
 		switch (data->direction)
 		{
 		case TREE_DIRECTION_EAST:
 			size = (TREE_Int)(controlExtent.width * data->value);
-			barOffset.x = 0;
-			barOffset.y = 0;
-			barExtent.width = size;
-			barExtent.height = controlExtent.height;
-			bgOffset.x = barExtent.width;
-			bgOffset.y = 0;
-			bgExtent.width = controlExtent.width - size;
-			bgExtent.height = controlExtent.height;
+			barRect.offset.x = 0;
+			barRect.offset.y = 0;
+			barRect.extent.width = size;
+			barRect.extent.height = controlExtent.height;
+			bgRect.offset.x = barRect.extent.width;
+			bgRect.offset.y = 0;
+			bgRect.extent.width = controlExtent.width - size;
+			bgRect.extent.height = controlExtent.height;
 			break;
 		case TREE_DIRECTION_WEST:
 			size = (TREE_Int)(controlExtent.width * data->value);
-			barOffset.x = controlExtent.width - size;
-			barOffset.y = 0;
-			barExtent.width = size;
-			barExtent.height = controlExtent.height;
-			bgOffset.x = 0;
-			bgOffset.y = 0;
-			bgExtent.width = controlExtent.width - size;
-			bgExtent.height = controlExtent.height;
+			barRect.offset.x = controlExtent.width - size;
+			barRect.offset.y = 0;
+			barRect.extent.width = size;
+			barRect.extent.height = controlExtent.height;
+			bgRect.offset.x = 0;
+			bgRect.offset.y = 0;
+			bgRect.extent.width = controlExtent.width - size;
+			bgRect.extent.height = controlExtent.height;
 			break;
 		case TREE_DIRECTION_NORTH:
 			size = (TREE_Int)(controlExtent.height * data->value);
-			barOffset.x = 0;
-			barOffset.y = controlExtent.height - size;
-			barExtent.width = controlExtent.width;
-			barExtent.height = size;
-			bgOffset.x = 0;
-			bgOffset.y = 0;
-			bgExtent.width = controlExtent.width;
-			bgExtent.height = controlExtent.height - size;
+			barRect.offset.x = 0;
+			barRect.offset.y = controlExtent.height - size;
+			barRect.extent.width = controlExtent.width;
+			barRect.extent.height = size;
+			bgRect.offset.x = 0;
+			bgRect.offset.y = 0;
+			bgRect.extent.width = controlExtent.width;
+			bgRect.extent.height = controlExtent.height - size;
 			break;
 		case TREE_DIRECTION_SOUTH:
 			size = (TREE_Int)(controlExtent.height * data->value);
-			barOffset.x = 0;
-			barOffset.y = 0;
-			barExtent.width = controlExtent.width;
-			barExtent.height = size;
-			bgOffset.x = 0;
-			bgOffset.y = barExtent.height;
-			bgExtent.width = controlExtent.width;
-			bgExtent.height = controlExtent.height - size;
+			barRect.offset.x = 0;
+			barRect.offset.y = 0;
+			barRect.extent.width = controlExtent.width;
+			barRect.extent.height = size;
+			bgRect.offset.x = 0;
+			bgRect.offset.y = barRect.extent.height;
+			bgRect.extent.width = controlExtent.width;
+			bgRect.extent.height = controlExtent.height - size;
 			break;
 		default:
 			return TREE_NOT_IMPLEMENTED;
 		}
 
 		// draw the background
-		if (bgExtent.width > 0 && bgExtent.height > 0)
+		if (bgRect.extent.width > 0 && bgRect.extent.height > 0)
 		{
 			result = TREE_Image_FillRect(
 				control->image,
-				bgOffset,
-				bgExtent,
+				&bgRect,
 				data->background
 			);
 			if (result)
@@ -8105,12 +8081,11 @@ TREE_EXTERN TREE_Result TREE_Control_ProgressBar_EventHandler(TREE_Event const* 
 		}		
 
 		// draw the bar
-		if (barExtent.width > 0 && barExtent.height > 0)
+		if (barRect.extent.width > 0 && barRect.extent.height > 0)
 		{
 			result = TREE_Image_FillRect(
 				control->image,
-				barOffset,
-				barExtent,
+				&barRect,
 				data->bar
 			);
 			if (result)
@@ -8636,7 +8611,6 @@ TREE_Result _TREE_Application_RefreshInput(TREE_Application* application, TREE_T
 	{
 		modifiers |= TREE_KEY_MODIFIER_FLAGS_SCROLL_LOCK;
 	}
-	input->modifiers = modifiers;
 
 	// create event data
 	TREE_EventData_Key eventData;
@@ -8892,14 +8866,10 @@ TREE_Result TREE_Application_Run(TREE_Application* application)
 		if (dirtyRect.extent.width != 0 && dirtyRect.extent.height != 0)
 		{
 			// clear the surface where the dirty rect is
-			TREE_Pixel pixel;
-			pixel.character = ' ';
-			pixel.colorPair = TREE_ColorPair_CreateDefault();
 			result = TREE_Image_FillRect(
 				&application->surface->image,
-				dirtyRect.offset,
-				dirtyRect.extent,
-				pixel
+				&dirtyRect,
+				TREE_Pixel_CreateDefault()
 			);
 			if (result)
 			{
