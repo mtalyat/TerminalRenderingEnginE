@@ -1170,7 +1170,7 @@ TREE_EXTERN TREE_Bool TREE_Control_Checkbox_GetChecked(TREE_Control* control);
 TREE_EXTERN TREE_Result TREE_Control_Checkbox_EventHandler(TREE_Event const* event);
 
 ///////////////////////////////////////
-// NumberInput                       //
+// Control: NumberInput              //
 ///////////////////////////////////////
 
 typedef struct _TREE_Control_NumberInputData
