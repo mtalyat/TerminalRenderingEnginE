@@ -3134,7 +3134,7 @@ TREE_Result TREE_Control_LabelData_Init(TREE_Control_LabelData* data, TREE_Strin
 	memcpy(data->text, text, textSize);
 	data->text[textLength] = '\0'; // null terminator
 	data->alignment = TREE_ALIGNMENT_TOPLEFT;
-	data->normal = theme->pixels[TREE_THEME_PID_NORMAL_TEXT];
+	data->theme = theme;
 
 	return TREE_OK;
 }
@@ -3261,38 +3261,6 @@ TREE_Alignment TREE_Control_Label_GetAlignment(TREE_Control* control)
 	return labelData->alignment;
 }
 
-TREE_Result TREE_Control_Label_SetPixel(TREE_Control* control, TREE_Pixel pixel)
-{
-	// validate
-	if (!control)
-	{
-		return TREE_ERROR_ARG_NULL;
-	}
-
-	// get data
-	TREE_Control_LabelData* labelData = (TREE_Control_LabelData*)control->data;
-
-	// set data
-	labelData->normal = pixel;
-
-	return TREE_OK;
-}
-
-TREE_Pixel TREE_Control_Label_GetPixel(TREE_Control* control)
-{
-	// validate
-	if (!control)
-	{
-		return (TREE_Pixel) { 0, 0 };
-	}
-
-	// get data
-	TREE_Control_LabelData* labelData = (TREE_Control_LabelData*)control->data;
-
-	// return pixel
-	return labelData->normal;
-}
-
 TREE_Result _TREE_Control_Draw(TREE_Image* target, TREE_Rect const* dirtyRect, TREE_Rect const* globalRect, TREE_Image const* image)
 {
 	TREE_Result result;
@@ -3353,7 +3321,7 @@ TREE_Result TREE_Control_Label_EventHandler(TREE_Event const* event)
 			control->transform->globalRect.extent,
 			labelData->text,
 			labelData->alignment,
-			labelData->normal
+			labelData->theme->pixels[TREE_THEME_PID_NORMAL_TEXT]
 		);
 		if (result)
 		{
@@ -3407,11 +3375,8 @@ TREE_Result TREE_Control_ButtonData_Init(TREE_Control_ButtonData* data, TREE_Str
 	memcpy(data->text, text, (textLength + 1) * sizeof(TREE_Char)); // +1 for null terminator
 	data->text[textLength] = '\0'; // null terminator
 	data->alignment = TREE_ALIGNMENT_CENTER;
-	data->normal = theme->pixels[TREE_THEME_PID_NORMAL];
-	data->focused = theme->pixels[TREE_THEME_PID_FOCUSED];
-	data->active = theme->pixels[TREE_THEME_PID_ACTIVE];
+	data->theme = theme;
 	data->onSubmit = onSubmit;
-
 	return TREE_OK;
 }
 
@@ -3531,64 +3496,6 @@ TREE_Alignment TREE_Control_Button_GetAlignment(TREE_Control* control)
 	return buttonData->alignment;
 }
 
-TREE_Result TREE_Control_Button_SetPixel(TREE_Control* control, TREE_ThemePixelID id, TREE_Pixel pixel)
-{
-	// validate
-	if (!control)
-	{
-		return TREE_ERROR_ARG_NULL;
-	}
-
-	// get data
-	TREE_Control_ButtonData* buttonData = (TREE_Control_ButtonData*)control->data;
-
-	// set data
-	switch (id)
-	{
-	case TREE_THEME_PID_NORMAL:
-		buttonData->normal = pixel;
-		break;
-	case TREE_THEME_PID_FOCUSED:
-		buttonData->focused = pixel;
-		break;
-	case TREE_THEME_PID_ACTIVE:
-		buttonData->active = pixel;
-		break;
-	default:
-		return TREE_ERROR_ARG_INVALID;
-	}
-
-	// mark as dirty to get redrawn
-	control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
-
-	return TREE_OK;
-}
-
-TREE_Pixel TREE_Control_Button_GetPixel(TREE_Control* control, TREE_ThemePixelID id)
-{
-	// validate
-	if (!control)
-	{
-		return (TREE_Pixel) { 0, 0 };
-	}
-
-	// get data
-	TREE_Control_ButtonData* buttonData = (TREE_Control_ButtonData*)control->data;
-
-	// return pixel
-	switch (id)
-	{
-	case TREE_THEME_PID_NORMAL:
-		return buttonData->normal;
-	case TREE_THEME_PID_FOCUSED:
-		return buttonData->focused;
-	case TREE_THEME_PID_ACTIVE:
-		return buttonData->active;
-	default:
-		return (TREE_Pixel) { 0, 0 };
-	}
-}
-
 TREE_Result TREE_Control_Button_SetOnSubmit(TREE_Control* control, TREE_ControlEventHandler onSubmit)
 {
 	// validate
@@ -3688,14 +3595,14 @@ TREE_Result TREE_Control_Button_EventHandler(TREE_Event const* event)
 	case TREE_EVENT_TYPE_REFRESH:
 	{
 		// determine pixel from state
-		TREE_Pixel const* pixel = &buttonData->normal;
+		TREE_Pixel const* pixel = &buttonData->theme->pixels[TREE_THEME_PID_NORMAL];
 		if (control->stateFlags & TREE_CONTROL_STATE_FLAGS_ACTIVE)
 		{
-			pixel = &buttonData->active;
+			pixel = &buttonData->theme->pixels[TREE_THEME_PID_ACTIVE];
 		}
 		else if (control->stateFlags & TREE_CONTROL_STATE_FLAGS_FOCUSED)
 		{
-			pixel = &buttonData->focused;
+			pixel = &buttonData->theme->pixels[TREE_THEME_PID_FOCUSED];
 		}
 
 		TREE_Offset offset = { 0, 0 };
@@ -3768,21 +3675,14 @@ TREE_Result TREE_Control_TextInputData_Init(TREE_Control_TextInputData* data, TR
 	data->capacity = capacity;
 	memcpy(data->placeholder, placeholder, placeholderLength * sizeof(TREE_Char));
 	data->placeholder[placeholderLength] = '\0'; // null terminator
-
-	data->normal = theme->pixels[TREE_THEME_PID_NORMAL];
-	data->focused = theme->pixels[TREE_THEME_PID_FOCUSED];
-	data->active = theme->pixels[TREE_THEME_PID_ACTIVE];
-	data->cursor = theme->pixels[TREE_THEME_PID_CURSOR];
-	// set cursor position to end of starting text
 	data->cursorPosition = 0;
 	data->cursorOffset = (TREE_Offset){ 0, 0 };
 	data->cursorTimer = 0;
 	data->scroll = 0;
-	data->selection = theme->pixels[TREE_THEME_PID_ACTIVE_SELECTED];
 	data->selectionOrigin = 0;
 	data->selectionStart = textLength;
 	data->selectionEnd = textLength;
-
+	data->theme = theme;
 	data->onChange = onChange;
 	data->onSubmit = onSubmit;
 
@@ -4107,74 +4007,6 @@ TREE_String TREE_Control_TextInput_GetPlaceholder(TREE_Control* control)
 
 	// return placeholder
 	return textInputData->placeholder;
-}
-
-TREE_Result TREE_Control_TextInput_SetPixel(TREE_Control* control, TREE_ThemePixelID id, TREE_Pixel pixel)
-{
-	// validate
-	if (!control)
-	{
-		return TREE_ERROR_ARG_NULL;
-	}
-
-	// get data
-	TREE_Control_TextInputData* textInputData = (TREE_Control_TextInputData*)control->data;
-
-	// set data
-	switch (id)
-	{
-	case TREE_THEME_PID_NORMAL:
-		textInputData->normal = pixel;
-		break;
-	case TREE_THEME_PID_FOCUSED:
-		textInputData->focused = pixel;
-		break;
-	case TREE_THEME_PID_ACTIVE:
-		textInputData->active = pixel;
-		break;
-	case TREE_THEME_PID_ACTIVE_SELECTED:
-		textInputData->selection = pixel;
-		break;
-	case TREE_THEME_PID_CURSOR:
-		textInputData->cursor = pixel;
-		break;
-	default:
-		return TREE_ERROR_ARG_INVALID;
-	}
-
-	// mark as dirty to get redrawn
-	control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
-
-	return TREE_OK;
-}
-
-TREE_Pixel TREE_Control_TextInput_GetPixel(TREE_Control* control, TREE_ThemePixelID id)
-{
-	// validate
-	if (!control)
-	{
-		return (TREE_Pixel) { 0, 0 };
-	}
-
-	// get data
-	TREE_Control_TextInputData* textInputData = (TREE_Control_TextInputData*)control->data;
-
-	// return pixel
-	switch (id)
-	{
-	case TREE_THEME_PID_NORMAL:
-		return textInputData->normal;
-	case TREE_THEME_PID_FOCUSED:
-		return textInputData->focused;
-	case TREE_THEME_PID_ACTIVE:
-		return textInputData->active;
-	case TREE_THEME_PID_ACTIVE_SELECTED:
-		return textInputData->selection;
-	case TREE_THEME_PID_CURSOR:
-		return textInputData->cursor;
-	default:
-		return (TREE_Pixel) { 0, 0 };
-	}
 }
 
 TREE_Result TREE_Control_TextInput_SetOnChange(TREE_Control* control, TREE_ControlEventHandler onChange)
@@ -4925,14 +4757,14 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 		TREE_Bool active = (control->stateFlags & TREE_CONTROL_STATE_FLAGS_ACTIVE);
 
 		// determine pixel from state
-		TREE_Pixel const* pixel = &data->normal;
+		TREE_Pixel const* pixel = &data->theme->pixels[TREE_THEME_PID_NORMAL];
 		if (active)
 		{
-			pixel = &data->active;
+			pixel = &data->theme->pixels[TREE_THEME_PID_ACTIVE];
 		}
 		else if (control->stateFlags & TREE_CONTROL_STATE_FLAGS_FOCUSED)
 		{
-			pixel = &data->focused;
+			pixel = &data->theme->pixels[TREE_THEME_PID_FOCUSED];
 		}
 
 		// draw the background
@@ -5024,7 +4856,7 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 					lineEndIndex <= data->selectionEnd)
 				{
 					// all selected
-					lineColor = data->selection.colorPair;
+					lineColor = data->theme->pixels[TREE_THEME_PID_ACTIVE_SELECTED].colorPair;
 				}
 				else
 				{
@@ -5077,7 +4909,7 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 						control->image,
 						selectionPos,
 						selectionText,
-						data->selection.colorPair
+						data->theme->pixels[TREE_THEME_PID_ACTIVE_SELECTED].colorPair
 					);
 					TREE_DELETE(selectionText);
 					if (result)
@@ -5092,7 +4924,7 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 			{
 				// get the cursor
 				TREE_Pixel cursorPixel = _TREE_GetCursorPixel(
-					data->cursor,
+					data->theme->pixels[TREE_THEME_PID_CURSOR],
 					data->inserting,
 					data->cursorPosition,
 					text,
@@ -5194,7 +5026,7 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 						control->image,
 						selectionOffset,
 						selectionText,
-						data->selection.colorPair
+						data->theme->pixels[TREE_THEME_PID_ACTIVE_SELECTED].colorPair
 					);
 					if (result)
 					{
@@ -5204,7 +5036,7 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 
 				// get the cursor
 				TREE_Pixel cursorPixel = _TREE_GetCursorPixel(
-					data->cursor,
+					data->theme->pixels[TREE_THEME_PID_CURSOR],
 					data->inserting,
 					data->cursorPosition,
 					text,
@@ -5259,64 +5091,63 @@ TREE_Result TREE_Control_TextInput_EventHandler(TREE_Event const* event)
 	return TREE_OK;
 }
 
-TREE_Result TREE_Control_ScrollbarData_Init(TREE_Control_ScrollbarData* data, TREE_Control_ScrollbarType type, TREE_Bool vertical, TREE_Theme const* theme)
+TREE_Result TREE_Control_ScrollbarData_Init(TREE_Control_ScrollbarData* data, TREE_Control_ScrollbarType type, TREE_Axis axis, TREE_Theme const* theme)
 {
 	// validate
 	if (!data)
 	{
 		return TREE_ERROR_ARG_NULL;
 	}
-
-	// set data
-	data->type = type;
-	if (vertical)
-	{
-		data->top = theme->characters[TREE_THEME_CID_UP];
-		data->bottom = theme->characters[TREE_THEME_CID_DOWN];
-		data->line = theme->characters[TREE_THEME_CID_SCROLL_V_AREA];
-		data->bar = theme->characters[TREE_THEME_CID_SCROLL_V_BAR];
-	}
-	else
-	{
-		data->top = theme->characters[TREE_THEME_CID_LEFT];
-		data->bottom = theme->characters[TREE_THEME_CID_RIGHT];
-		data->line = theme->characters[TREE_THEME_CID_SCROLL_H_AREA];
-		data->bar = theme->characters[TREE_THEME_CID_SCROLL_H_BAR];
-	}
-
-	return TREE_OK;
-}
-
-TREE_Result TREE_Control_Scrollbar_Draw(TREE_Image* target, TREE_Offset scrollbarOffset, TREE_Extent scrollbarExtent, TREE_Control_ScrollbarData* data, TREE_Size scroll, TREE_Size maxScroll, TREE_ColorPair colorPair, TREE_ColorPair barColorPair)
-{
-	// validate
-	if (!target || !data)
-	{
-		return TREE_ERROR_ARG_NULL;
-	}
-	if (scroll > maxScroll)
-	{
-		scroll = maxScroll;
-	}
-	if (scrollbarExtent.width <= 1 && scrollbarExtent.height <= 1)
-	{
-		return TREE_ERROR_ARG_OUT_OF_RANGE;
-	}
-	// at least one extent should be 1
-	if (scrollbarExtent.width != 1 && scrollbarExtent.height != 1)
+	if (axis != TREE_AXIS_HORIZONTAL && axis != TREE_AXIS_VERTICAL)
 	{
 		return TREE_ERROR_ARG_INVALID;
 	}
 
+	// set data
+	data->type = type;
+	data->axis = axis;
+	data->theme = theme;
+
+	return TREE_OK;
+}
+
+TREE_Result _TREE_Control_Scrollbar_Draw(TREE_Image* target, TREE_Offset scrollbarOffset, TREE_Extent scrollbarExtent, TREE_Control_ScrollbarData* data, TREE_Size scroll, TREE_Size maxScroll, TREE_Int mode)
+{
 	TREE_Offset offset = scrollbarOffset;
 	TREE_Extent extent = scrollbarExtent;
 
 	// determine if horizontal or vertical
-	TREE_Bool vertical = extent.width == 1;
+	TREE_Bool vertical = data->axis == TREE_AXIS_VERTICAL;
+
+	TREE_ColorPair colorPair, barColorPair;
+	switch (mode)
+	{
+	case 0: // unfocused
+		colorPair = data->theme->pixels[TREE_THEME_PID_NORMAL_SCROLL_AREA].colorPair;
+		barColorPair = data->theme->pixels[TREE_THEME_PID_NORMAL_SCROLL_BAR].colorPair;
+		break;
+	case 1: // focused
+		colorPair = data->theme->pixels[TREE_THEME_PID_FOCUSED_SCROLL_AREA].colorPair;
+		barColorPair = data->theme->pixels[TREE_THEME_PID_FOCUSED_SCROLL_BAR].colorPair;
+		break;
+	case 2: // active
+		colorPair = data->theme->pixels[TREE_THEME_PID_ACTIVE_SCROLL_AREA].colorPair;
+		barColorPair = data->theme->pixels[TREE_THEME_PID_ACTIVE_SCROLL_BAR].colorPair;
+		break;
+	default: // none
+		return TREE_ERROR_ARG_OUT_OF_RANGE;
+	}
 
 	// draw the scrollbar
 	TREE_Pixel scrollbarPixel;
-	scrollbarPixel.character = data->line;
+	if (vertical)
+	{
+		scrollbarPixel.character = data->theme->characters[TREE_THEME_CID_SCROLL_V_AREA];
+	}
+	else
+	{
+		scrollbarPixel.character = data->theme->characters[TREE_THEME_CID_SCROLL_H_AREA];
+	}
 	scrollbarPixel.colorPair = colorPair;
 	TREE_Rect rect = { offset, extent };
 	TREE_Result result = TREE_Image_FillRect(
@@ -5330,7 +5161,14 @@ TREE_Result TREE_Control_Scrollbar_Draw(TREE_Image* target, TREE_Offset scrollba
 	}
 
 	// draw the top
-	scrollbarPixel.character = data->top;
+	if (vertical)
+	{
+		scrollbarPixel.character = data->theme->characters[TREE_THEME_CID_UP];
+	}
+	else
+	{
+		scrollbarPixel.character = data->theme->characters[TREE_THEME_CID_LEFT];
+	}
 	result = TREE_Image_Set(
 		target,
 		offset,
@@ -5342,13 +5180,14 @@ TREE_Result TREE_Control_Scrollbar_Draw(TREE_Image* target, TREE_Offset scrollba
 	}
 
 	// draw the bottom
-	scrollbarPixel.character = data->bottom;
 	if (vertical)
 	{
+		scrollbarPixel.character = data->theme->characters[TREE_THEME_CID_DOWN];
 		offset.y = scrollbarOffset.y + (TREE_Int)(scrollbarExtent.height - 1);
 	}
 	else
 	{
+		scrollbarPixel.character = data->theme->characters[TREE_THEME_CID_RIGHT];
 		offset.x = scrollbarOffset.x + (TREE_Int)(scrollbarExtent.width - 1);
 	}
 	result = TREE_Image_Set(
@@ -5382,7 +5221,14 @@ TREE_Result TREE_Control_Scrollbar_Draw(TREE_Image* target, TREE_Offset scrollba
 		barSize = 1;
 		barOffset = scroll * (extent.height - 1) / maxScroll;
 	}
-	scrollbarPixel.character = data->bar;
+	if (vertical)
+	{
+		scrollbarPixel.character = data->theme->characters[TREE_THEME_CID_SCROLL_V_BAR];
+	}
+	else
+	{
+		scrollbarPixel.character = data->theme->characters[TREE_THEME_CID_SCROLL_H_BAR];
+	}
 	scrollbarPixel.colorPair = barColorPair;
 	if (vertical)
 	{
@@ -5439,30 +5285,12 @@ TREE_Result TREE_Control_ListData_Init(TREE_Control_ListData* data, TREE_Control
 	}
 
 	// set data
-	data->normalSelected = theme->pixels[TREE_THEME_PID_NORMAL_SELECTED];
-	data->normalUnselected = theme->pixels[TREE_THEME_PID_NORMAL];
-	data->normalScrollbarColorPair = theme->pixels[TREE_THEME_PID_NORMAL_SCROLL_AREA].colorPair;
-	data->normalScrollbarBarColorPair = theme->pixels[TREE_THEME_PID_NORMAL_SCROLL_BAR].colorPair;
-
-	data->focusedSelected = theme->pixels[TREE_THEME_PID_FOCUSED_SELECTED];
-	data->focusedUnselected = theme->pixels[TREE_THEME_PID_FOCUSED];
-	data->focusedScrollbarColorPair = theme->pixels[TREE_THEME_PID_FOCUSED_SCROLL_AREA].colorPair;
-	data->focusedScrollbarBarColorPair = theme->pixels[TREE_THEME_PID_FOCUSED_SCROLL_BAR].colorPair;
-
-	data->activeSelected = theme->pixels[TREE_THEME_PID_ACTIVE_SELECTED];
-	data->activeUnselected = theme->pixels[TREE_THEME_PID_ACTIVE];
-	data->activeScrollbarColorPair = theme->pixels[TREE_THEME_PID_ACTIVE_SCROLL_AREA].colorPair;
-	data->activeScrollbarBarColorPair = theme->pixels[TREE_THEME_PID_ACTIVE_SCROLL_BAR].colorPair;
-
-	data->hoveredSelected = theme->pixels[TREE_THEME_PID_HOVERED_SELECTED];
-	data->hoveredUnselected = theme->pixels[TREE_THEME_PID_HOVERED];
-
 	result = TREE_Control_ScrollbarData_Init(&data->scrollbar, TREE_CONTROL_SCROLLBAR_TYPE_DYNAMIC, TREE_TRUE, theme);
 	if (result)
 	{
 		return result;
 	}
-
+	data->theme = theme;
 	data->onChange = onChange;
 	data->onSubmit = onSubmit;
 
@@ -5872,25 +5700,25 @@ TREE_Result _TREE_Control_List_Draw(TREE_Image* target, TREE_Offset controlOffse
 {
 	TREE_Result result;
 	TREE_Bool active = (stateFlags & TREE_CONTROL_STATE_FLAGS_ACTIVE);
+	TREE_Bool focused = (stateFlags & TREE_CONTROL_STATE_FLAGS_FOCUSED);
 
 	// determine pixels from state
-	TREE_Pixel const* unselectedPixel = &data->normalUnselected;
-	TREE_Pixel const* selectedPixel = &data->normalSelected;
-	TREE_ColorPair scrollbarColorPair = data->normalScrollbarColorPair;
-	TREE_ColorPair scrollbarBarColorPair = data->normalScrollbarBarColorPair;
+	TREE_Pixel const* unselectedPixel, const* selectedPixel;
+
 	if (active)
 	{
-		unselectedPixel = &data->activeUnselected;
-		selectedPixel = &data->activeSelected;
-		scrollbarColorPair = data->activeScrollbarColorPair;
-		scrollbarBarColorPair = data->activeScrollbarBarColorPair;
+		unselectedPixel = &data->theme->pixels[TREE_THEME_PID_ACTIVE];
+		selectedPixel = &data->theme->pixels[TREE_THEME_PID_ACTIVE_SELECTED];
 	}
-	else if (stateFlags & TREE_CONTROL_STATE_FLAGS_FOCUSED)
+	else if (focused)
 	{
-		unselectedPixel = &data->focusedUnselected;
-		selectedPixel = &data->focusedSelected;
-		scrollbarColorPair = data->focusedScrollbarColorPair;
-		scrollbarBarColorPair = data->focusedScrollbarBarColorPair;
+		unselectedPixel = &data->theme->pixels[TREE_THEME_PID_FOCUSED];
+		selectedPixel = &data->theme->pixels[TREE_THEME_PID_FOCUSED_SELECTED];
+	}
+	else
+	{
+		unselectedPixel = &data->theme->pixels[TREE_THEME_PID_NORMAL];
+		selectedPixel = &data->theme->pixels[TREE_THEME_PID_NORMAL_SELECTED];
 	}
 
 	// determine if there is a scrollbar
@@ -5942,11 +5770,11 @@ TREE_Result _TREE_Control_List_Draw(TREE_Image* target, TREE_Offset controlOffse
 			{
 				if (selected)
 				{
-					pixel = &data->hoveredSelected;
+					pixel = &data->theme->pixels[TREE_THEME_PID_HOVERED_SELECTED];
 				}
 				else
 				{
-					pixel = &data->hoveredUnselected;
+					pixel = &data->theme->pixels[TREE_THEME_PID_HOVERED];
 				}
 			}
 			else
@@ -6023,15 +5851,14 @@ TREE_Result _TREE_Control_List_Draw(TREE_Image* target, TREE_Offset controlOffse
 		scrollbarOffset.y = controlOffset.y;
 
 		// draw the scrollbar
-		result = TREE_Control_Scrollbar_Draw(
+		result = _TREE_Control_Scrollbar_Draw(
 			target,
 			scrollbarOffset,
 			scrollbarExtent,
 			&data->scrollbar,
 			data->scroll,
 			data->optionsSize - controlExtent.height,
-			scrollbarColorPair,
-			scrollbarBarColorPair
+			active ? 2 : (focused ? 1 : 0)
 		);
 		if (result)
 		{
@@ -6256,19 +6083,7 @@ TREE_Result TREE_Control_DropdownData_Init(TREE_Control_DropdownData* data, TREE
 	data->origin.x = 0;
 	data->origin.y = 0;
 	data->drop = 0;
-
-	data->normal = theme->pixels[TREE_THEME_PID_NORMAL];
-
-	data->focused = theme->pixels[TREE_THEME_PID_FOCUSED];
-
-	data->active = theme->pixels[TREE_THEME_PID_FOCUSED];
-
-	data->selected = theme->pixels[TREE_THEME_PID_ACTIVE_SELECTED];
-	data->unselected = theme->pixels[TREE_THEME_PID_ACTIVE];
-
-	data->hoveredSelected = theme->pixels[TREE_THEME_PID_HOVERED_SELECTED];
-	data->hoveredUnselected = theme->pixels[TREE_THEME_PID_HOVERED];
-
+	data->theme = theme;
 	data->onSubmit = onSubmit;
 
 	return TREE_OK;
@@ -6694,15 +6509,15 @@ TREE_Result TREE_Control_Dropdown_EventHandler(TREE_Event const* event)
 		TREE_Pixel const* pixel;
 		if (active)
 		{
-			pixel = &data->active;
+			pixel = &data->theme->pixels[TREE_THEME_PID_ACTIVE];
 		}
 		else if (control->stateFlags & TREE_CONTROL_STATE_FLAGS_FOCUSED)
 		{
-			pixel = &data->focused;
+			pixel = &data->theme->pixels[TREE_THEME_PID_FOCUSED];
 		}
 		else
 		{
-			pixel = &data->normal;
+			pixel = &data->theme->pixels[TREE_THEME_PID_NORMAL];
 		}
 
 		// get the selected option
@@ -6800,17 +6615,6 @@ TREE_Result TREE_Control_Dropdown_EventHandler(TREE_Event const* event)
 		// if active, draw the dropdown
 		if (active)
 		{
-			// populate a theme data structure using the dropdown's theme
-			TREE_Theme theme;
-			theme.pixels[TREE_THEME_PID_ACTIVE] = data->active;
-			theme.pixels[TREE_THEME_PID_ACTIVE_SELECTED] = data->selected;
-			theme.pixels[TREE_THEME_PID_HOVERED] = data->hoveredUnselected;
-			theme.pixels[TREE_THEME_PID_HOVERED_SELECTED] = data->hoveredSelected;
-			theme.characters[TREE_THEME_CID_SCROLL_V_AREA] = '|';
-			theme.characters[TREE_THEME_CID_SCROLL_V_BAR] = '#';
-			theme.characters[TREE_THEME_CID_UP] = '^';
-			theme.characters[TREE_THEME_CID_DOWN] = 'v';
-
 			// populate a list data structure using the dropdown's data
 			TREE_Control_ListData listData;
 			listData.flags = TREE_CONTROL_LIST_FLAGS_NONE;
@@ -6824,14 +6628,9 @@ TREE_Result TREE_Control_Dropdown_EventHandler(TREE_Event const* event)
 				&listData.scrollbar,
 				TREE_CONTROL_SCROLLBAR_TYPE_DYNAMIC,
 				TREE_TRUE,
-				&theme
+				data->theme
 			);
-			listData.activeSelected = data->selected;
-			listData.activeUnselected = data->unselected;
-			listData.activeScrollbarColorPair = TREE_ColorPair_Create(TREE_COLOR_BRIGHT_BLACK, TREE_COLOR_BRIGHT_WHITE);
-			listData.activeScrollbarBarColorPair = TREE_ColorPair_Create(TREE_COLOR_WHITE, TREE_COLOR_BRIGHT_BLACK);
-			listData.hoveredSelected = data->hoveredSelected;
-			listData.hoveredUnselected = data->hoveredUnselected;
+			listData.theme = data->theme;
 			listData.onChange = NULL;
 			listData.onSubmit = NULL;
 
@@ -6884,7 +6683,7 @@ TREE_Result TREE_Control_Dropdown_EventHandler(TREE_Event const* event)
 	return TREE_OK;
 }
 
-TREE_Result TREE_Control_CheckboxData_Init(TREE_Control_CheckboxData* data, TREE_String text, TREE_Byte checked, TREE_Bool radio, TREE_ControlEventHandler onCheck, TREE_Theme const* theme)
+TREE_Result TREE_Control_CheckboxData_Init(TREE_Control_CheckboxData* data, TREE_String text, TREE_Control_CheckboxFlags flags, TREE_ControlEventHandler onCheck, TREE_Theme const* theme)
 {
 	// validate
 	if (!data || !text)
@@ -6898,30 +6697,8 @@ TREE_Result TREE_Control_CheckboxData_Init(TREE_Control_CheckboxData* data, TREE
 	{
 		return result;
 	}
-
-	data->checked = checked;
-	data->reverse = TREE_FALSE;
-
-	data->normal = theme->pixels[TREE_THEME_PID_NORMAL].colorPair;
-	data->focused = theme->pixels[TREE_THEME_PID_FOCUSED].colorPair;
-	data->normalText = theme->pixels[TREE_THEME_PID_NORMAL_TEXT].colorPair;
-	data->focusedText = theme->pixels[TREE_THEME_PID_FOCUSED_TEXT].colorPair;
-
-	if (radio)
-	{
-		data->checkedChar = theme->characters[TREE_THEME_CID_RADIOBOX_CHECKED];
-		data->uncheckedChar = theme->characters[TREE_THEME_CID_RADIOBOX_UNCHECKED];
-		data->left = theme->characters[TREE_THEME_CID_RADIOBOX_LEFT];
-		data->right = theme->characters[TREE_THEME_CID_RADIOBOX_RIGHT];
-	}
-	else
-	{
-		data->checkedChar = theme->characters[TREE_THEME_CID_CHECKBOX_CHECKED];
-		data->uncheckedChar = theme->characters[TREE_THEME_CID_CHECKBOX_UNCHECKED];
-		data->left = theme->characters[TREE_THEME_CID_CHECKBOX_LEFT];
-		data->right = theme->characters[TREE_THEME_CID_CHECKBOX_RIGHT];
-	}
-
+	data->flags = flags;
+	data->theme = theme;
 	data->onCheck = onCheck;
 
 	return TREE_OK;
@@ -6972,7 +6749,14 @@ TREE_Result TREE_Control_Checkbox_SetChecked(TREE_Control* control, TREE_Byte ch
 
 	// set the checked state
 	TREE_Control_CheckboxData* data = (TREE_Control_CheckboxData*)control->data;
-	data->checked = checked;
+	if (checked)
+	{
+		data->flags |= TREE_CONTROL_CHECKBOX_FLAGS_CHECKED;
+	}
+	else
+	{
+		data->flags &= ~TREE_CONTROL_CHECKBOX_FLAGS_CHECKED;
+	}
 
 	// dirty the component to be redrawn
 	control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
@@ -6990,7 +6774,7 @@ TREE_Bool TREE_Control_Checkbox_GetChecked(TREE_Control* control)
 
 	// get the checked state
 	TREE_Control_CheckboxData* data = (TREE_Control_CheckboxData*)control->data;
-	return data->checked;
+	return (data->flags & TREE_CONTROL_CHECKBOX_FLAGS_CHECKED) != 0 ? TREE_TRUE : TREE_FALSE;
 }
 
 TREE_Result TREE_Control_Checkbox_EventHandler(TREE_Event const* event)
@@ -7030,9 +6814,18 @@ TREE_Result TREE_Control_Checkbox_EventHandler(TREE_Event const* event)
 		// when submit button is pressed, toggle the checkbox
 		if (key == TREE_KEY_ENTER || key == TREE_KEY_SPACE)
 		{
-			data->checked = !data->checked;
+			// toggle the checked state
+			TREE_Bool checked = (data->flags & TREE_CONTROL_CHECKBOX_FLAGS_CHECKED) != 0;
+			if (checked)
+			{
+				data->flags &= ~TREE_CONTROL_CHECKBOX_FLAGS_CHECKED;
+			}
+			else
+			{
+				data->flags |= TREE_CONTROL_CHECKBOX_FLAGS_CHECKED;
+			}
 			control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
-			CALL_ACTION(data->onCheck, control, &data->checked);
+			CALL_ACTION(data->onCheck, control, &checked);
 		}
 		break;
 	}
@@ -7049,15 +6842,39 @@ TREE_Result TREE_Control_Checkbox_EventHandler(TREE_Event const* event)
 		TREE_ColorPair color;
 		if (control->stateFlags & TREE_CONTROL_STATE_FLAGS_FOCUSED)
 		{
-			color = data->focused;
+			color = data->theme->pixels[TREE_THEME_PID_FOCUSED].colorPair;
 		}
 		else
 		{
-			color = data->normal;
+			color = data->theme->pixels[TREE_THEME_PID_NORMAL].colorPair;
 		}
 
 		// get checked character
-		TREE_Char checkedChar = data->checked ? data->checkedChar : data->uncheckedChar;
+		TREE_Bool radio = (data->flags & TREE_CONTROL_CHECKBOX_FLAGS_RADIO) != 0;
+		TREE_Bool checked = (data->flags & TREE_CONTROL_CHECKBOX_FLAGS_CHECKED) != 0;
+		TREE_Char checkedChar;
+		if (checked)
+		{
+			if (radio)
+			{
+				checkedChar = data->theme->characters[TREE_THEME_CID_RADIOBOX_CHECKED];
+			}
+			else
+			{
+				checkedChar = data->theme->characters[TREE_THEME_CID_CHECKBOX_CHECKED];
+			}
+		}
+		else
+		{
+			if (radio)
+			{
+				checkedChar = data->theme->characters[TREE_THEME_CID_RADIOBOX_UNCHECKED];
+			}
+			else
+			{
+				checkedChar = data->theme->characters[TREE_THEME_CID_CHECKBOX_UNCHECKED];
+			}
+		}
 
 		// draw the checkbox
 		TREE_Offset offset;
@@ -7065,13 +6882,29 @@ TREE_Result TREE_Control_Checkbox_EventHandler(TREE_Event const* event)
 
 		// if reverse, place the checkbox on the right
 		TREE_Int checkboxLength = 3;
-		TREE_Int checkOffset = data->reverse ? control->transform->globalRect.extent.width - checkboxLength : 0;
-		TREE_Int textOffset = data->reverse ? 0 : checkboxLength;
+		TREE_Int checkOffset, textOffset;
+		if (data->flags & TREE_CONTROL_CHECKBOX_FLAGS_REVERSE)
+		{
+			checkOffset = control->transform->globalRect.extent.width - checkboxLength;
+			textOffset = 0;
+		}
+		else
+		{
+			checkOffset = 0;
+			textOffset = checkboxLength;
+		}
 		offset.x = checkOffset;
 
 		// draw the checkbox
 		TREE_Pixel pixel;
-		pixel.character = data->left;
+		if(radio)
+		{
+			pixel.character = data->theme->characters[TREE_THEME_CID_RADIOBOX_LEFT];
+		}
+		else
+		{
+			pixel.character = data->theme->characters[TREE_THEME_CID_CHECKBOX_LEFT];
+		}
 		pixel.colorPair = color;
 		result = TREE_Image_Set(
 			control->image,
@@ -7094,7 +6927,14 @@ TREE_Result TREE_Control_Checkbox_EventHandler(TREE_Event const* event)
 			return result;
 		}
 		offset.x++;
-		pixel.character = data->right;
+		if(radio)
+		{
+			pixel.character = data->theme->characters[TREE_THEME_CID_RADIOBOX_RIGHT];
+		}
+		else
+		{
+			pixel.character = data->theme->characters[TREE_THEME_CID_CHECKBOX_RIGHT];
+		}
 		result = TREE_Image_Set(
 			control->image,
 			offset,
@@ -7110,11 +6950,11 @@ TREE_Result TREE_Control_Checkbox_EventHandler(TREE_Event const* event)
 		offset.y = 0;
 		if (control->stateFlags & TREE_CONTROL_STATE_FLAGS_FOCUSED)
 		{
-			color = data->focusedText;
+			color = data->theme->pixels[TREE_THEME_PID_FOCUSED].colorPair;
 		}
 		else
 		{
-			color = data->normalText;
+			color = data->theme->pixels[TREE_THEME_PID_NORMAL].colorPair;
 		}
 
 		// if the string is too long, cap it
@@ -7212,13 +7052,7 @@ TREE_Result TREE_Control_NumberInputData_Init(TREE_Control_NumberInputData* data
 	data->value = CLAMP(value, min, max);
 	data->increment = increment;
 	data->decimalPlaces = decimalPlaces;
-
-	data->normal = theme->pixels[TREE_THEME_PID_NORMAL];
-	data->focused = theme->pixels[TREE_THEME_PID_FOCUSED];
-	data->active = theme->pixels[TREE_THEME_PID_ACTIVE];
-	data->up = theme->characters[TREE_THEME_CID_UP];
-	data->down = theme->characters[TREE_THEME_CID_DOWN];
-
+	data->theme = theme;
 	data->onChange = onChange;
 	data->onSubmit = onSubmit;
 
@@ -7422,57 +7256,6 @@ TREE_Int TREE_Control_NumberInput_GetDecimalPlaces(TREE_Control* control)
 	return data->decimalPlaces;
 }
 
-TREE_Result TREE_Control_NumberInput_SetPixel(TREE_Control* control, TREE_ThemePixelID id, TREE_Pixel pixel)
-{
-	// validate
-	if (!control || control->type != TREE_CONTROL_TYPE_NUMBER_INPUT)
-	{
-		return TREE_ERROR_ARG_NULL;
-	}
-
-	// set the pixel
-	TREE_Control_NumberInputData* data = (TREE_Control_NumberInputData*)control->data;
-	switch (id)
-	{
-	case TREE_THEME_PID_NORMAL:
-		data->normal = pixel;
-		break;
-	case TREE_THEME_PID_FOCUSED:
-		data->focused = pixel;
-		break;
-	case TREE_THEME_PID_ACTIVE:
-		data->active = pixel;
-		break;
-	default:
-		return TREE_ERROR_ARG_OUT_OF_RANGE;
-	}
-
-	return TREE_OK;
-}
-
-TREE_Pixel TREE_Control_NumberInput_GetPixel(TREE_Control* control, TREE_ThemePixelID id)
-{
-	// validate
-	if (!control || control->type != TREE_CONTROL_TYPE_NUMBER_INPUT)
-	{
-		return (TREE_Pixel) { 0 };
-	}
-
-	// get the pixel
-	TREE_Control_NumberInputData* data = (TREE_Control_NumberInputData*)control->data;
-	switch (id)
-	{
-	case TREE_THEME_PID_NORMAL:
-		return data->normal;
-	case TREE_THEME_PID_FOCUSED:
-		return data->focused;
-	case TREE_THEME_PID_ACTIVE:
-		return data->active;
-	default:
-		return (TREE_Pixel) { 0 };
-	}
-}
-
 TREE_Result TREE_Control_NumberInput_SetOnChange(TREE_Control* control, TREE_ControlEventHandler onChange)
 {
 	// validate
@@ -7640,15 +7423,15 @@ TREE_Result TREE_Control_NumberInput_EventHandler(TREE_Event const* event)
 		TREE_Pixel pixel;
 		if (control->stateFlags & TREE_CONTROL_STATE_FLAGS_ACTIVE)
 		{
-			pixel = data->active;
+			pixel = data->theme->pixels[TREE_THEME_PID_ACTIVE];
 		}
 		else if (control->stateFlags & TREE_CONTROL_STATE_FLAGS_FOCUSED)
 		{
-			pixel = data->focused;
+			pixel = data->theme->pixels[TREE_THEME_PID_FOCUSED];
 		}
 		else
 		{
-			pixel = data->normal;
+			pixel = data->theme->pixels[TREE_THEME_PID_NORMAL];
 		}
 
 		// draw the down arrow input, if not at max value
@@ -7658,7 +7441,7 @@ TREE_Result TREE_Control_NumberInput_EventHandler(TREE_Event const* event)
 		offset.y = 0;
 		if (data->value > data->minValue)
 		{
-			pixel.character = data->down;
+			pixel.character = data->theme->characters[TREE_THEME_CID_DOWN];
 		}
 		else
 		{
@@ -7680,7 +7463,7 @@ TREE_Result TREE_Control_NumberInput_EventHandler(TREE_Event const* event)
 		offset.y = 0;
 		if (data->value < data->maxValue)
 		{
-			pixel.character = data->up;
+			pixel.character = data->theme->characters[TREE_THEME_CID_UP];
 		}
 		else
 		{
@@ -7829,8 +7612,7 @@ TREE_EXTERN TREE_Result TREE_Control_ProgressBarData_Init(TREE_Control_ProgressB
 	// set data
 	data->value = 0;
 	data->direction = TREE_DIRECTION_EAST;
-	data->background = theme->pixels[TREE_THEME_PID_BACKGROUND];
-	data->bar = theme->pixels[TREE_THEME_PID_PROGRESS_BAR];
+	data->theme = theme;
 
 	return TREE_OK;
 }
@@ -7937,51 +7719,6 @@ TREE_EXTERN TREE_Direction TREE_Control_ProgressBar_GetDirection(TREE_Control* c
 	return data->direction;
 }
 
-TREE_EXTERN TREE_Result TREE_Control_ProgressBar_SetPixel(TREE_Control* control, TREE_ThemePixelID id, TREE_Pixel pixel)
-{
-	// validate
-	if (!control || control->type != TREE_CONTROL_TYPE_PROGRESS_BAR)
-	{
-		return TREE_ERROR_ARG_NULL;
-	}
-
-	// set the pixel
-	TREE_Control_ProgressBarData* data = (TREE_Control_ProgressBarData*)control->data;
-	switch (id)
-	{
-	case TREE_THEME_PID_BACKGROUND:
-		data->background = pixel;
-		break;
-	case TREE_THEME_PID_PROGRESS_BAR:
-		data->bar = pixel;
-		break;
-	default:
-		return TREE_ERROR_ARG_OUT_OF_RANGE;
-	}
-	return TREE_OK;
-}
-
-TREE_EXTERN TREE_Pixel TREE_Control_ProgressBar_GetPixel(TREE_Control* control, TREE_ThemePixelID id)
-{
-	// validate
-	if (!control || control->type != TREE_CONTROL_TYPE_PROGRESS_BAR)
-	{
-		return (TREE_Pixel) { 0 };
-	}
-
-	// get the pixel
-	TREE_Control_ProgressBarData* data = (TREE_Control_ProgressBarData*)control->data;
-	switch (id)
-	{
-	case TREE_THEME_PID_BACKGROUND:
-		return data->background;
-	case TREE_THEME_PID_PROGRESS_BAR:
-		return data->bar;
-	default:
-		return (TREE_Pixel) { 0 };
-	}
-}
-
 TREE_EXTERN TREE_Result TREE_Control_ProgressBar_EventHandler(TREE_Event const* event)
 {
 	// validate
@@ -8072,7 +7809,7 @@ TREE_EXTERN TREE_Result TREE_Control_ProgressBar_EventHandler(TREE_Event const* 
 			result = TREE_Image_FillRect(
 				control->image,
 				&bgRect,
-				data->background
+				data->theme->pixels[TREE_THEME_PID_BACKGROUND]
 			);
 			if (result)
 			{
@@ -8086,7 +7823,7 @@ TREE_EXTERN TREE_Result TREE_Control_ProgressBar_EventHandler(TREE_Event const* 
 			result = TREE_Image_FillRect(
 				control->image,
 				&barRect,
-				data->bar
+				data->theme->pixels[TREE_THEME_PID_PROGRESS_BAR]
 			);
 			if (result)
 			{

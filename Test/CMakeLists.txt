@@ -19,8 +19,7 @@ if (CMAKE_VERSION VERSION_GREATER 3.12)
 endif()
 
 # Link to the library built from Source
-set(LIBRARY_OUTPUT_PATH "../Source/Build/")
-find_library(TREE NAMES TREE PATHS ${LIBRARY_OUTPUT_PATH})
+find_library(TREE NAMES TREE PATHS "../Source/Build/" "../Source/Build/${CMAKE_BUILD_TYPE}/")
 
 # Link to the TREE library
 target_link_libraries(Test PRIVATE ${TREE})
