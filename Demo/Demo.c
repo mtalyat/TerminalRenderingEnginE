@@ -46,7 +46,7 @@ int main()
 	if (result)
 	{
 		printf("Failed to initialize TREE: %s\n", TREE_Result_ToString(result));
-		system("pause"); return 1;
+		return 1;
 	}
 
 	// create the theme
@@ -55,14 +55,14 @@ int main()
 	if (result)
 	{
 		printf("Failed to initialize theme: %s\n", TREE_Result_ToString(result));
-		system("pause"); return 1;
+		return 1;
 	}
 
 	result = TREE_Window_SetTitle("TREE Test");
 	if (result)
 	{
 		printf("Failed to set window title: %s\n", TREE_Result_ToString(result));
-		system("pause"); return 1;
+		return 1;
 	}
 
 	// create the application
@@ -72,7 +72,7 @@ int main()
 	if (result)
 	{
 		printf("Failed to initialize application: %s\n", TREE_Result_ToString(result));
-		system("pause"); return 1;
+		return 1;
 	}
 
 	// create button data
@@ -81,7 +81,7 @@ int main()
 	if (result)
 	{
 		printf("Failed to initialize quit button data: %s\n", TREE_Result_ToString(result));
-		system("pause"); return 1;
+		return 1;
 	}
 
 	// create button
@@ -90,7 +90,7 @@ int main()
 	if (result)
 	{
 		printf("Failed to initialize quit button: %s\n", TREE_Result_ToString(result));
-		system("pause"); return 1;
+		return 1;
 	}
 	TREE_Transform* transform = quitButton.transform;
 	transform->localOffset.y = 1;
@@ -102,7 +102,7 @@ int main()
 	if (result)
 	{
 		printf("Failed to initialize text input data: %s\n", TREE_Result_ToString(result));
-		system("pause"); return 1;
+		return 1;
 	}
 
 	// create text input
@@ -111,7 +111,7 @@ int main()
 	if (result)
 	{
 		printf("Failed to initialize text input: %s\n", TREE_Result_ToString(result));
-		system("pause"); return 1;
+		return 1;
 	}
 	textInput.transform->localOffset.x = 50;
 	textInput.transform->localOffset.y = 1;
@@ -131,7 +131,7 @@ int main()
 	if (result)
 	{
 		printf("Failed to initialize list data: %s\n", TREE_Result_ToString(result));
-		system("pause"); return 1;
+		return 1;
 	}
 
 	// create list
@@ -140,7 +140,7 @@ int main()
 	if (result)
 	{
 		printf("Failed to initialize list control: %s\n", TREE_Result_ToString(result));
-		system("pause"); return 1;
+		return 1;
 	}
 	listControl.transform->localAlignment = TREE_ALIGNMENT_LEFTSTRETCH;
 	listControl.transform->localOffset.x = 1;
@@ -154,7 +154,7 @@ int main()
 	if (result)
 	{
 		printf("Failed to initialize multi-line text input data: %s\n", TREE_Result_ToString(result));
-		system("pause"); return 1;
+		return 1;
 	}
 
 	// create multi-line text input
@@ -163,7 +163,7 @@ int main()
 	if (result)
 	{
 		printf("Failed to initialize multi-line text input: %s\n", TREE_Result_ToString(result));
-		system("pause"); return 1;
+		return 1;
 	}
 	multiLineTextInput.transform->localOffset.x = 50;
 	multiLineTextInput.transform->localOffset.y = 6;
@@ -178,7 +178,7 @@ int main()
 		if (result)
 		{
 			printf("Failed to initialize dropdown data: %s\n", TREE_Result_ToString(result));
-			system("pause"); return 1;
+			return 1;
 		}
 	}
 
@@ -190,7 +190,7 @@ int main()
 		if (result)
 		{
 			printf("Failed to initialize dropdown: %s\n", TREE_Result_ToString(result));
-			system("pause"); return 1;
+			return 1;
 		}
 		dropControls[i].transform->localOffset.x = 23;
 		dropControls[i].transform->localOffset.y = 3 + (TREE_Int)i * 11;
@@ -205,7 +205,7 @@ int main()
 		if (result)
 		{
 			printf("Failed to initialize checkbox data: %s\n", TREE_Result_ToString(result));
-			system("pause"); return 1;
+			return 1;
 		}
 	}
 
@@ -217,7 +217,7 @@ int main()
 		if (result)
 		{
 			printf("Failed to initialize checkbox: %s\n", TREE_Result_ToString(result));
-			system("pause"); return 1;
+			return 1;
 		}
 		checkboxes[i].transform->localOffset.x = 82;
 		checkboxes[i].transform->localOffset.y = 3 + (TREE_Int)i;
@@ -229,7 +229,7 @@ int main()
 	if (result)
 	{
 		printf("Failed to initialize label data: %s\n", TREE_Result_ToString(result));
-		system("pause"); return 1;
+		return 1;
 	}
 
 	// create label
@@ -238,7 +238,7 @@ int main()
 	if (result)
 	{
 		printf("Failed to initialize label: %s\n", TREE_Result_ToString(result));
-		system("pause"); return 1;
+		return 1;
 	}
 	label.transform->localOffset.x = 82;
 	label.transform->localOffset.y = 2;
@@ -249,7 +249,7 @@ int main()
 	if (result)
 	{
 		printf("Failed to initialize number input data: %s\n", TREE_Result_ToString(result));
-		system("pause"); return 1;
+		return 1;
 	}
 
 	// create number input
@@ -258,7 +258,7 @@ int main()
 	if (result)
 	{
 		printf("Failed to initialize number input: %s\n", TREE_Result_ToString(result));
-		system("pause"); return 1;
+		return 1;
 	}
 	numberInput.transform->localExtent.width = 7;
 	numberInput.transform->localExtent.height = 1;
@@ -272,7 +272,7 @@ int main()
 	if (result)
 	{
 		printf("Failed to initialize progress bar data: %s\n", TREE_Result_ToString(result));
-		system("pause"); return 1;
+		return 1;
 	}
 
 	// create progress bar
@@ -281,7 +281,7 @@ int main()
 	if (result)
 	{
 		printf("Failed to initialize progress bar: %s\n", TREE_Result_ToString(result));
-		system("pause"); return 1;
+		return 1;
 	}
 	g_progressBar = &progressBar; // Store the progress bar globally for the event handler
 	progressBar.transform->localAlignment = TREE_ALIGNMENT_TOPRIGHT;
@@ -295,13 +295,13 @@ int main()
 	if (result)
 	{
 		printf("Failed to link controls: %s\n", TREE_Result_ToString(result));
-		system("pause"); return 1;
+		return 1;
 	}
 	result = TREE_Control_Link(&quitButton, TREE_DIRECTION_EAST, TREE_CONTROL_LINK_DOUBLE, dropControls);
 	if (result)
 	{
 		printf("Failed to link controls: %s\n", TREE_Result_ToString(result));
-		system("pause"); return 1;
+		return 1;
 	}
 	for (TREE_Size i = 0; i < 3; i++)
 	{
@@ -311,26 +311,26 @@ int main()
 		if (result)
 		{
 			printf("Failed to link controls: %s\n", TREE_Result_ToString(result));
-			system("pause"); return 1;
+			return 1;
 		}
 	}
 	result = TREE_Control_Link(&dropControls[0], TREE_DIRECTION_EAST, TREE_CONTROL_LINK_DOUBLE, &textInput);
 	if (result)
 	{
 		printf("Failed to link controls: %s\n", TREE_Result_ToString(result));
-		system("pause"); return 1;
+		return 1;
 	}
 	result = TREE_Control_Link(&textInput, TREE_DIRECTION_SOUTH, TREE_CONTROL_LINK_DOUBLE, &multiLineTextInput);
 	if (result)
 	{
 		printf("Failed to link controls: %s\n", TREE_Result_ToString(result));
-		system("pause"); return 1;
+		return 1;
 	}
 	result = TREE_Control_Link(&textInput, TREE_DIRECTION_EAST, TREE_CONTROL_LINK_DOUBLE, checkboxes);
 	if (result)
 	{
 		printf("Failed to link controls: %s\n", TREE_Result_ToString(result));
-		system("pause"); return 1;
+		return 1;
 	}
 	for (TREE_Size i = 0; i < CHECKBOX_COUNT; i++)
 	{
@@ -338,14 +338,14 @@ int main()
 		if (result)
 		{
 			printf("Failed to link controls: %s\n", TREE_Result_ToString(result));
-			system("pause"); return 1;
+			return 1;
 		}
 	}
 	result = TREE_Control_Link(&checkboxes[0], TREE_DIRECTION_EAST, TREE_CONTROL_LINK_DOUBLE, &numberInput);
 	if (result)
 	{
 		printf("Failed to link controls: %s\n", TREE_Result_ToString(result));
-		system("pause"); return 1;
+		return 1;
 	}
 
 	// add controls to application
@@ -353,13 +353,13 @@ int main()
 	if (result)
 	{
 		printf("Failed to add quit button to application: %s\n", TREE_Result_ToString(result));
-		system("pause"); return 1;
+		return 1;
 	}
 	result = TREE_Application_AddControl(&app, &listControl);
 	if (result)
 	{
 		printf("Failed to add list control to application: %s\n", TREE_Result_ToString(result));
-		system("pause"); return 1;
+		return 1;
 	}
 	for (TREE_Size i = 0; i < 3; i++)
 	{
@@ -367,20 +367,20 @@ int main()
 		if (result)
 		{
 			printf("Failed to add dropdown to application: %s\n", TREE_Result_ToString(result));
-			system("pause"); return 1;
+			return 1;
 		}
 	}
 	result = TREE_Application_AddControl(&app, &textInput);
 	if (result)
 	{
 		printf("Failed to add text input to application: %s\n", TREE_Result_ToString(result));
-		system("pause"); return 1;
+		return 1;
 	}
 	result = TREE_Application_AddControl(&app, &multiLineTextInput);
 	if (result)
 	{
 		printf("Failed to add multi-line text input to application: %s\n", TREE_Result_ToString(result));
-		system("pause"); return 1;
+		return 1;
 	}
 	for (TREE_Size i = 0; i < CHECKBOX_COUNT; i++)
 	{
@@ -388,26 +388,26 @@ int main()
 		if (result)
 		{
 			printf("Failed to add checkbox to application: %s\n", TREE_Result_ToString(result));
-			system("pause"); return 1;
+			return 1;
 		}
 	}
 	result = TREE_Application_AddControl(&app, &label);
 	if (result)
 	{
 		printf("Failed to add label to application: %s\n", TREE_Result_ToString(result));
-		system("pause"); return 1;
+		return 1;
 	}
 	result = TREE_Application_AddControl(&app, &numberInput);
 	if (result)
 	{
 		printf("Failed to add number input to application: %s\n", TREE_Result_ToString(result));
-		system("pause"); return 1;
+		return 1;
 	}
 	result = TREE_Application_AddControl(&app, &progressBar);
 	if (result)
 	{
 		printf("Failed to add progress bar to application: %s\n", TREE_Result_ToString(result));
-		system("pause"); return 1;
+		return 1;
 	}
 
 	// run the application
@@ -415,7 +415,7 @@ int main()
 	if (result)
 	{
 		printf("Failed to run application: %s\n", TREE_Result_ToString(result));
-		system("pause"); return 1;
+		return 1;
 	}
 
 	// cleanup
