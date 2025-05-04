@@ -196,6 +196,7 @@ void _TREE_HandleSignal(int signal)
 	case SIGTERM:
 	case SIGHUP:
 		// Handle the signal gracefully
+		TREE_Free();
 		break;
 	default:
 		break;
@@ -255,6 +256,7 @@ TREE_Char *_TREE_FindKeyboard()
 	}
 
 	closedir(dir);
+	printf("No keyboard found. Try running with sudo.\n");
 	return NULL;
 }
 
