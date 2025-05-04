@@ -103,6 +103,7 @@ typedef enum _TREE_Result
 	// Console
 	TREE_ERROR_WINDOWS_CONSOLE_GET_CURSOR_INFO = 10300,
 	TREE_ERROR_WINDOWS_CONSOLE_SET_CURSOR_INFO = 10301,
+	TREE_ERROR_WINDOWS_CONSOLE_INIT = 10302,
 
 	//		Linux
 
@@ -1161,6 +1162,11 @@ typedef struct _TREE_Input
 	/// The states of the keys.
 	/// </summary>
 	TREE_Byte states[TREE_KEY_MAX+1];
+
+	/// <summary>
+	/// The active modifier keys.
+	/// </summary>
+	TREE_KeyModifierFlags modifiers;
 } TREE_Input;
 
 /// <summary>
@@ -1175,6 +1181,13 @@ TREE_EXTERN TREE_Result TREE_Input_Init(TREE_Input* input);
 /// </summary>
 /// <param name="input">The Input.</param>
 TREE_EXTERN void TREE_Input_Free(TREE_Input* input);
+
+/// <summary>
+/// Updates the given Input with the current state of the keyboard.
+/// </summary>
+/// <param name="input">The Input.</param>
+/// <returns>A TREE_Result code.</returns>
+TREE_EXTERN TREE_Result TREE_Input_Refresh(TREE_Input* input);
 
 ///////////////////////////////////////
 // Direction                         //

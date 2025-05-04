@@ -188,7 +188,7 @@ int main()
 	TREE_Control_CheckboxData checkboxDatas[CHECKBOX_COUNT];
 	for (TREE_Size i = 0; i < CHECKBOX_COUNT; i++)
 	{
-		result = TREE_Control_CheckboxData_Init(&checkboxDatas[i], (i & 2) == 0 ? " Normal" : "Reversed ", i & 6, NULL, &theme);
+		result = TREE_Control_CheckboxData_Init(&checkboxDatas[i], (i & 2) == 0 ? " Normal" : "Reversed ", i, NULL, &theme);
 		if (result)
 		{
 			printf("Failed to initialize checkbox data: %s\n", TREE_Result_ToString(result));

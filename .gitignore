@@ -402,3 +402,5 @@ FodyWeavers.xsd
 
 # VsCode
 .vscode/
+Test/run.bat
+build_and_run.bat
