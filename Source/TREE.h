@@ -879,6 +879,11 @@ TREE_EXTERN TREE_Result TREE_Window_Present(TREE_Surface* surface);
 /// <returns>The Extent of the terminal.</returns>
 TREE_EXTERN TREE_Extent TREE_Window_GetExtent();
 
+/// <summary>
+/// Produces a beep sound in the terminal.
+/// </summary>
+TREE_EXTERN void TREE_Window_Beep();
+
 ///////////////////////////////////////
 // Cursor                            //
 ///////////////////////////////////////
