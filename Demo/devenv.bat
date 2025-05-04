@@ -32,7 +32,7 @@ if "%1"=="build" (
             exit /b 1
         )
         cd Build/!BUILD_TYPE!
-        start /wait Test.exe
+        start /wait Demo.exe
         cd ../..
     ) else (
         echo Build directory does not exist. Please build first.
