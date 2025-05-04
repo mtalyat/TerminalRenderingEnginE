@@ -8624,6 +8624,222 @@ TREE_Result _TREE_Application_RefreshInput(TREE_Application *application, TREE_T
 	return TREE_OK;
 }
 
+TREE_Result _TREE_Application_Refresh_Surface(TREE_Application *application)
+{
+	// resize the surface if needed
+	TREE_Extent newExtent = TREE_Window_GetExtent();
+	TREE_Extent oldExtent = application->surface->image.extent;
+	if (newExtent.width != oldExtent.width || newExtent.height != oldExtent.height)
+	{
+		// resize the surface
+		TREE_Result result = TREE_Image_Resize(&application->surface->image, newExtent);
+		if (result)
+		{
+			return result;
+		}
+
+		// trigger event
+		TREE_EventData_WindowResize eventData;
+		eventData.extent = newExtent;
+		TREE_Event event;
+		event.type = TREE_EVENT_TYPE_WINDOW_RESIZE;
+		event.data = &eventData;
+		event.control = NULL;
+		event.application = application;
+		result = TREE_Application_DispatchEvent(application, &event);
+		if (result)
+		{
+			return result;
+		}
+
+		// dirty every transform
+		for (TREE_Size i = 0; i < application->controlsSize; ++i)
+		{
+			application->controls[i]->transform->dirty = TREE_TRUE;
+		}
+	}
+
+	return TREE_OK;
+}
+
+TREE_Result _TREE_Application_Refresh_Controls(TREE_Application *application, TREE_Bool* shouldPresent)
+{
+	TREE_Result result;
+
+	// for refreshes
+	TREE_Event event;
+	event.type = TREE_EVENT_TYPE_REFRESH;
+	event.data = NULL;
+	event.control = NULL;
+	event.application = application;
+
+	// clear the dirty rect
+	TREE_Rect dirtyRect;
+	dirtyRect.offset.x = (TREE_Int)application->surface->image.extent.width;
+	dirtyRect.offset.y = (TREE_Int)application->surface->image.extent.height;
+	dirtyRect.extent.width = 0;
+	dirtyRect.extent.height = 0;
+
+	TREE_Extent extent = application->surface->image.extent;
+	TREE_Control *control;
+	TREE_Bool dirty;
+	TREE_Rect rect;
+	for (TREE_Size i = 0; i < application->controlsSize; ++i)
+	{
+		control = application->controls[i];
+		dirty = TREE_FALSE;
+
+		// refresh the transform
+		if (control->transform->dirty)
+		{
+			// keep a copy of the old global rect
+			TREE_Rect oldGlobalRect = control->transform->globalRect;
+
+			// refresh the transform
+			result = TREE_Transform_Refresh(control->transform, extent);
+			if (result)
+			{
+				return result;
+			}
+
+			// get the dirty rect (combination of old and new rects)
+			rect = TREE_Rect_Combine(
+				&oldGlobalRect,
+				&control->transform->globalRect);
+
+			// clear flag
+			control->transform->dirty = TREE_FALSE;
+
+			// update the dirty rect
+			dirty = TREE_TRUE;
+		}
+		else
+		{
+			// transform did not change, so just use the global rect
+			rect = control->transform->globalRect;
+		}
+
+		// refresh the control
+		if (dirty || (control->stateFlags & TREE_CONTROL_STATE_FLAGS_DIRTY))
+		{
+			// refresh the control
+			event.control = control;
+			result = TREE_Control_HandleEvent(control, &event);
+			if (result)
+			{
+				return result;
+			}
+
+			// clear flag
+			control->stateFlags &= ~TREE_CONTROL_STATE_FLAGS_DIRTY;
+
+			// update the dirty rect
+			dirty = TREE_TRUE;
+		}
+
+		// update the dirty rect
+		if (dirty)
+		{
+			dirtyRect = TREE_Rect_Combine(
+				&dirtyRect,
+				&rect);
+		}
+	}
+
+	// draw the controls using the dirty rect, if there is a dirty rect
+	if (dirtyRect.extent.width != 0 && dirtyRect.extent.height != 0)
+	{
+		// clear the surface where the dirty rect is
+		result = TREE_Image_FillRect(
+			&application->surface->image,
+			&dirtyRect,
+			TREE_Pixel_CreateDefault());
+		if (result)
+		{
+			return result;
+		}
+
+		// create event data
+		TREE_EventData_Draw eventData;
+		eventData.target = &application->surface->image;
+		eventData.dirtyRect = dirtyRect;
+
+		// create event
+		TREE_Event event;
+		event.type = TREE_EVENT_TYPE_DRAW;
+		event.data = &eventData;
+		event.control = NULL;
+		event.application = application;
+
+		// delay the drawing of the active control until the end
+		TREE_Control *active = NULL;
+		TREE_Control *control;
+
+		// check each control: if it is within the dirty rect, redraw it if so
+		for (TREE_Size i = 0; i < application->controlsSize; ++i)
+		{
+			control = application->controls[i];
+			if (TREE_Rect_IsOverlapping(&dirtyRect, &control->transform->globalRect))
+			{
+				// if this is the active control, skip
+				if (control->stateFlags & TREE_CONTROL_STATE_FLAGS_ACTIVE)
+				{
+					// if already one active, whoops
+					if (active)
+					{
+						return TREE_ERROR_APPLICATION_MULTIPLE_ACTIVE_CONTROLS;
+					}
+					active = control;
+					continue;
+				}
+
+				// set the control for the event
+				event.control = control;
+
+				// call the event handler
+				result = TREE_Control_HandleEvent(control, &event);
+				if (result)
+				{
+					return result;
+				}
+
+				// there was a drawing update
+				*shouldPresent = TREE_TRUE;
+			}
+		}
+
+		// draw active
+		if (active)
+		{
+			event.control = active;
+			result = TREE_Control_HandleEvent(active, &event);
+			if (result)
+			{
+				return result;
+			}
+			*shouldPresent = TREE_TRUE;
+		}
+	}
+	
+	return TREE_OK;
+}
+
+TREE_Result _TREE_Application_Present(TREE_Application *application)
+{
+	TREE_Result result = TREE_Surface_Refresh(application->surface);
+	if (result)
+	{
+		return result;
+	}
+	result = TREE_Window_Present(application->surface);
+	if (result)
+	{
+		return result;
+	}
+
+	return TREE_OK;
+}
+
 TREE_Result TREE_Application_Run(TREE_Application *application)
 {
 	if (!application)
@@ -8653,9 +8869,6 @@ TREE_Result TREE_Application_Run(TREE_Application *application)
 		return result;
 	}
 
-	TREE_Rect dirtyRect;
-	TREE_Bool shouldPresent;
-	TREE_Extent extent = application->surface->image.extent;
 	application->running = TREE_TRUE;
 	while (application->running)
 	{
@@ -8663,213 +8876,26 @@ TREE_Result TREE_Application_Run(TREE_Application *application)
 		currentTime = TREE_Time_Now();
 
 		// check for resize
-		TREE_Extent newExtent = TREE_Window_GetExtent();
-		if (newExtent.width != extent.width || newExtent.height != extent.height)
+		result = _TREE_Application_Refresh_Surface(application);
+		if (result)
 		{
-			extent = newExtent;
-
-			// resize the surface
-			result = TREE_Image_Resize(&application->surface->image, extent);
-			if (result)
-			{
-				application->running = TREE_FALSE;
-				return result;
-			}
-
-			// trigger event
-			TREE_EventData_WindowResize eventData;
-			eventData.extent = extent;
-			TREE_Event event;
-			event.type = TREE_EVENT_TYPE_WINDOW_RESIZE;
-			event.data = &eventData;
-			event.control = NULL;
-			event.application = application;
-			result = TREE_Application_DispatchEvent(application, &event);
-			if (result)
-			{
-				application->running = TREE_FALSE;
-				return result;
-			}
-
-			// dirty every transform
-			for (TREE_Size i = 0; i < application->controlsSize; ++i)
-			{
-				application->controls[i]->transform->dirty = TREE_TRUE;
-			}
+			application->running = TREE_FALSE;
+			return result;
 		}
 
 		// update the dirty controls/transforms
+		TREE_Bool shouldPresent = TREE_FALSE;
+		result = _TREE_Application_Refresh_Controls(application, &shouldPresent);
+		if (result)
 		{
-			// for refreshes
-			TREE_Event event;
-			event.type = TREE_EVENT_TYPE_REFRESH;
-			event.data = NULL;
-			event.control = NULL;
-			event.application = application;
-
-			// clear the dirty rect
-			dirtyRect.offset.x = (TREE_Int)application->surface->image.extent.width;
-			dirtyRect.offset.y = (TREE_Int)application->surface->image.extent.height;
-			dirtyRect.extent.width = 0;
-			dirtyRect.extent.height = 0;
-
-			TREE_Control *control;
-			TREE_Bool dirty;
-			TREE_Rect rect;
-			for (TREE_Size i = 0; i < application->controlsSize; ++i)
-			{
-				control = application->controls[i];
-				dirty = TREE_FALSE;
-
-				// refresh the transform
-				if (control->transform->dirty)
-				{
-					// keep a copy of the old global rect
-					TREE_Rect oldGlobalRect = control->transform->globalRect;
-
-					// refresh the transform
-					result = TREE_Transform_Refresh(control->transform, extent);
-					if (result)
-					{
-						application->running = TREE_FALSE;
-						return result;
-					}
-
-					// get the dirty rect (combination of old and new rects)
-					rect = TREE_Rect_Combine(
-						&oldGlobalRect,
-						&control->transform->globalRect);
-
-					// clear flag
-					control->transform->dirty = TREE_FALSE;
-
-					// update the dirty rect
-					dirty = TREE_TRUE;
-				}
-				else
-				{
-					// transform did not change, so just use the global rect
-					rect = control->transform->globalRect;
-				}
-
-				// refresh the control
-				if (dirty || (control->stateFlags & TREE_CONTROL_STATE_FLAGS_DIRTY))
-				{
-					// refresh the control
-					event.control = control;
-					result = TREE_Control_HandleEvent(control, &event);
-					if (result)
-					{
-						application->running = TREE_FALSE;
-						return result;
-					}
-
-					// clear flag
-					control->stateFlags &= ~TREE_CONTROL_STATE_FLAGS_DIRTY;
-
-					// update the dirty rect
-					dirty = TREE_TRUE;
-				}
-
-				// update the dirty rect
-				if (dirty)
-				{
-					dirtyRect = TREE_Rect_Combine(
-						&dirtyRect,
-						&rect);
-				}
-			}
-		}
-
-		shouldPresent = TREE_FALSE;
-		// draw the controls using the dirty rect, if there is a dirty rect
-		if (dirtyRect.extent.width != 0 && dirtyRect.extent.height != 0)
-		{
-			// clear the surface where the dirty rect is
-			result = TREE_Image_FillRect(
-				&application->surface->image,
-				&dirtyRect,
-				TREE_Pixel_CreateDefault());
-			if (result)
-			{
-				application->running = TREE_FALSE;
-				return result;
-			}
-
-			// create event data
-			TREE_EventData_Draw eventData;
-			eventData.target = &application->surface->image;
-			eventData.dirtyRect = dirtyRect;
-
-			// create event
-			TREE_Event event;
-			event.type = TREE_EVENT_TYPE_DRAW;
-			event.data = &eventData;
-			event.control = NULL;
-			event.application = application;
-
-			// delay the drawing of the active control until the end
-			TREE_Control *active = NULL;
-			TREE_Control *control;
-
-			// check each control: if it is within the dirty rect, redraw it if so
-			for (TREE_Size i = 0; i < application->controlsSize; ++i)
-			{
-				control = application->controls[i];
-				if (TREE_Rect_IsOverlapping(&dirtyRect, &control->transform->globalRect))
-				{
-					// if this is the active control, skip
-					if (control->stateFlags & TREE_CONTROL_STATE_FLAGS_ACTIVE)
-					{
-						// if already one active, whoops
-						if (active)
-						{
-							return TREE_ERROR_APPLICATION_MULTIPLE_ACTIVE_CONTROLS;
-						}
-						active = control;
-						continue;
-					}
-
-					// set the control for the event
-					event.control = control;
-
-					// call the event handler
-					result = TREE_Control_HandleEvent(control, &event);
-					if (result)
-					{
-						application->running = TREE_FALSE;
-						return result;
-					}
-
-					// there was a drawing update
-					shouldPresent = TREE_TRUE;
-				}
-			}
-
-			// draw active
-			if (active)
-			{
-				event.control = active;
-				result = TREE_Control_HandleEvent(active, &event);
-				if (result)
-				{
-					application->running = TREE_FALSE;
-					return result;
-				}
-				shouldPresent = TREE_TRUE;
-			}
+			application->running = TREE_FALSE;
+			return result;
 		}
 
 		// present the surface, if there is an update to show
 		if (shouldPresent)
 		{
-			result = TREE_Surface_Refresh(application->surface);
-			if (result)
-			{
-				application->running = TREE_FALSE;
-				return result;
-			}
-			result = TREE_Window_Present(application->surface);
+			result = _TREE_Application_Present(application);
 			if (result)
 			{
 				application->running = TREE_FALSE;
