@@ -3098,7 +3098,7 @@ TREE_Size _TREE_WordWrapPass(TREE_String text, TREE_Size width, TREE_Char*** res
 			lastLine = i + 1;
 			lastSpace = lastLine;
 		}
-		else if (i - lastLine + 1 > width)
+		else if (i - lastLine >= width)
 		{
 			// reached max line width
 
@@ -3111,7 +3111,7 @@ TREE_Size _TREE_WordWrapPass(TREE_String text, TREE_Size width, TREE_Char*** res
 			// add to lines
 			if (lines && count < lineCount)
 			{
-				TREE_Size lineLength = i - lastLine + 1;
+				TREE_Size lineLength = i - lastLine;
 				TREE_Char* line = TREE_NEW_ARRAY(TREE_Char, lineLength + 1);
 				lines[count] = line;
 				if (!line)
@@ -3129,7 +3129,7 @@ TREE_Size _TREE_WordWrapPass(TREE_String text, TREE_Size width, TREE_Char*** res
 
 			// update markers
 			count++;
-			lastLine = i + 1;
+			lastLine = i;
 			lastSpace = lastLine;
 		}
 		else if (isspace(ch))
