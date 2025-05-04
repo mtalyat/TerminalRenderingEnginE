@@ -3,10 +3,23 @@
 #include <time.h>
 
 TREE_Application* g_application = NULL;
+TREE_Control* g_progressBar = NULL;
 
 void Button_Quit(void* sender, void const* value)
 {
 	TREE_Application_Quit(g_application);
+}
+
+void NumberInput_OnChange(void* sender, void const* value)
+{
+	TREE_Control* control = (TREE_Control*)sender;
+	TREE_Control_NumberInputData* data = (TREE_Control_NumberInputData*)control->data;
+
+	// get the percentage of the value from min to max
+	TREE_Float percentage = (data->value - data->minValue) / (data->maxValue - data->minValue);
+
+	// set the progress bar width based on the percentage
+	TREE_Control_ProgressBar_SetValue(g_progressBar, percentage);
 }
 
 TREE_Result ApplicationEventHandler(TREE_Event const* event)
@@ -232,7 +245,7 @@ int main()
 
 	// create number input
 	TREE_Control_NumberInputData numberInputData;
-	result = TREE_Control_NumberInputData_Init(&numberInputData, 0, 0, 100, 1, 0, NULL, NULL, &theme);
+	result = TREE_Control_NumberInputData_Init(&numberInputData, 0, 0, 100, 1, 0, NumberInput_OnChange, NULL, &theme);
 	if (result)
 	{
 		printf("Failed to initialize number input data: %s\n", TREE_Result_ToString(result));
@@ -249,41 +262,33 @@ int main()
 	}
 	numberInput.transform->localExtent.width = 7;
 	numberInput.transform->localExtent.height = 1;
-	numberInput.transform->localPivot.x = 0.0f;
-	numberInput.transform->localPivot.y = 1.0f;
-	numberInput.transform->localOffset.x = 1;
-	numberInput.transform->localOffset.y = -1;
-	numberInput.transform->localAlignment = TREE_ALIGNMENT_BOTTOMLEFT;
+	numberInput.transform->localOffset.x = -21;
+	numberInput.transform->localOffset.y = 3;
+	numberInput.transform->localAlignment = TREE_ALIGNMENT_TOPRIGHT;
 
-	// create progress bars
-#define PROGRESS_BAR_COUNT 11
-	TREE_Control_ProgressBarData progressBarDatas[PROGRESS_BAR_COUNT];
-	for (TREE_Size i = 0; i < PROGRESS_BAR_COUNT; i++)
+	// create progress bar
+	TREE_Control_ProgressBarData progressBarData;
+	result = TREE_Control_ProgressBarData_Init(&progressBarData, &theme);
+	if (result)
 	{
-		result = TREE_Control_ProgressBarData_Init(&progressBarDatas[i], &theme);
-		if (result)
-		{
-			printf("Failed to initialize progress bar data: %s\n", TREE_Result_ToString(result));
-			system("pause"); return 1;
-		}
-		progressBarDatas[i].value = (TREE_Float)i / (TREE_Float)(PROGRESS_BAR_COUNT - 1);
+		printf("Failed to initialize progress bar data: %s\n", TREE_Result_ToString(result));
+		system("pause"); return 1;
 	}
 
-	// create progress bars
-	TREE_Control progressBars[PROGRESS_BAR_COUNT];
-	for (TREE_Int i = 0; i < PROGRESS_BAR_COUNT; i++)
+	// create progress bar
+	TREE_Control progressBar;
+	result = TREE_Control_ProgressBar_Init(&progressBar, NULL, &progressBarData);
+	if (result)
 	{
-		result = TREE_Control_ProgressBar_Init(&progressBars[i], NULL, &progressBarDatas[i]);
-		if (result)
-		{
-			printf("Failed to initialize progress bar: %s\n", TREE_Result_ToString(result));
-			system("pause"); return 1;
-		}
-		progressBars[i].transform->localOffset.x = 100;
-		progressBars[i].transform->localOffset.y = 1 + i * 2;
-		progressBars[i].transform->localExtent.width = 20;
-		progressBars[i].transform->localExtent.height = 1;
+		printf("Failed to initialize progress bar: %s\n", TREE_Result_ToString(result));
+		system("pause"); return 1;
 	}
+	g_progressBar = &progressBar; // Store the progress bar globally for the event handler
+	progressBar.transform->localAlignment = TREE_ALIGNMENT_TOPRIGHT;
+	progressBar.transform->localOffset.x = -21;
+	progressBar.transform->localOffset.y = 1;
+	progressBar.transform->localExtent.width = 20;
+	progressBar.transform->localExtent.height = 1;
 
 	// link controls
 	result = TREE_Control_Link(&listControl, TREE_DIRECTION_NORTH, TREE_CONTROL_LINK_DOUBLE, &quitButton);
@@ -398,14 +403,11 @@ int main()
 		printf("Failed to add number input to application: %s\n", TREE_Result_ToString(result));
 		system("pause"); return 1;
 	}
-	for (TREE_Size i = 0; i < PROGRESS_BAR_COUNT; i++)
+	result = TREE_Application_AddControl(&app, &progressBar);
+	if (result)
 	{
-		result = TREE_Application_AddControl(&app, &progressBars[i]);
-		if (result)
-		{
-			printf("Failed to add progress bar to application: %s\n", TREE_Result_ToString(result));
-			system("pause"); return 1;
-		}
+		printf("Failed to add progress bar to application: %s\n", TREE_Result_ToString(result));
+		system("pause"); return 1;
 	}
 
 	// run the application
@@ -439,11 +441,8 @@ int main()
 		TREE_Control_Free(&dropControls[i]);
 		TREE_Control_DropdownData_Free(&dropDatas[i]);
 	}
-	for (TREE_Size i = 0; i < PROGRESS_BAR_COUNT; i++)
-	{
-		TREE_Control_Free(&progressBars[i]);
-		TREE_Control_ProgressBarData_Free(&progressBarDatas[i]);
-	}
+	TREE_Control_Free(&progressBar);
+	TREE_Control_ProgressBarData_Free(&progressBarData);
 	TREE_Application_Free(&app);
 	TREE_Theme_Free(&theme);
 	TREE_Free();
