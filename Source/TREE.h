@@ -1636,6 +1636,9 @@ typedef enum _TREE_ControlLink
 	TREE_CONTROL_LINK_DOUBLE
 } TREE_ControlLink;
 
+/// <summary>
+/// A UI element that can be interacted with.
+/// </summary>
 typedef struct _TREE_Control
 {
 	/// <summary>
