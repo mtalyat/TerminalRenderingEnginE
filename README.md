@@ -23,6 +23,6 @@ To use TREE in your project, you have two options:
 
 ## Examples/Guides
 
-Check out the [Test](Test/) directory for the demo project.
+Check out the [Demo](Demo/) directory for the demo project.
 
 Check out the [Tutorial](https://github.com/mtalyat/TerminalRenderingEnginE/wiki/Tutorial) Wiki page for a usage guide.
