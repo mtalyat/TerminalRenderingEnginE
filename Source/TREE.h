@@ -1204,6 +1204,33 @@ typedef enum _TREE_Direction
 TREE_EXTERN TREE_Direction TREE_Direction_Opposite(TREE_Direction direction);
 
 ///////////////////////////////////////
+// Axis                              //
+///////////////////////////////////////
+
+/// <summary>
+/// A cardinal axis.
+/// </summary>
+typedef enum _TREE_Axis
+{
+	/// <summary>
+	/// No axis.
+	/// </summary>
+	TREE_AXIS_NONE = 0x0,
+	/// <summary>
+	/// The horizontal axis.
+	/// </summary>
+	TREE_AXIS_HORIZONTAL = 0x1,
+	/// <summary>
+	/// The vertical axis.
+	/// </summary>
+	TREE_AXIS_VERTICAL = 0x2,
+	/// <summary>
+	/// All axes.
+	/// </summary>
+	TREE_AXIS_ALL = 0x3,
+} TREE_Axis;
+
+///////////////////////////////////////
 // Alignment                         //
 ///////////////////////////////////////
 
@@ -1693,9 +1720,9 @@ typedef struct _TREE_Control_LabelData
 	TREE_Alignment alignment;
 
 	/// <summary>
-	/// The pixel to use for the text.
+	/// A reference to the Theme to use for the appearance.
 	/// </summary>
-	TREE_Pixel normal;
+	TREE_Theme const* theme;
 } TREE_Control_LabelData;
 
 /// <summary>
@@ -1753,21 +1780,6 @@ TREE_EXTERN TREE_Result TREE_Control_Label_SetAlignment(TREE_Control* control, T
 TREE_EXTERN TREE_Alignment TREE_Control_Label_GetAlignment(TREE_Control* control);
 
 /// <summary>
-/// Sets the pixel used for the text in the given Label Control.
-/// </summary>
-/// <param name="control">The Label Control.</param>
-/// <param name="pixel">The pixel to set.</param>
-/// <returns>A TREE_Result code.</returns>
-TREE_EXTERN TREE_Result TREE_Control_Label_SetPixel(TREE_Control* control, TREE_Pixel pixel);
-
-/// <summary>
-/// Gets the pixel used for the text in the given Label Control.
-/// </summary>
-/// <param name="control">The Label Control.</param>
-/// <returns>The pixel used for the text.</returns>
-TREE_EXTERN TREE_Pixel TREE_Control_Label_GetPixel(TREE_Control* control);
-
-/// <summary>
 /// Handles events for the given Label Control.
 /// </summary>
 /// <param name="event">The event to handle.</param>
@@ -1794,19 +1806,9 @@ typedef struct _TREE_Control_ButtonData
 	TREE_Alignment alignment;
 
 	/// <summary>
-	/// The pixel to use for the button when not focused.
+	/// A reference to the Theme to use for the appearance.
 	/// </summary>
-	TREE_Pixel normal;
-
-	/// <summary>
-	/// The pixel to use for the button when focused.
-	/// </summary>
-	TREE_Pixel focused;
-
-	/// <summary>
-	/// The pixel to use for the button when active (pressed).
-	/// </summary>
-	TREE_Pixel active;
+	TREE_Theme const* theme;
 
 	/// <summary>
 	/// Called when a button is pressed and released.
@@ -1868,23 +1870,6 @@ TREE_EXTERN TREE_Result TREE_Control_Button_SetAlignment(TREE_Control* control, 
 /// <param name="control">The Button Control.</param>
 /// <returns>The alignment of the text.</returns>
 TREE_EXTERN TREE_Alignment TREE_Control_Button_GetAlignment(TREE_Control* control);
-
-/// <summary>
-/// Sets the pixel used for the given Button Control.
-/// </summary>
-/// <param name="control">The Button Control.</param>
-/// <param name="id">The ThemePixelID to set.</param>
-/// <param name="pixel">The pixel to set.</param>
-/// <returns>A TREE_Result code.</returns>
-TREE_EXTERN TREE_Result TREE_Control_Button_SetPixel(TREE_Control* control, TREE_ThemePixelID id, TREE_Pixel pixel);
-
-/// <summary>
-/// Gets the pixel used for the given Button Control.
-/// </summary>
-/// <param name="control">The Button Control.</param>
-/// <param name="id">The ThemePixelID to get.</param>
-/// <returns>The pixel used for the specified ThemePixelID.</returns>
-TREE_EXTERN TREE_Pixel TREE_Control_Button_GetPixel(TREE_Control* control, TREE_ThemePixelID id);
 
 /// <summary>
 /// Sets the event handler for the given Button Control when it is submitted.
@@ -1964,26 +1949,6 @@ typedef struct _TREE_Control_TextInputData
 	TREE_Byte inserting;
 
 	/// <summary>
-	/// The pixel to use for the TextInput when not focused.
-	/// </summary>
-	TREE_Pixel normal;
-
-	/// <summary>
-	/// The pixel to use for the TextInput when focused.
-	/// </summary>
-	TREE_Pixel focused;
-
-	/// <summary>
-	/// The pixel to use for the TextInput when active (pressed).
-	/// </summary>
-	TREE_Pixel active;
-
-	/// <summary>
-	/// The pixel to use for the cursor position.
-	/// </summary>
-	TREE_Pixel cursor;
-
-	/// <summary>
 	/// The location of the cursor within the text.
 	/// </summary>
 	TREE_Size cursorPosition;
@@ -2004,11 +1969,6 @@ typedef struct _TREE_Control_TextInputData
 	TREE_Size scroll;
 
 	/// <summary>
-	/// The selection color.
-	/// </summary>
-	TREE_Pixel selection;
-
-	/// <summary>
 	/// The selection origin.
 	/// </summary>
 	TREE_Size selectionOrigin;
@@ -2022,6 +1982,11 @@ typedef struct _TREE_Control_TextInputData
 	/// The selection ending index.
 	/// </summary>
 	TREE_Size selectionEnd;
+
+	/// <summary>
+	/// A reference to the Theme to use for the appearance.
+	/// </summary>
+	TREE_Theme const* theme;
 
 	/// <summary>
 	/// Called when the text changes.
@@ -2146,23 +2111,6 @@ TREE_EXTERN TREE_Result TREE_Control_TextInput_SetPlaceholder(TREE_Control* cont
 TREE_EXTERN TREE_String TREE_Control_TextInput_GetPlaceholder(TREE_Control* control);
 
 /// <summary>
-/// Sets the pixel used for the given TextInput Control.
-/// </summary>
-/// <param name="control">The TextInput Control.</param>
-/// <param name="id">The ThemePixelID to set.</param>
-/// <param name="pixel">The pixel to set.</param>
-/// <returns>A TREE_Result code.</returns>
-TREE_EXTERN TREE_Result TREE_Control_TextInput_SetPixel(TREE_Control* control, TREE_ThemePixelID id, TREE_Pixel pixel);
-
-/// <summary>
-/// Gets the pixel used for the given TextInput Control.
-/// </summary>
-/// <param name="control">The TextInput Control.</param>
-/// <param name="id">The ThemePixelID to get.</param>
-/// <returns>The pixel used for the specified ThemePixelID.</returns>
-TREE_EXTERN TREE_Pixel TREE_Control_TextInput_GetPixel(TREE_Control* control, TREE_ThemePixelID id);
-
-/// <summary>
 /// Sets the event handler for the given TextInput Control when the text changes.
 /// </summary>
 /// <param name="control">The TextInput Control.</param>
@@ -2231,22 +2179,16 @@ typedef struct _TREE_Control_ScrollbarData
 	/// The type of Scrollbar.
 	/// </summary>
 	TREE_Control_ScrollbarType type;
+
 	/// <summary>
-	/// The top character of the Scrollbar.
+	/// The orientation of the Scrollbar.
 	/// </summary>
-	TREE_Char top;
+	TREE_Axis axis;
+
 	/// <summary>
-	/// The bottom character of the Scrollbar.
+	/// A reference to the Theme to use for the appearance.
 	/// </summary>
-	TREE_Char bottom;
-	/// <summary>
-	/// The background character of the Scrollbar.
-	/// </summary>
-	TREE_Char line;
-	/// <summary>
-	/// The bar character of the Scrollbar.
-	/// </summary>
-	TREE_Char bar;
+	TREE_Theme const* theme;
 } TREE_Control_ScrollbarData;
 
 /// <summary>
@@ -2254,24 +2196,10 @@ typedef struct _TREE_Control_ScrollbarData
 /// </summary>
 /// <param name="data">The Scrollbar data to initialize.</param>
 /// <param name="type">The type of the Scrollbar (e.g., static, dynamic).</param>
-/// <param name="vertical">True if the Scrollbar is vertical, false if horizontal.</param>
+/// <param name="axis">The axis of the Scrollbar. Expects VERTICAL or HORIZONTAL only.</param>
 /// <param name="theme">The Theme to use for the Scrollbar's appearance.</param>
 /// <returns>A TREE_Result code.</returns>
-TREE_EXTERN TREE_Result TREE_Control_ScrollbarData_Init(TREE_Control_ScrollbarData* data, TREE_Control_ScrollbarType type, TREE_Bool vertical, TREE_Theme const* theme);
-
-/// <summary>
-/// Draws the given Scrollbar onto the specified Image.
-/// </summary>
-/// <param name="target">The target Image to draw the Scrollbar on.</param>
-/// <param name="offset">The offset within the target Image.</param>
-/// <param name="extent">The size of the Scrollbar.</param>
-/// <param name="data">The Scrollbar data to use for drawing.</param>
-/// <param name="scroll">The current scroll position.</param>
-/// <param name="maxScroll">The maximum scroll position.</param>
-/// <param name="colorPair">The ColorPair for the Scrollbar background.</param>
-/// <param name="barColorPair">The ColorPair for the Scrollbar bar.</param>
-/// <returns>A TREE_Result code.</returns>
-TREE_EXTERN TREE_Result TREE_Control_Scrollbar_Draw(TREE_Image* target, TREE_Offset offset, TREE_Extent extent, TREE_Control_ScrollbarData* data, TREE_Size scroll, TREE_Size maxScroll, TREE_ColorPair colorPair, TREE_ColorPair barColorPair);
+TREE_EXTERN TREE_Result TREE_Control_ScrollbarData_Init(TREE_Control_ScrollbarData* data, TREE_Control_ScrollbarType type, TREE_Axis axis, TREE_Theme const* theme);
 
 /// <summary>
 /// Disposes of the given Scrollbar data.
@@ -2345,74 +2273,9 @@ typedef struct _TREE_Control_ListData
 	TREE_Control_ScrollbarData scrollbar;
 
 	/// <summary>
-	/// The Pixel to use for the List Control when not focused and selected.
+	/// A reference to the Theme to use for the appearance.
 	/// </summary>
-	TREE_Pixel normalSelected;
-
-	/// <summary>
-	/// The Pixel to use for the List Control when not focused and unselected.
-	/// </summary>
-	TREE_Pixel normalUnselected;
-
-	/// <summary>
-	/// The Pixel to use for the List Control scrollbar when not focused.
-	/// </summary>
-	TREE_ColorPair normalScrollbarColorPair;
-
-	/// <summary>
-	/// The Pixel to use for the List Control scrollbar bar when not focused.
-	/// </summary>
-	TREE_ColorPair normalScrollbarBarColorPair;
-
-	/// <summary>
-	/// The Pixel to use for the List Control when focused and selected.
-	/// </summary>
-	TREE_Pixel focusedSelected;
-
-	/// <summary>
-	/// The Pixel to use for the List Control when focused and unselected.
-	/// </summary>
-	TREE_Pixel focusedUnselected;
-
-	/// <summary>
-	/// The Pixel to use for the List Control scrollbar when focused.
-	/// </summary>
-	TREE_ColorPair focusedScrollbarColorPair;
-
-	/// <summary>
-	/// The Pixel to use for the List Control scrollbar bar when focused.
-	/// </summary>
-	TREE_ColorPair focusedScrollbarBarColorPair;
-
-	/// <summary>
-	/// The Pixel to use for the List Control when active and selected.
-	/// </summary>
-	TREE_Pixel activeSelected;
-
-	/// <summary>
-	/// The Pixel to use for the List Control when active and unselected.
-	/// </summary>
-	TREE_Pixel activeUnselected;
-
-	/// <summary>
-	/// The Pixel to use for the List Control scrollbar when active.
-	/// </summary>
-	TREE_ColorPair activeScrollbarColorPair;
-
-	/// <summary>
-	/// The Pixel to use for the List Control scrollbar bar when active.
-	/// </summary>
-	TREE_ColorPair activeScrollbarBarColorPair;
-
-	/// <summary>
-	/// The Pixel to use for the List Control when hovered and selected.
-	/// </summary>
-	TREE_Pixel hoveredSelected;
-
-	/// <summary>
-	/// The Pixel to use for the List Control when hovered and unselected.
-	/// </summary>
-	TREE_Pixel hoveredUnselected;
+	TREE_Theme const* theme;
 
 	/// <summary>
 	/// Called when the selection changes.
@@ -2633,39 +2496,9 @@ typedef struct _TREE_Control_DropdownData
 	TREE_Int drop;
 
 	/// <summary>
-	/// The Pixel to use for the Dropdown Control when not focused.
+	/// A reference to the Theme to use for the appearance.
 	/// </summary>
-	TREE_Pixel normal;
-
-	/// <summary>
-	/// The Pixel to use for the Dropdown Control when focused.
-	/// </summary>
-	TREE_Pixel focused;
-
-	/// <summary>
-	/// The Pixel to use for the Dropdown Control when active.
-	/// </summary>
-	TREE_Pixel active;
-
-	/// <summary>
-	/// The Pixel to use for the Dropdown Control list when selected.
-	/// </summary>
-	TREE_Pixel selected;
-
-	/// <summary>
-	/// The Pixel to use for the Dropdown Control list when unselected.
-	/// </summary>
-	TREE_Pixel unselected;
-
-	/// <summary>
-	/// The Pixel to use for the Dropdown Control list when hovered and selected.
-	/// </summary>
-	TREE_Pixel hoveredSelected;
-
-	/// <summary>
-	/// The Pixel to use for the Dropdown Control list when hovered and unselected.
-	/// </summary>
-	TREE_Pixel hoveredUnselected;
+	TREE_Theme const* theme;
 
 	/// <summary>
 	/// Called when the Dropdown Control is submitted.
@@ -2782,6 +2615,32 @@ TREE_EXTERN TREE_Result TREE_Control_Dropdown_EventHandler(TREE_Event const* eve
 ///////////////////////////////////////
 
 /// <summary>
+/// The flags for a Checkbox Control.
+/// </summary>
+typedef enum _TREE_Control_CheckboxFlags
+{
+	/// <summary>
+	/// No flags.
+	/// </summary>
+	TREE_CONTROL_CHECKBOX_FLAGS_NONE = 0x0,
+
+	/// <summary>
+	/// The checkbox is checked.
+	/// </summary>
+	TREE_CONTROL_CHECKBOX_FLAGS_CHECKED = 0x1,
+
+	/// <summary>
+	/// The checkbox is reversed, meaning the checkbox is on the right side of the text.
+	/// </summary>
+	TREE_CONTROL_CHECKBOX_FLAGS_REVERSE = 0x2,
+
+	/// <summary>
+	/// The checkbox is a radio button, indicating only one checkbox can be checked at a time. Changes the appearance of the checkbox.
+	/// </summary>
+	TREE_CONTROL_CHECKBOX_FLAGS_RADIO = 0x4,
+} TREE_Control_CheckboxFlags;
+
+/// <summary>
 /// The data for a Checkbox Control.
 /// </summary>
 typedef struct _TREE_Control_CheckboxData
@@ -2790,56 +2649,16 @@ typedef struct _TREE_Control_CheckboxData
 	/// The text to display next to the checkbox.
 	/// </summary>
 	TREE_Char* text;
-	
-	/// <summary>
-	/// The checked state of the checkbox.
-	/// </summary>
-	TREE_Byte checked;
 
 	/// <summary>
-	/// If true, put the checkbox on the right side of the text.
+	/// The flags for the Checkbox Control.
 	/// </summary>
-	TREE_Byte reverse;
+	TREE_Control_CheckboxFlags flags;
 
 	/// <summary>
-	/// The color pair for the checkbox when not focused.
+	/// A reference to the Theme to use for the appearance.
 	/// </summary>
-	TREE_ColorPair normal;
-
-	/// <summary>
-	/// The color pair for the checkbox when focused.
-	/// </summary>
-	TREE_ColorPair focused;
-
-	/// <summary>
-	/// The color pair for the text when not focused.
-	/// </summary>
-	TREE_ColorPair normalText;
-
-	/// <summary>
-	/// The color pair for the text when focused.
-	/// </summary>
-	TREE_ColorPair focusedText;
-
-	/// <summary>
-	/// The unchecked character for the checkbox.
-	/// </summary>
-	TREE_Char uncheckedChar;
-
-	/// <summary>
-	/// The checked character for the checkbox.
-	/// </summary>
-	TREE_Char checkedChar;
-
-	/// <summary>
-	/// The left character for the checkbox.
-	/// </summary>
-	TREE_Char left;
-
-	/// <summary>
-	/// The right character for the checkbox.
-	/// </summary>
-	TREE_Char right;
+	TREE_Theme const* theme;
 
 	/// <summary>
 	/// Called when the checkbox is checked or unchecked.
@@ -2853,11 +2672,10 @@ typedef struct _TREE_Control_CheckboxData
 /// <param name="data">The Checkbox data to initialize.</param>
 /// <param name="text">The text to display next to the checkbox.</param>
 /// <param name="checked">The initial checked state of the checkbox.</param>
-/// <param name="radio">If true, the checkbox behaves as a radio button.</param>
 /// <param name="onCheck">The event handler to call when the checkbox is checked or unchecked.</param>
 /// <param name="theme">The Theme to use for the checkbox's appearance.</param>
 /// <returns>A TREE_Result code.</returns>
-TREE_EXTERN TREE_Result TREE_Control_CheckboxData_Init(TREE_Control_CheckboxData* data, TREE_String text, TREE_Byte checked, TREE_Bool radio, TREE_ControlEventHandler onCheck, TREE_Theme const* theme);
+TREE_EXTERN TREE_Result TREE_Control_CheckboxData_Init(TREE_Control_CheckboxData* data, TREE_String text, TREE_Control_CheckboxFlags flags, TREE_ControlEventHandler onCheck, TREE_Theme const* theme);
 
 /// <summary>
 /// Disposes of the given Checkbox data.
@@ -2931,29 +2749,9 @@ typedef struct _TREE_Control_NumberInputData
 	TREE_Int decimalPlaces;
 
 	/// <summary>
-	/// The Pixel to use for the NumberInput Control when not focused.
+	/// A reference to the Theme to use for the appearance.
 	/// </summary>
-	TREE_Pixel normal;
-
-	/// <summary>
-	/// The Pixel to use for the NumberInput Control when focused.
-	/// </summary>
-	TREE_Pixel focused;
-
-	/// <summary>
-	/// The Pixel to use for the NumberInput Control when active.
-	/// </summary>
-	TREE_Pixel active;
-
-	/// <summary>
-	/// The character to use for the up button.
-	/// </summary>
-	TREE_Char up;
-
-	/// <summary>
-	/// The character to use for the down button.
-	/// </summary>
-	TREE_Char down;
+	TREE_Theme const* theme;
 
 	/// <summary>
 	/// Called when the value changes.
@@ -3072,23 +2870,6 @@ TREE_EXTERN TREE_Result TREE_Control_NumberInput_SetDecimalPlaces(TREE_Control* 
 TREE_EXTERN TREE_Int TREE_Control_NumberInput_GetDecimalPlaces(TREE_Control* control);
 
 /// <summary>
-/// Sets the pixel used for the given NumberInput Control.
-/// </summary>
-/// <param name="control">The NumberInput Control.</param>
-/// <param name="id">The ThemePixelID to set.</param>
-/// <param name="pixel">The pixel to set.</param>
-/// <returns>A TREE_Result code.</returns>
-TREE_EXTERN TREE_Result TREE_Control_NumberInput_SetPixel(TREE_Control* control, TREE_ThemePixelID id, TREE_Pixel pixel);
-
-/// <summary>
-/// Gets the pixel used for the given NumberInput Control.
-/// </summary>
-/// <param name="control">The NumberInput Control.</param>
-/// <param name="id">The ThemePixelID to get.</param>
-/// <returns>The pixel used for the specified ThemePixelID.</returns>
-TREE_EXTERN TREE_Pixel TREE_Control_NumberInput_GetPixel(TREE_Control* control, TREE_ThemePixelID id);
-
-/// <summary>
 /// Sets the event handler for the given NumberInput Control when the value changes.
 /// </summary>
 /// <param name="control">The NumberInput Control.</param>
@@ -3145,14 +2926,9 @@ typedef struct _TREE_Control_ProgressBarData
 	TREE_Direction direction;
 
 	/// <summary>
-	/// The Pixel to use for the ProgressBar Control bar.
+	/// A reference to the Theme to use for the appearance.
 	/// </summary>
-	TREE_Pixel bar;
-
-	/// <summary>
-	/// The Pixel to use for the ProgressBar Control background.
-	/// </summary>
-	TREE_Pixel background;
+	TREE_Theme const* theme;
 } TREE_Control_ProgressBarData;
 
 /// <summary>
@@ -3207,23 +2983,6 @@ TREE_EXTERN TREE_Result TREE_Control_ProgressBar_SetDirection(TREE_Control* cont
 /// <param name="control">The ProgressBar Control.</param>
 /// <returns>The direction of the ProgressBar Control.</returns>
 TREE_EXTERN TREE_Direction TREE_Control_ProgressBar_GetDirection(TREE_Control* control);
-
-/// <summary>
-/// Sets the pixel used for the given ProgressBar Control.
-/// </summary>
-/// <param name="control">The ProgressBar Control.</param>
-/// <param name="id">The ThemePixelID to set (e.g., bar or background).</param>
-/// <param name="pixel">The pixel to set.</param>
-/// <returns>A TREE_Result code.</returns>
-TREE_EXTERN TREE_Result TREE_Control_ProgressBar_SetPixel(TREE_Control* control, TREE_ThemePixelID id, TREE_Pixel pixel);
-
-/// <summary>
-/// Gets the pixel used for the given ProgressBar Control.
-/// </summary>
-/// <param name="control">The ProgressBar Control.</param>
-/// <param name="id">The ThemePixelID to get (e.g., bar or background).</param>
-/// <returns>The pixel used for the specified ThemePixelID.</returns>
-TREE_EXTERN TREE_Pixel TREE_Control_ProgressBar_GetPixel(TREE_Control* control, TREE_ThemePixelID id);
 
 /// <summary>
 /// Handles events for the given ProgressBar Control.

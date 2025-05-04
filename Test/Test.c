@@ -161,7 +161,7 @@ int main()
 	TREE_Control_DropdownData dropDatas[3];
 	for (TREE_Size i = 0; i < 3; i++)
 	{
-		result = TREE_Control_DropdownData_Init(&dropDatas[i], options, OPTIONS_COUNT, 0, 0, NULL, &theme);
+		result = TREE_Control_DropdownData_Init(&dropDatas[i], options, OPTIONS_COUNT, 0, NULL, &theme);
 		if (result)
 		{
 			printf("Failed to initialize dropdown data: %s\n", TREE_Result_ToString(result));
@@ -188,13 +188,12 @@ int main()
 	TREE_Control_CheckboxData checkboxDatas[CHECKBOX_COUNT];
 	for (TREE_Size i = 0; i < CHECKBOX_COUNT; i++)
 	{
-		result = TREE_Control_CheckboxData_Init(&checkboxDatas[i], (i & 2) == 0 ? " Normal" : "Reversed ", i & 1, i & 4, NULL, &theme);
+		result = TREE_Control_CheckboxData_Init(&checkboxDatas[i], (i & 2) == 0 ? " Normal" : "Reversed ", i & 6, NULL, &theme);
 		if (result)
 		{
 			printf("Failed to initialize checkbox data: %s\n", TREE_Result_ToString(result));
 			return 1;
 		}
-		checkboxDatas[i].reverse = i & 2;
 	}
 
 	// create checkboxes
@@ -272,7 +271,7 @@ int main()
 
 	// create progress bars
 	TREE_Control progressBars[PROGRESS_BAR_COUNT];
-	for (TREE_Size i = 0; i < PROGRESS_BAR_COUNT; i++)
+	for (TREE_Int i = 0; i < PROGRESS_BAR_COUNT; i++)
 	{
 		result = TREE_Control_ProgressBar_Init(&progressBars[i], NULL, &progressBarDatas[i]);
 		if (result)
