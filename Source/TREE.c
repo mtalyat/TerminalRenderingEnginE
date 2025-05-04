@@ -5722,7 +5722,7 @@ TREE_Result TREE_Control_ListData_Init(TREE_Control_ListData *data, TREE_Control
 	}
 
 	// set data
-	result = TREE_Control_ScrollbarData_Init(&data->scrollbar, TREE_CONTROL_SCROLLBAR_TYPE_DYNAMIC, TREE_TRUE, theme);
+	result = TREE_Control_ScrollbarData_Init(&data->scrollbar, TREE_CONTROL_SCROLLBAR_TYPE_DYNAMIC, TREE_AXIS_VERTICAL, theme);
 	if (result)
 	{
 		return result;
@@ -7057,7 +7057,7 @@ TREE_Result TREE_Control_Dropdown_EventHandler(TREE_Event const *event)
 			result = TREE_Control_ScrollbarData_Init(
 				&listData.scrollbar,
 				TREE_CONTROL_SCROLLBAR_TYPE_DYNAMIC,
-				TREE_TRUE,
+				TREE_AXIS_VERTICAL,
 				data->theme);
 			listData.theme = data->theme;
 			listData.onChange = NULL;
