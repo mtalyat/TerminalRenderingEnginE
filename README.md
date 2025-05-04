@@ -4,7 +4,7 @@
  ![TREE Demo Image](Images/TREE_Demo.gif)
 
 ## Features
-- Support for Windows.
+- Support for Windows and Linux.
 - Basic drawing and other graphics operations.
 - Basic application and navigation support.
 - Several default controls, such as:
@@ -13,7 +13,9 @@
   - List
   - Dropdown
   - Text Input
+  - Number Input
   - Checkbox
+  - Progress Bar
 
 ## Building and Linking
 
