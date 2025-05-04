@@ -1,9 +1,9 @@
 #!/bin/bash
 
-if [ "$1" == "build" ]; then
-    if [ "$2" == "debug" ]; then
+if [ "$1" = "build" ]; then
+    if [ "$2" = "debug" ]; then
         BUILD_TYPE="Debug"
-    elif [ "$2" == "release" ]; then
+    elif [ "$2" = "release" ]; then
         BUILD_TYPE="Release"
     else
         echo "Invalid argument. Use debug or release."
@@ -15,7 +15,7 @@ if [ "$1" == "build" ]; then
     cmake .. -DCMAKE_BUILD_TYPE=$BUILD_TYPE
     cmake --build . --config $BUILD_TYPE
     cd ..
-elif [ "$1" == "clean" ]; then
+elif [ "$1" = "clean" ]; then
     echo "Cleaning..."
     if [ -d "Build" ]; then
         rm -rf Build
