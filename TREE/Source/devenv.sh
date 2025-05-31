@@ -21,7 +21,7 @@ elif [ "$1" = "clean" ]; then
         rm -rf Build
     fi
 else
-    echo "Invalid argument. Use debug, release, or clean."
+    echo "Invalid argument. Use build or clean."
     exit 1
 fi
 

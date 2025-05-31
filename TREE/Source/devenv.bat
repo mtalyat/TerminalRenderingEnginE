@@ -22,7 +22,7 @@ if "%1"=="build" (
         rmdir /s /q Build
     )
 ) else (
-    echo Invalid argument. Use debug, release, or clean.
+    echo Invalid argument. Use build or clean.
     exit /b 1
 )
 echo Done.

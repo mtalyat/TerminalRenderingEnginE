@@ -39,7 +39,7 @@ if "%1"=="build" (
         exit /b 1
     )
 ) else (
-    echo Invalid argument. Use debug, release, or clean.
+    echo Invalid argument. Use build, run, or clean.
     exit /b 1
 )
 echo Done.
