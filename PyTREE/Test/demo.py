@@ -11,7 +11,7 @@ BUILD_DIR = os.path.join(
 )
 sys.path.append(BUILD_DIR)
 
-import pytree_ui as tree
+import pytre as tree
 
 APP = None
 PROGRESS = None

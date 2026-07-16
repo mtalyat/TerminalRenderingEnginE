@@ -184,6 +184,18 @@ static PyTREE_ThemeWrapper* get_theme_wrapper(PyObject* obj)
     return wrapper;
 }
 
+typedef struct _PyTREE_ImageWrapper
+{
+    TREE_Image image;
+    TREE_Bool alive;
+} PyTREE_ImageWrapper;
+
+typedef struct _PyTREE_SurfaceWrapper
+{
+    TREE_Surface surface;
+    TREE_Bool alive;
+} PyTREE_SurfaceWrapper;
+
 static PyTREE_ApplicationWrapper* get_application_wrapper(PyObject* obj)
 {
     PyTREE_ApplicationWrapper* wrapper = (PyTREE_ApplicationWrapper*)PyCapsule_GetPointer(obj, "PyTREE.Application");
@@ -194,6 +206,36 @@ static PyTREE_ApplicationWrapper* get_application_wrapper(PyObject* obj)
     if (!wrapper->alive)
     {
         PyErr_SetString(PyExc_RuntimeError, "application is already freed");
+        return NULL;
+    }
+    return wrapper;
+}
+
+static PyTREE_ImageWrapper* get_image_wrapper(PyObject* obj)
+{
+    PyTREE_ImageWrapper* wrapper = (PyTREE_ImageWrapper*)PyCapsule_GetPointer(obj, "PyTREE.Image");
+    if (!wrapper)
+    {
+        return NULL;
+    }
+    if (!wrapper->alive)
+    {
+        PyErr_SetString(PyExc_RuntimeError, "image is already freed");
+        return NULL;
+    }
+    return wrapper;
+}
+
+static PyTREE_SurfaceWrapper* get_surface_wrapper(PyObject* obj)
+{
+    PyTREE_SurfaceWrapper* wrapper = (PyTREE_SurfaceWrapper*)PyCapsule_GetPointer(obj, "PyTREE.Surface");
+    if (!wrapper)
+    {
+        return NULL;
+    }
+    if (!wrapper->alive)
+    {
+        PyErr_SetString(PyExc_RuntimeError, "surface is already freed");
         return NULL;
     }
     return wrapper;
@@ -212,6 +254,16 @@ static PyTREE_ControlWrapper* get_control_wrapper(PyObject* obj)
         return NULL;
     }
     return wrapper;
+}
+
+static int ensure_control_kind(PyTREE_ControlWrapper* control, PyTREE_ControlKind kind, const char* apiName)
+{
+    if (control->kind != kind)
+    {
+        PyErr_Format(PyExc_TypeError, "%s called with incompatible control type", apiName);
+        return 0;
+    }
+    return 1;
 }
 
 static void register_control(PyTREE_ControlWrapper* wrapper)
@@ -499,6 +551,36 @@ static void app_capsule_destructor(PyObject* capsule)
     free(wrapper);
 }
 
+static void image_capsule_destructor(PyObject* capsule)
+{
+    PyTREE_ImageWrapper* wrapper = (PyTREE_ImageWrapper*)PyCapsule_GetPointer(capsule, "PyTREE.Image");
+    if (!wrapper)
+    {
+        return;
+    }
+    if (wrapper->alive)
+    {
+        TREE_Image_Free(&wrapper->image);
+        wrapper->alive = TREE_FALSE;
+    }
+    free(wrapper);
+}
+
+static void surface_capsule_destructor(PyObject* capsule)
+{
+    PyTREE_SurfaceWrapper* wrapper = (PyTREE_SurfaceWrapper*)PyCapsule_GetPointer(capsule, "PyTREE.Surface");
+    if (!wrapper)
+    {
+        return;
+    }
+    if (wrapper->alive)
+    {
+        TREE_Surface_Free(&wrapper->surface);
+        wrapper->alive = TREE_FALSE;
+    }
+    free(wrapper);
+}
+
 static void control_capsule_destructor(PyObject* capsule)
 {
     PyTREE_ControlWrapper* wrapper = (PyTREE_ControlWrapper*)PyCapsule_GetPointer(capsule, "PyTREE.Control");
@@ -576,6 +658,689 @@ static PyObject* PyTREE_Window_SetTitle_Wrap(PyObject* self, PyObject* args)
     Py_RETURN_NONE;
 }
 
+static PyObject* PyTREE_Window_GetExtent_Wrap(PyObject* self, PyObject* args)
+{
+    TREE_Extent extent;
+    (void)self;
+    (void)args;
+
+    extent = TREE_Window_GetExtent();
+    return Py_BuildValue("ii", extent.width, extent.height);
+}
+
+static PyObject* PyTREE_Clipboard_SetText_Wrap(PyObject* self, PyObject* args)
+{
+    const char* text;
+    TREE_Result result;
+    (void)self;
+
+    if (!PyArg_ParseTuple(args, "s", &text))
+    {
+        return NULL;
+    }
+
+    result = TREE_Clipboard_SetText(text);
+    if (result != TREE_OK)
+    {
+        return raise_tree_result(result);
+    }
+
+    Py_RETURN_NONE;
+}
+
+static PyObject* PyTREE_Clipboard_GetText_Wrap(PyObject* self, PyObject* args)
+{
+    TREE_Char* text = NULL;
+    TREE_Result result;
+    PyObject* out;
+    (void)self;
+    (void)args;
+
+    result = TREE_Clipboard_GetText(&text);
+    if (result != TREE_OK)
+    {
+        return raise_tree_result(result);
+    }
+
+    if (!text)
+    {
+        Py_RETURN_NONE;
+    }
+
+    out = PyUnicode_FromString(text);
+    free(text);
+    return out;
+}
+
+static PyObject* PyTREE_Image_Create(PyObject* self, PyObject* args)
+{
+    int width;
+    int height;
+    TREE_Extent extent;
+    TREE_Result result;
+    PyTREE_ImageWrapper* wrapper;
+    PyObject* capsule;
+    (void)self;
+
+    if (!PyArg_ParseTuple(args, "ii", &width, &height))
+    {
+        return NULL;
+    }
+    if (width <= 0 || height <= 0)
+    {
+        PyErr_SetString(PyExc_ValueError, "width and height must be > 0");
+        return NULL;
+    }
+
+    wrapper = (PyTREE_ImageWrapper*)calloc(1, sizeof(PyTREE_ImageWrapper));
+    if (!wrapper)
+    {
+        return PyErr_NoMemory();
+    }
+
+    extent.width = width;
+    extent.height = height;
+    result = TREE_Image_Init(&wrapper->image, extent);
+    if (result != TREE_OK)
+    {
+        free(wrapper);
+        return raise_tree_result(result);
+    }
+    wrapper->alive = TREE_TRUE;
+
+    capsule = PyCapsule_New(wrapper, "PyTREE.Image", image_capsule_destructor);
+    if (!capsule)
+    {
+        TREE_Image_Free(&wrapper->image);
+        free(wrapper);
+        return NULL;
+    }
+
+    return capsule;
+}
+
+static PyObject* PyTREE_Image_GetExtent_Wrap(PyObject* self, PyObject* args)
+{
+    PyObject* imageObj;
+    PyTREE_ImageWrapper* image;
+    (void)self;
+
+    if (!PyArg_ParseTuple(args, "O", &imageObj))
+    {
+        return NULL;
+    }
+
+    image = get_image_wrapper(imageObj);
+    if (!image)
+    {
+        return NULL;
+    }
+
+    return Py_BuildValue("ii", image->image.extent.width, image->image.extent.height);
+}
+
+static PyObject* PyTREE_Image_Resize_Wrap(PyObject* self, PyObject* args)
+{
+    PyObject* imageObj;
+    int width;
+    int height;
+    TREE_Extent extent;
+    PyTREE_ImageWrapper* image;
+    TREE_Result result;
+    (void)self;
+
+    if (!PyArg_ParseTuple(args, "Oii", &imageObj, &width, &height))
+    {
+        return NULL;
+    }
+    if (width <= 0 || height <= 0)
+    {
+        PyErr_SetString(PyExc_ValueError, "width and height must be > 0");
+        return NULL;
+    }
+
+    image = get_image_wrapper(imageObj);
+    if (!image)
+    {
+        return NULL;
+    }
+
+    extent.width = width;
+    extent.height = height;
+    result = TREE_Image_Resize(&image->image, extent);
+    if (result != TREE_OK)
+    {
+        return raise_tree_result(result);
+    }
+
+    Py_RETURN_NONE;
+}
+
+static PyObject* PyTREE_Image_SetPixel_Wrap(PyObject* self, PyObject* args)
+{
+    PyObject* imageObj;
+    int x;
+    int y;
+    PyObject* charObj;
+    int foreground;
+    int background;
+    const char* text;
+    Py_ssize_t textLen;
+    TREE_Offset offset;
+    TREE_Pixel pixel;
+    PyTREE_ImageWrapper* image;
+    TREE_Result result;
+    (void)self;
+
+    if (!PyArg_ParseTuple(args, "OiiOii", &imageObj, &x, &y, &charObj, &foreground, &background))
+    {
+        return NULL;
+    }
+    if (!PyUnicode_Check(charObj))
+    {
+        PyErr_SetString(PyExc_TypeError, "char must be a string");
+        return NULL;
+    }
+
+    text = PyUnicode_AsUTF8AndSize(charObj, &textLen);
+    if (!text)
+    {
+        return NULL;
+    }
+    if (textLen < 1)
+    {
+        PyErr_SetString(PyExc_ValueError, "char string must not be empty");
+        return NULL;
+    }
+
+    image = get_image_wrapper(imageObj);
+    if (!image)
+    {
+        return NULL;
+    }
+
+    offset.x = x;
+    offset.y = y;
+    pixel = TREE_Pixel_Create(text[0], (TREE_Color)foreground, (TREE_Color)background);
+    result = TREE_Image_Set(&image->image, offset, pixel);
+    if (result != TREE_OK)
+    {
+        return raise_tree_result(result);
+    }
+
+    Py_RETURN_NONE;
+}
+
+static PyObject* PyTREE_Image_GetPixel_Wrap(PyObject* self, PyObject* args)
+{
+    PyObject* imageObj;
+    int x;
+    int y;
+    TREE_Offset offset;
+    TREE_Pixel pixel;
+    TREE_Color fg;
+    TREE_Color bg;
+    TREE_Char ch;
+    PyTREE_ImageWrapper* image;
+    (void)self;
+
+    if (!PyArg_ParseTuple(args, "Oii", &imageObj, &x, &y))
+    {
+        return NULL;
+    }
+
+    image = get_image_wrapper(imageObj);
+    if (!image)
+    {
+        return NULL;
+    }
+
+    offset.x = x;
+    offset.y = y;
+    pixel = TREE_Image_Get(&image->image, offset);
+    fg = TREE_ColorPair_GetForeground(pixel.colorPair);
+    bg = TREE_ColorPair_GetBackground(pixel.colorPair);
+    ch = pixel.character;
+    return Py_BuildValue("Nii", PyUnicode_FromStringAndSize(&ch, 1), (int)fg, (int)bg);
+}
+
+static PyObject* PyTREE_Image_DrawString_Wrap(PyObject* self, PyObject* args)
+{
+    PyObject* imageObj;
+    int x;
+    int y;
+    const char* text;
+    unsigned int colorPair;
+    TREE_Offset offset;
+    TREE_Result result;
+    PyTREE_ImageWrapper* image;
+    (void)self;
+
+    if (!PyArg_ParseTuple(args, "OiisI", &imageObj, &x, &y, &text, &colorPair))
+    {
+        return NULL;
+    }
+
+    image = get_image_wrapper(imageObj);
+    if (!image)
+    {
+        return NULL;
+    }
+
+    offset.x = x;
+    offset.y = y;
+    result = TREE_Image_DrawString(&image->image, offset, text, (TREE_ColorPair)colorPair);
+    if (result != TREE_OK)
+    {
+        return raise_tree_result(result);
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject* PyTREE_Image_Clear_Wrap(PyObject* self, PyObject* args)
+{
+    PyObject* imageObj;
+    PyObject* charObj;
+    int foreground;
+    int background;
+    const char* text;
+    Py_ssize_t textLen;
+    TREE_Pixel pixel;
+    TREE_Result result;
+    PyTREE_ImageWrapper* image;
+    (void)self;
+
+    if (!PyArg_ParseTuple(args, "OOii", &imageObj, &charObj, &foreground, &background))
+    {
+        return NULL;
+    }
+    if (!PyUnicode_Check(charObj))
+    {
+        PyErr_SetString(PyExc_TypeError, "char must be a string");
+        return NULL;
+    }
+
+    text = PyUnicode_AsUTF8AndSize(charObj, &textLen);
+    if (!text)
+    {
+        return NULL;
+    }
+    if (textLen < 1)
+    {
+        PyErr_SetString(PyExc_ValueError, "char string must not be empty");
+        return NULL;
+    }
+
+    image = get_image_wrapper(imageObj);
+    if (!image)
+    {
+        return NULL;
+    }
+
+    pixel = TREE_Pixel_Create(text[0], (TREE_Color)foreground, (TREE_Color)background);
+    result = TREE_Image_Clear(&image->image, pixel);
+    if (result != TREE_OK)
+    {
+        return raise_tree_result(result);
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject* PyTREE_Surface_Create(PyObject* self, PyObject* args)
+{
+    int width;
+    int height;
+    TREE_Extent extent;
+    TREE_Result result;
+    PyTREE_SurfaceWrapper* wrapper;
+    PyObject* capsule;
+    (void)self;
+
+    if (!PyArg_ParseTuple(args, "ii", &width, &height))
+    {
+        return NULL;
+    }
+    if (width <= 0 || height <= 0)
+    {
+        PyErr_SetString(PyExc_ValueError, "width and height must be > 0");
+        return NULL;
+    }
+
+    wrapper = (PyTREE_SurfaceWrapper*)calloc(1, sizeof(PyTREE_SurfaceWrapper));
+    if (!wrapper)
+    {
+        return PyErr_NoMemory();
+    }
+
+    extent.width = width;
+    extent.height = height;
+    result = TREE_Surface_Init(&wrapper->surface, extent);
+    if (result != TREE_OK)
+    {
+        free(wrapper);
+        return raise_tree_result(result);
+    }
+    wrapper->alive = TREE_TRUE;
+
+    capsule = PyCapsule_New(wrapper, "PyTREE.Surface", surface_capsule_destructor);
+    if (!capsule)
+    {
+        TREE_Surface_Free(&wrapper->surface);
+        free(wrapper);
+        return NULL;
+    }
+
+    return capsule;
+}
+
+static PyObject* PyTREE_Surface_GetExtent_Wrap(PyObject* self, PyObject* args)
+{
+    PyObject* surfaceObj;
+    PyTREE_SurfaceWrapper* surface;
+    (void)self;
+
+    if (!PyArg_ParseTuple(args, "O", &surfaceObj))
+    {
+        return NULL;
+    }
+
+    surface = get_surface_wrapper(surfaceObj);
+    if (!surface)
+    {
+        return NULL;
+    }
+
+    return Py_BuildValue("ii", surface->surface.image.extent.width, surface->surface.image.extent.height);
+}
+
+static PyObject* PyTREE_Surface_Resize_Wrap(PyObject* self, PyObject* args)
+{
+    PyObject* surfaceObj;
+    int width;
+    int height;
+    TREE_Extent extent;
+    TREE_Result result;
+    PyTREE_SurfaceWrapper* surface;
+    (void)self;
+
+    if (!PyArg_ParseTuple(args, "Oii", &surfaceObj, &width, &height))
+    {
+        return NULL;
+    }
+    if (width <= 0 || height <= 0)
+    {
+        PyErr_SetString(PyExc_ValueError, "width and height must be > 0");
+        return NULL;
+    }
+
+    surface = get_surface_wrapper(surfaceObj);
+    if (!surface)
+    {
+        return NULL;
+    }
+
+    TREE_Surface_Free(&surface->surface);
+    extent.width = width;
+    extent.height = height;
+    result = TREE_Surface_Init(&surface->surface, extent);
+    if (result != TREE_OK)
+    {
+        surface->alive = TREE_FALSE;
+        return raise_tree_result(result);
+    }
+
+    Py_RETURN_NONE;
+}
+
+static PyObject* PyTREE_Surface_SetPixel_Wrap(PyObject* self, PyObject* args)
+{
+    PyObject* surfaceObj;
+    int x;
+    int y;
+    PyObject* charObj;
+    int foreground;
+    int background;
+    const char* text;
+    Py_ssize_t textLen;
+    TREE_Offset offset;
+    TREE_Pixel pixel;
+    TREE_Result result;
+    PyTREE_SurfaceWrapper* surface;
+    (void)self;
+
+    if (!PyArg_ParseTuple(args, "OiiOii", &surfaceObj, &x, &y, &charObj, &foreground, &background))
+    {
+        return NULL;
+    }
+    if (!PyUnicode_Check(charObj))
+    {
+        PyErr_SetString(PyExc_TypeError, "char must be a string");
+        return NULL;
+    }
+
+    text = PyUnicode_AsUTF8AndSize(charObj, &textLen);
+    if (!text)
+    {
+        return NULL;
+    }
+    if (textLen < 1)
+    {
+        PyErr_SetString(PyExc_ValueError, "char string must not be empty");
+        return NULL;
+    }
+
+    surface = get_surface_wrapper(surfaceObj);
+    if (!surface)
+    {
+        return NULL;
+    }
+
+    offset.x = x;
+    offset.y = y;
+    pixel = TREE_Pixel_Create(text[0], (TREE_Color)foreground, (TREE_Color)background);
+    result = TREE_Image_Set(&surface->surface.image, offset, pixel);
+    if (result != TREE_OK)
+    {
+        return raise_tree_result(result);
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject* PyTREE_Surface_GetPixel_Wrap(PyObject* self, PyObject* args)
+{
+    PyObject* surfaceObj;
+    int x;
+    int y;
+    TREE_Offset offset;
+    TREE_Pixel pixel;
+    TREE_Color fg;
+    TREE_Color bg;
+    TREE_Char ch;
+    PyTREE_SurfaceWrapper* surface;
+    (void)self;
+
+    if (!PyArg_ParseTuple(args, "Oii", &surfaceObj, &x, &y))
+    {
+        return NULL;
+    }
+
+    surface = get_surface_wrapper(surfaceObj);
+    if (!surface)
+    {
+        return NULL;
+    }
+
+    offset.x = x;
+    offset.y = y;
+    pixel = TREE_Image_Get(&surface->surface.image, offset);
+    fg = TREE_ColorPair_GetForeground(pixel.colorPair);
+    bg = TREE_ColorPair_GetBackground(pixel.colorPair);
+    ch = pixel.character;
+    return Py_BuildValue("Nii", PyUnicode_FromStringAndSize(&ch, 1), (int)fg, (int)bg);
+}
+
+static PyObject* PyTREE_Surface_DrawString_Wrap(PyObject* self, PyObject* args)
+{
+    PyObject* surfaceObj;
+    int x;
+    int y;
+    const char* text;
+    unsigned int colorPair;
+    TREE_Offset offset;
+    TREE_Result result;
+    PyTREE_SurfaceWrapper* surface;
+    (void)self;
+
+    if (!PyArg_ParseTuple(args, "OiisI", &surfaceObj, &x, &y, &text, &colorPair))
+    {
+        return NULL;
+    }
+
+    surface = get_surface_wrapper(surfaceObj);
+    if (!surface)
+    {
+        return NULL;
+    }
+
+    offset.x = x;
+    offset.y = y;
+    result = TREE_Image_DrawString(&surface->surface.image, offset, text, (TREE_ColorPair)colorPair);
+    if (result != TREE_OK)
+    {
+        return raise_tree_result(result);
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject* PyTREE_Surface_Clear_Wrap(PyObject* self, PyObject* args)
+{
+    PyObject* surfaceObj;
+    PyObject* charObj;
+    int foreground;
+    int background;
+    const char* text;
+    Py_ssize_t textLen;
+    TREE_Pixel pixel;
+    TREE_Result result;
+    PyTREE_SurfaceWrapper* surface;
+    (void)self;
+
+    if (!PyArg_ParseTuple(args, "OOii", &surfaceObj, &charObj, &foreground, &background))
+    {
+        return NULL;
+    }
+    if (!PyUnicode_Check(charObj))
+    {
+        PyErr_SetString(PyExc_TypeError, "char must be a string");
+        return NULL;
+    }
+
+    text = PyUnicode_AsUTF8AndSize(charObj, &textLen);
+    if (!text)
+    {
+        return NULL;
+    }
+    if (textLen < 1)
+    {
+        PyErr_SetString(PyExc_ValueError, "char string must not be empty");
+        return NULL;
+    }
+
+    surface = get_surface_wrapper(surfaceObj);
+    if (!surface)
+    {
+        return NULL;
+    }
+
+    pixel = TREE_Pixel_Create(text[0], (TREE_Color)foreground, (TREE_Color)background);
+    result = TREE_Image_Clear(&surface->surface.image, pixel);
+    if (result != TREE_OK)
+    {
+        return raise_tree_result(result);
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject* PyTREE_Surface_Refresh_Wrap(PyObject* self, PyObject* args)
+{
+    PyObject* surfaceObj;
+    PyTREE_SurfaceWrapper* surface;
+    TREE_Result result;
+    (void)self;
+
+    if (!PyArg_ParseTuple(args, "O", &surfaceObj))
+    {
+        return NULL;
+    }
+
+    surface = get_surface_wrapper(surfaceObj);
+    if (!surface)
+    {
+        return NULL;
+    }
+
+    result = TREE_Surface_Refresh(&surface->surface);
+    if (result != TREE_OK)
+    {
+        return raise_tree_result(result);
+    }
+
+    Py_RETURN_NONE;
+}
+
+static PyObject* PyTREE_Window_Present_Wrap(PyObject* self, PyObject* args)
+{
+    PyObject* surfaceObj;
+    PyTREE_SurfaceWrapper* surface;
+    TREE_Result result;
+    (void)self;
+
+    if (!PyArg_ParseTuple(args, "O", &surfaceObj))
+    {
+        return NULL;
+    }
+
+    surface = get_surface_wrapper(surfaceObj);
+    if (!surface)
+    {
+        return NULL;
+    }
+
+    result = TREE_Window_Present(&surface->surface);
+    if (result != TREE_OK)
+    {
+        return raise_tree_result(result);
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject* PyTREE_Window_Beep_Wrap(PyObject* self, PyObject* args)
+{
+    (void)self;
+    (void)args;
+    TREE_Window_Beep();
+    Py_RETURN_NONE;
+}
+
+static PyObject* PyTREE_Cursor_SetVisible_Wrap(PyObject* self, PyObject* args)
+{
+    int visible;
+    TREE_Result result;
+    (void)self;
+
+    if (!PyArg_ParseTuple(args, "p", &visible))
+    {
+        return NULL;
+    }
+
+    result = TREE_Cursor_SetVisible((TREE_Bool)visible);
+    if (result != TREE_OK)
+    {
+        return raise_tree_result(result);
+    }
+    Py_RETURN_NONE;
+}
+
 static PyObject* PyTREE_Theme_Create(PyObject* self, PyObject* args)
 {
     PyTREE_ThemeWrapper* wrapper;
@@ -607,6 +1372,209 @@ static PyObject* PyTREE_Theme_Create(PyObject* self, PyObject* args)
     }
 
     return capsule;
+}
+
+static PyObject* PyTREE_ColorPair_Create_Wrap(PyObject* self, PyObject* args)
+{
+    int foreground;
+    int background;
+    (void)self;
+
+    if (!PyArg_ParseTuple(args, "ii", &foreground, &background))
+    {
+        return NULL;
+    }
+
+    return PyLong_FromUnsignedLong((unsigned long)TREE_ColorPair_Create((TREE_Color)foreground, (TREE_Color)background));
+}
+
+static PyObject* PyTREE_ColorPair_GetForeground_Wrap(PyObject* self, PyObject* args)
+{
+    unsigned int colorPair;
+    (void)self;
+
+    if (!PyArg_ParseTuple(args, "I", &colorPair))
+    {
+        return NULL;
+    }
+
+    return PyLong_FromLong((long)TREE_ColorPair_GetForeground((TREE_ColorPair)colorPair));
+}
+
+static PyObject* PyTREE_ColorPair_GetBackground_Wrap(PyObject* self, PyObject* args)
+{
+    unsigned int colorPair;
+    (void)self;
+
+    if (!PyArg_ParseTuple(args, "I", &colorPair))
+    {
+        return NULL;
+    }
+
+    return PyLong_FromLong((long)TREE_ColorPair_GetBackground((TREE_ColorPair)colorPair));
+}
+
+static PyObject* PyTREE_Theme_SetChar(PyObject* self, PyObject* args)
+{
+    PyObject* themeObj;
+    int cid;
+    PyObject* valueObj;
+    PyTREE_ThemeWrapper* theme;
+    const char* text;
+    Py_ssize_t textLen;
+    (void)self;
+
+    if (!PyArg_ParseTuple(args, "OiO", &themeObj, &cid, &valueObj))
+    {
+        return NULL;
+    }
+
+    theme = get_theme_wrapper(themeObj);
+    if (!theme)
+    {
+        return NULL;
+    }
+
+    if (cid < 0 || cid >= TREE_THEME_CID_COUNT)
+    {
+        PyErr_SetString(PyExc_ValueError, "theme character id out of range");
+        return NULL;
+    }
+
+    if (!PyUnicode_Check(valueObj))
+    {
+        PyErr_SetString(PyExc_TypeError, "value must be a string");
+        return NULL;
+    }
+
+    text = PyUnicode_AsUTF8AndSize(valueObj, &textLen);
+    if (!text)
+    {
+        return NULL;
+    }
+    if (textLen < 1)
+    {
+        PyErr_SetString(PyExc_ValueError, "value string must not be empty");
+        return NULL;
+    }
+
+    theme->theme.characters[cid] = text[0];
+    Py_RETURN_NONE;
+}
+
+static PyObject* PyTREE_Theme_GetChar(PyObject* self, PyObject* args)
+{
+    PyObject* themeObj;
+    int cid;
+    PyTREE_ThemeWrapper* theme;
+    TREE_Char value;
+    (void)self;
+
+    if (!PyArg_ParseTuple(args, "Oi", &themeObj, &cid))
+    {
+        return NULL;
+    }
+
+    theme = get_theme_wrapper(themeObj);
+    if (!theme)
+    {
+        return NULL;
+    }
+
+    if (cid < 0 || cid >= TREE_THEME_CID_COUNT)
+    {
+        PyErr_SetString(PyExc_ValueError, "theme character id out of range");
+        return NULL;
+    }
+
+    value = theme->theme.characters[cid];
+    return PyUnicode_FromStringAndSize(&value, 1);
+}
+
+static PyObject* PyTREE_Theme_SetPixel(PyObject* self, PyObject* args)
+{
+    PyObject* themeObj;
+    int pid;
+    PyObject* charObj;
+    int foreground;
+    int background;
+    PyTREE_ThemeWrapper* theme;
+    const char* text;
+    Py_ssize_t textLen;
+    (void)self;
+
+    if (!PyArg_ParseTuple(args, "OiOii", &themeObj, &pid, &charObj, &foreground, &background))
+    {
+        return NULL;
+    }
+
+    theme = get_theme_wrapper(themeObj);
+    if (!theme)
+    {
+        return NULL;
+    }
+
+    if (pid < 0 || pid >= TREE_THEME_PID_COUNT)
+    {
+        PyErr_SetString(PyExc_ValueError, "theme pixel id out of range");
+        return NULL;
+    }
+
+    if (!PyUnicode_Check(charObj))
+    {
+        PyErr_SetString(PyExc_TypeError, "char must be a string");
+        return NULL;
+    }
+
+    text = PyUnicode_AsUTF8AndSize(charObj, &textLen);
+    if (!text)
+    {
+        return NULL;
+    }
+    if (textLen < 1)
+    {
+        PyErr_SetString(PyExc_ValueError, "char string must not be empty");
+        return NULL;
+    }
+
+    theme->theme.pixels[pid] = TREE_Pixel_Create(text[0], (TREE_Color)foreground, (TREE_Color)background);
+    Py_RETURN_NONE;
+}
+
+static PyObject* PyTREE_Theme_GetPixel(PyObject* self, PyObject* args)
+{
+    PyObject* themeObj;
+    int pid;
+    PyTREE_ThemeWrapper* theme;
+    TREE_Pixel pixel;
+    TREE_Color fg;
+    TREE_Color bg;
+    TREE_Char ch;
+    (void)self;
+
+    if (!PyArg_ParseTuple(args, "Oi", &themeObj, &pid))
+    {
+        return NULL;
+    }
+
+    theme = get_theme_wrapper(themeObj);
+    if (!theme)
+    {
+        return NULL;
+    }
+
+    if (pid < 0 || pid >= TREE_THEME_PID_COUNT)
+    {
+        PyErr_SetString(PyExc_ValueError, "theme pixel id out of range");
+        return NULL;
+    }
+
+    pixel = theme->theme.pixels[pid];
+    fg = TREE_ColorPair_GetForeground(pixel.colorPair);
+    bg = TREE_ColorPair_GetBackground(pixel.colorPair);
+    ch = pixel.character;
+
+    return Py_BuildValue("Nii", PyUnicode_FromStringAndSize(&ch, 1), (int)fg, (int)bg);
 }
 
 static PyObject* PyTREE_Application_Create(PyObject* self, PyObject* args)
@@ -1399,13 +2367,428 @@ static PyObject* PyTREE_ProgressBar_SetValue_Wrap(PyObject* self, PyObject* args
     Py_RETURN_NONE;
 }
 
+static PyObject* PyTREE_Label_SetText_Wrap(PyObject* self, PyObject* args)
+{
+    PyObject* controlObj;
+    const char* text;
+    PyTREE_ControlWrapper* control;
+    TREE_Result result;
+    (void)self;
+
+    if (!PyArg_ParseTuple(args, "Os", &controlObj, &text))
+    {
+        return NULL;
+    }
+    control = get_control_wrapper(controlObj);
+    if (!control || !ensure_control_kind(control, PYTREE_CONTROL_LABEL, "label_set_text"))
+    {
+        return NULL;
+    }
+
+    result = TREE_Control_Label_SetText(&control->control, text);
+    if (result != TREE_OK)
+    {
+        return raise_tree_result(result);
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject* PyTREE_Label_GetText_Wrap(PyObject* self, PyObject* args)
+{
+    PyObject* controlObj;
+    PyTREE_ControlWrapper* control;
+    TREE_String text;
+    (void)self;
+
+    if (!PyArg_ParseTuple(args, "O", &controlObj))
+    {
+        return NULL;
+    }
+    control = get_control_wrapper(controlObj);
+    if (!control || !ensure_control_kind(control, PYTREE_CONTROL_LABEL, "label_get_text"))
+    {
+        return NULL;
+    }
+
+    text = TREE_Control_Label_GetText(&control->control);
+    if (!text)
+    {
+        Py_RETURN_NONE;
+    }
+    return PyUnicode_FromString(text);
+}
+
+static PyObject* PyTREE_Button_SetText_Wrap(PyObject* self, PyObject* args)
+{
+    PyObject* controlObj;
+    const char* text;
+    PyTREE_ControlWrapper* control;
+    TREE_Result result;
+    (void)self;
+
+    if (!PyArg_ParseTuple(args, "Os", &controlObj, &text))
+    {
+        return NULL;
+    }
+    control = get_control_wrapper(controlObj);
+    if (!control || !ensure_control_kind(control, PYTREE_CONTROL_BUTTON, "button_set_text"))
+    {
+        return NULL;
+    }
+
+    result = TREE_Control_Button_SetText(&control->control, text);
+    if (result != TREE_OK)
+    {
+        return raise_tree_result(result);
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject* PyTREE_Button_GetText_Wrap(PyObject* self, PyObject* args)
+{
+    PyObject* controlObj;
+    PyTREE_ControlWrapper* control;
+    TREE_String text;
+    (void)self;
+
+    if (!PyArg_ParseTuple(args, "O", &controlObj))
+    {
+        return NULL;
+    }
+    control = get_control_wrapper(controlObj);
+    if (!control || !ensure_control_kind(control, PYTREE_CONTROL_BUTTON, "button_get_text"))
+    {
+        return NULL;
+    }
+
+    text = TREE_Control_Button_GetText(&control->control);
+    if (!text)
+    {
+        Py_RETURN_NONE;
+    }
+    return PyUnicode_FromString(text);
+}
+
+static PyObject* PyTREE_TextInput_SetText_Wrap(PyObject* self, PyObject* args)
+{
+    PyObject* controlObj;
+    const char* text;
+    PyTREE_ControlWrapper* control;
+    TREE_Result result;
+    (void)self;
+
+    if (!PyArg_ParseTuple(args, "Os", &controlObj, &text))
+    {
+        return NULL;
+    }
+    control = get_control_wrapper(controlObj);
+    if (!control || !ensure_control_kind(control, PYTREE_CONTROL_TEXT_INPUT, "text_input_set_text"))
+    {
+        return NULL;
+    }
+
+    result = TREE_Control_TextInput_SetText(&control->control, text);
+    if (result != TREE_OK)
+    {
+        return raise_tree_result(result);
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject* PyTREE_TextInput_GetText_Wrap(PyObject* self, PyObject* args)
+{
+    PyObject* controlObj;
+    PyTREE_ControlWrapper* control;
+    TREE_String text;
+    (void)self;
+
+    if (!PyArg_ParseTuple(args, "O", &controlObj))
+    {
+        return NULL;
+    }
+    control = get_control_wrapper(controlObj);
+    if (!control || !ensure_control_kind(control, PYTREE_CONTROL_TEXT_INPUT, "text_input_get_text"))
+    {
+        return NULL;
+    }
+
+    text = TREE_Control_TextInput_GetText(&control->control);
+    if (!text)
+    {
+        Py_RETURN_NONE;
+    }
+    return PyUnicode_FromString(text);
+}
+
+static PyObject* PyTREE_List_SetSelected_Wrap(PyObject* self, PyObject* args)
+{
+    PyObject* controlObj;
+    unsigned long long index;
+    int selected;
+    PyTREE_ControlWrapper* control;
+    TREE_Result result;
+    (void)self;
+
+    if (!PyArg_ParseTuple(args, "OKp", &controlObj, &index, &selected))
+    {
+        return NULL;
+    }
+    control = get_control_wrapper(controlObj);
+    if (!control || !ensure_control_kind(control, PYTREE_CONTROL_LIST, "list_set_selected"))
+    {
+        return NULL;
+    }
+
+    result = TREE_Control_List_SetSelected(&control->control, (TREE_Size)index, (TREE_Bool)selected);
+    if (result != TREE_OK)
+    {
+        return raise_tree_result(result);
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject* PyTREE_List_GetSelected_Wrap(PyObject* self, PyObject* args)
+{
+    PyObject* controlObj;
+    PyTREE_ControlWrapper* control;
+    TREE_Size index;
+    (void)self;
+
+    if (!PyArg_ParseTuple(args, "O", &controlObj))
+    {
+        return NULL;
+    }
+    control = get_control_wrapper(controlObj);
+    if (!control || !ensure_control_kind(control, PYTREE_CONTROL_LIST, "list_get_selected"))
+    {
+        return NULL;
+    }
+
+    index = TREE_Control_List_GetSelected(&control->control);
+    return PyLong_FromUnsignedLongLong(index);
+}
+
+static PyObject* PyTREE_Dropdown_SetSelected_Wrap(PyObject* self, PyObject* args)
+{
+    PyObject* controlObj;
+    unsigned long long index;
+    PyTREE_ControlWrapper* control;
+    TREE_Result result;
+    (void)self;
+
+    if (!PyArg_ParseTuple(args, "OK", &controlObj, &index))
+    {
+        return NULL;
+    }
+    control = get_control_wrapper(controlObj);
+    if (!control || !ensure_control_kind(control, PYTREE_CONTROL_DROPDOWN, "dropdown_set_selected"))
+    {
+        return NULL;
+    }
+
+    result = TREE_Control_Dropdown_SetSelected(&control->control, (TREE_Size)index);
+    if (result != TREE_OK)
+    {
+        return raise_tree_result(result);
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject* PyTREE_Dropdown_GetSelected_Wrap(PyObject* self, PyObject* args)
+{
+    PyObject* controlObj;
+    PyTREE_ControlWrapper* control;
+    TREE_Size index;
+    (void)self;
+
+    if (!PyArg_ParseTuple(args, "O", &controlObj))
+    {
+        return NULL;
+    }
+    control = get_control_wrapper(controlObj);
+    if (!control || !ensure_control_kind(control, PYTREE_CONTROL_DROPDOWN, "dropdown_get_selected"))
+    {
+        return NULL;
+    }
+
+    index = TREE_Control_Dropdown_GetSelected(&control->control);
+    return PyLong_FromUnsignedLongLong(index);
+}
+
+static PyObject* PyTREE_Checkbox_SetChecked_Wrap(PyObject* self, PyObject* args)
+{
+    PyObject* controlObj;
+    int checked;
+    PyTREE_ControlWrapper* control;
+    TREE_Result result;
+    (void)self;
+
+    if (!PyArg_ParseTuple(args, "Op", &controlObj, &checked))
+    {
+        return NULL;
+    }
+    control = get_control_wrapper(controlObj);
+    if (!control || !ensure_control_kind(control, PYTREE_CONTROL_CHECKBOX, "checkbox_set_checked"))
+    {
+        return NULL;
+    }
+
+    result = TREE_Control_Checkbox_SetChecked(&control->control, (TREE_Byte)checked);
+    if (result != TREE_OK)
+    {
+        return raise_tree_result(result);
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject* PyTREE_Checkbox_GetChecked_Wrap(PyObject* self, PyObject* args)
+{
+    PyObject* controlObj;
+    PyTREE_ControlWrapper* control;
+    TREE_Bool checked;
+    (void)self;
+
+    if (!PyArg_ParseTuple(args, "O", &controlObj))
+    {
+        return NULL;
+    }
+    control = get_control_wrapper(controlObj);
+    if (!control || !ensure_control_kind(control, PYTREE_CONTROL_CHECKBOX, "checkbox_get_checked"))
+    {
+        return NULL;
+    }
+
+    checked = TREE_Control_Checkbox_GetChecked(&control->control);
+    if (checked)
+    {
+        Py_RETURN_TRUE;
+    }
+    Py_RETURN_FALSE;
+}
+
+static PyObject* PyTREE_NumberInput_SetValue_Wrap(PyObject* self, PyObject* args)
+{
+    PyObject* controlObj;
+    double value;
+    PyTREE_ControlWrapper* control;
+    TREE_Result result;
+    (void)self;
+
+    if (!PyArg_ParseTuple(args, "Od", &controlObj, &value))
+    {
+        return NULL;
+    }
+    control = get_control_wrapper(controlObj);
+    if (!control || !ensure_control_kind(control, PYTREE_CONTROL_NUMBER_INPUT, "number_input_set_value"))
+    {
+        return NULL;
+    }
+
+    result = TREE_Control_NumberInput_SetValue(&control->control, value);
+    if (result != TREE_OK)
+    {
+        return raise_tree_result(result);
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject* PyTREE_ProgressBar_GetValue_Wrap(PyObject* self, PyObject* args)
+{
+    PyObject* controlObj;
+    PyTREE_ControlWrapper* control;
+    (void)self;
+
+    if (!PyArg_ParseTuple(args, "O", &controlObj))
+    {
+        return NULL;
+    }
+    control = get_control_wrapper(controlObj);
+    if (!control || !ensure_control_kind(control, PYTREE_CONTROL_PROGRESS_BAR, "progress_bar_get_value"))
+    {
+        return NULL;
+    }
+    return PyFloat_FromDouble(TREE_Control_ProgressBar_GetValue(&control->control));
+}
+
+static PyObject* PyTREE_ProgressBar_SetDirection_Wrap(PyObject* self, PyObject* args)
+{
+    PyObject* controlObj;
+    int direction;
+    PyTREE_ControlWrapper* control;
+    TREE_Result result;
+    (void)self;
+
+    if (!PyArg_ParseTuple(args, "Oi", &controlObj, &direction))
+    {
+        return NULL;
+    }
+    control = get_control_wrapper(controlObj);
+    if (!control || !ensure_control_kind(control, PYTREE_CONTROL_PROGRESS_BAR, "progress_bar_set_direction"))
+    {
+        return NULL;
+    }
+
+    result = TREE_Control_ProgressBar_SetDirection(&control->control, (TREE_Direction)direction);
+    if (result != TREE_OK)
+    {
+        return raise_tree_result(result);
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject* PyTREE_ProgressBar_GetDirection_Wrap(PyObject* self, PyObject* args)
+{
+    PyObject* controlObj;
+    PyTREE_ControlWrapper* control;
+    (void)self;
+
+    if (!PyArg_ParseTuple(args, "O", &controlObj))
+    {
+        return NULL;
+    }
+    control = get_control_wrapper(controlObj);
+    if (!control || !ensure_control_kind(control, PYTREE_CONTROL_PROGRESS_BAR, "progress_bar_get_direction"))
+    {
+        return NULL;
+    }
+    return PyLong_FromLong((long)TREE_Control_ProgressBar_GetDirection(&control->control));
+}
+
 static PyMethodDef MyMethods[] = {
     {"init", PyTREE_Init, METH_NOARGS, "Initialize the TREE library."},
     {"deinit", PyTREE_Deinit, METH_NOARGS, "Deinitialize the TREE library."},
     {"time_now", PyTREE_Time_Now, METH_NOARGS, "Get current time in milliseconds."},
     {"result_to_string", PyTREE_Result_ToString_Wrap, METH_VARARGS, "Convert TREE result code to readable string."},
     {"window_set_title", PyTREE_Window_SetTitle_Wrap, METH_VARARGS, "Set terminal window title."},
+    {"window_get_extent", PyTREE_Window_GetExtent_Wrap, METH_NOARGS, "Get terminal window size as (width, height)."},
+    {"window_present", PyTREE_Window_Present_Wrap, METH_VARARGS, "Present a refreshed surface to terminal output."},
+    {"window_beep", PyTREE_Window_Beep_Wrap, METH_NOARGS, "Play terminal beep sound."},
+    {"cursor_set_visible", PyTREE_Cursor_SetVisible_Wrap, METH_VARARGS, "Set cursor visibility."},
+    {"clipboard_set_text", PyTREE_Clipboard_SetText_Wrap, METH_VARARGS, "Set system clipboard text."},
+    {"clipboard_get_text", PyTREE_Clipboard_GetText_Wrap, METH_NOARGS, "Get system clipboard text or None."},
+    {"image_create", PyTREE_Image_Create, METH_VARARGS, "Create an image with width and height."},
+    {"image_get_extent", PyTREE_Image_GetExtent_Wrap, METH_VARARGS, "Get image size as (width, height)."},
+    {"image_resize", PyTREE_Image_Resize_Wrap, METH_VARARGS, "Resize an image."},
+    {"image_set_pixel", PyTREE_Image_SetPixel_Wrap, METH_VARARGS, "Set image pixel at x/y with char and colors."},
+    {"image_get_pixel", PyTREE_Image_GetPixel_Wrap, METH_VARARGS, "Get image pixel at x/y as (char, fg, bg)."},
+    {"image_draw_string", PyTREE_Image_DrawString_Wrap, METH_VARARGS, "Draw string at x/y with color pair."},
+    {"image_clear", PyTREE_Image_Clear_Wrap, METH_VARARGS, "Clear image with char and colors."},
+    {"surface_create", PyTREE_Surface_Create, METH_VARARGS, "Create a surface with width and height."},
+    {"surface_get_extent", PyTREE_Surface_GetExtent_Wrap, METH_VARARGS, "Get surface size as (width, height)."},
+    {"surface_resize", PyTREE_Surface_Resize_Wrap, METH_VARARGS, "Resize a surface."},
+    {"surface_set_pixel", PyTREE_Surface_SetPixel_Wrap, METH_VARARGS, "Set surface image pixel at x/y with char and colors."},
+    {"surface_get_pixel", PyTREE_Surface_GetPixel_Wrap, METH_VARARGS, "Get surface image pixel at x/y as (char, fg, bg)."},
+    {"surface_draw_string", PyTREE_Surface_DrawString_Wrap, METH_VARARGS, "Draw string onto surface image at x/y with color pair."},
+    {"surface_clear", PyTREE_Surface_Clear_Wrap, METH_VARARGS, "Clear surface image with char and colors."},
+    {"surface_refresh", PyTREE_Surface_Refresh_Wrap, METH_VARARGS, "Refresh surface text buffer from image data."},
     {"theme_create", PyTREE_Theme_Create, METH_NOARGS, "Create a TREE theme object."},
+    {"theme_set_char", PyTREE_Theme_SetChar, METH_VARARGS, "Set one theme character by id."},
+    {"theme_get_char", PyTREE_Theme_GetChar, METH_VARARGS, "Get one theme character by id."},
+    {"theme_set_pixel", PyTREE_Theme_SetPixel, METH_VARARGS, "Set one theme pixel by id with char/fg/bg."},
+    {"theme_get_pixel", PyTREE_Theme_GetPixel, METH_VARARGS, "Get one theme pixel by id as (char, fg, bg)."},
+    {"colorpair_create", PyTREE_ColorPair_Create_Wrap, METH_VARARGS, "Create packed color pair from foreground/background colors."},
+    {"colorpair_get_foreground", PyTREE_ColorPair_GetForeground_Wrap, METH_VARARGS, "Get foreground color from a packed color pair."},
+    {"colorpair_get_background", PyTREE_ColorPair_GetBackground_Wrap, METH_VARARGS, "Get background color from a packed color pair."},
     {"application_create", PyTREE_Application_Create, METH_VARARGS, "Create a TREE application. Optional callback receives event dicts."},
     {"application_add_control", PyTREE_Application_AddControl_Wrap, METH_VARARGS, "Add a control to an application."},
     {"application_clear_controls", PyTREE_Application_ClearControls_Wrap, METH_VARARGS, "Remove all controls from an application without freeing them."},
@@ -1422,7 +2805,23 @@ static PyMethodDef MyMethods[] = {
     {"control_set_transform", (PyCFunction)PyTREE_Control_SetTransform, METH_VARARGS | METH_KEYWORDS, "Set local transform values (x, y, width, height, alignment)."},
     {"control_link", PyTREE_Control_Link_Wrap, METH_VARARGS, "Link two controls for directional navigation."},
     {"number_input_get_value", PyTREE_NumberInput_GetValue_Wrap, METH_VARARGS, "Get value from number input control."},
+    {"number_input_set_value", PyTREE_NumberInput_SetValue_Wrap, METH_VARARGS, "Set value on number input control."},
     {"progress_bar_set_value", PyTREE_ProgressBar_SetValue_Wrap, METH_VARARGS, "Set value on progress bar (0.0 to 1.0)."},
+    {"progress_bar_get_value", PyTREE_ProgressBar_GetValue_Wrap, METH_VARARGS, "Get value from progress bar."},
+    {"progress_bar_set_direction", PyTREE_ProgressBar_SetDirection_Wrap, METH_VARARGS, "Set direction of progress bar."},
+    {"progress_bar_get_direction", PyTREE_ProgressBar_GetDirection_Wrap, METH_VARARGS, "Get direction of progress bar."},
+    {"label_set_text", PyTREE_Label_SetText_Wrap, METH_VARARGS, "Set label text."},
+    {"label_get_text", PyTREE_Label_GetText_Wrap, METH_VARARGS, "Get label text."},
+    {"button_set_text", PyTREE_Button_SetText_Wrap, METH_VARARGS, "Set button text."},
+    {"button_get_text", PyTREE_Button_GetText_Wrap, METH_VARARGS, "Get button text."},
+    {"text_input_set_text", PyTREE_TextInput_SetText_Wrap, METH_VARARGS, "Set text input text."},
+    {"text_input_get_text", PyTREE_TextInput_GetText_Wrap, METH_VARARGS, "Get text input text."},
+    {"list_set_selected", PyTREE_List_SetSelected_Wrap, METH_VARARGS, "Set list selection state by index."},
+    {"list_get_selected", PyTREE_List_GetSelected_Wrap, METH_VARARGS, "Get selected list index."},
+    {"dropdown_set_selected", PyTREE_Dropdown_SetSelected_Wrap, METH_VARARGS, "Set dropdown selected index."},
+    {"dropdown_get_selected", PyTREE_Dropdown_GetSelected_Wrap, METH_VARARGS, "Get dropdown selected index."},
+    {"checkbox_set_checked", PyTREE_Checkbox_SetChecked_Wrap, METH_VARARGS, "Set checkbox checked state."},
+    {"checkbox_get_checked", PyTREE_Checkbox_GetChecked_Wrap, METH_VARARGS, "Get checkbox checked state."},
     {NULL, NULL, 0, NULL}
 };
 
@@ -1479,6 +2878,63 @@ PyMODINIT_FUNC PyInit_PyTREE(void) {
     PyModule_AddIntConstant(module, "EVENT_TYPE_KEY_HELD", TREE_EVENT_TYPE_KEY_HELD);
     PyModule_AddIntConstant(module, "EVENT_TYPE_KEY_UP", TREE_EVENT_TYPE_KEY_UP);
     PyModule_AddIntConstant(module, "EVENT_TYPE_WINDOW_RESIZE", TREE_EVENT_TYPE_WINDOW_RESIZE);
+
+    PyModule_AddIntConstant(module, "COLOR_BLACK", TREE_COLOR_BLACK);
+    PyModule_AddIntConstant(module, "COLOR_RED", TREE_COLOR_RED);
+    PyModule_AddIntConstant(module, "COLOR_GREEN", TREE_COLOR_GREEN);
+    PyModule_AddIntConstant(module, "COLOR_YELLOW", TREE_COLOR_YELLOW);
+    PyModule_AddIntConstant(module, "COLOR_BLUE", TREE_COLOR_BLUE);
+    PyModule_AddIntConstant(module, "COLOR_MAGENTA", TREE_COLOR_MAGENTA);
+    PyModule_AddIntConstant(module, "COLOR_CYAN", TREE_COLOR_CYAN);
+    PyModule_AddIntConstant(module, "COLOR_WHITE", TREE_COLOR_WHITE);
+    PyModule_AddIntConstant(module, "COLOR_BRIGHT_BLACK", TREE_COLOR_BRIGHT_BLACK);
+    PyModule_AddIntConstant(module, "COLOR_BRIGHT_RED", TREE_COLOR_BRIGHT_RED);
+    PyModule_AddIntConstant(module, "COLOR_BRIGHT_GREEN", TREE_COLOR_BRIGHT_GREEN);
+    PyModule_AddIntConstant(module, "COLOR_BRIGHT_YELLOW", TREE_COLOR_BRIGHT_YELLOW);
+    PyModule_AddIntConstant(module, "COLOR_BRIGHT_BLUE", TREE_COLOR_BRIGHT_BLUE);
+    PyModule_AddIntConstant(module, "COLOR_BRIGHT_MAGENTA", TREE_COLOR_BRIGHT_MAGENTA);
+    PyModule_AddIntConstant(module, "COLOR_BRIGHT_CYAN", TREE_COLOR_BRIGHT_CYAN);
+    PyModule_AddIntConstant(module, "COLOR_BRIGHT_WHITE", TREE_COLOR_BRIGHT_WHITE);
+    PyModule_AddIntConstant(module, "COLOR_DEFAULT_FOREGROUND", TREE_COLOR_DEFAULT_FOREGROUND);
+    PyModule_AddIntConstant(module, "COLOR_DEFAULT_BACKGROUND", TREE_COLOR_DEFAULT_BACKGROUND);
+
+    PyModule_AddIntConstant(module, "THEME_CID_EMPTY", TREE_THEME_CID_EMPTY);
+    PyModule_AddIntConstant(module, "THEME_CID_SCROLL_V_AREA", TREE_THEME_CID_SCROLL_V_AREA);
+    PyModule_AddIntConstant(module, "THEME_CID_SCROLL_H_AREA", TREE_THEME_CID_SCROLL_H_AREA);
+    PyModule_AddIntConstant(module, "THEME_CID_SCROLL_V_BAR", TREE_THEME_CID_SCROLL_V_BAR);
+    PyModule_AddIntConstant(module, "THEME_CID_SCROLL_H_BAR", TREE_THEME_CID_SCROLL_H_BAR);
+    PyModule_AddIntConstant(module, "THEME_CID_UP", TREE_THEME_CID_UP);
+    PyModule_AddIntConstant(module, "THEME_CID_DOWN", TREE_THEME_CID_DOWN);
+    PyModule_AddIntConstant(module, "THEME_CID_LEFT", TREE_THEME_CID_LEFT);
+    PyModule_AddIntConstant(module, "THEME_CID_RIGHT", TREE_THEME_CID_RIGHT);
+    PyModule_AddIntConstant(module, "THEME_CID_CHECKBOX_UNCHECKED", TREE_THEME_CID_CHECKBOX_UNCHECKED);
+    PyModule_AddIntConstant(module, "THEME_CID_CHECKBOX_CHECKED", TREE_THEME_CID_CHECKBOX_CHECKED);
+    PyModule_AddIntConstant(module, "THEME_CID_CHECKBOX_LEFT", TREE_THEME_CID_CHECKBOX_LEFT);
+    PyModule_AddIntConstant(module, "THEME_CID_CHECKBOX_RIGHT", TREE_THEME_CID_CHECKBOX_RIGHT);
+    PyModule_AddIntConstant(module, "THEME_CID_RADIOBOX_UNCHECKED", TREE_THEME_CID_RADIOBOX_UNCHECKED);
+    PyModule_AddIntConstant(module, "THEME_CID_RADIOBOX_CHECKED", TREE_THEME_CID_RADIOBOX_CHECKED);
+    PyModule_AddIntConstant(module, "THEME_CID_RADIOBOX_LEFT", TREE_THEME_CID_RADIOBOX_LEFT);
+    PyModule_AddIntConstant(module, "THEME_CID_RADIOBOX_RIGHT", TREE_THEME_CID_RADIOBOX_RIGHT);
+
+    PyModule_AddIntConstant(module, "THEME_PID_NORMAL", TREE_THEME_PID_NORMAL);
+    PyModule_AddIntConstant(module, "THEME_PID_FOCUSED", TREE_THEME_PID_FOCUSED);
+    PyModule_AddIntConstant(module, "THEME_PID_ACTIVE", TREE_THEME_PID_ACTIVE);
+    PyModule_AddIntConstant(module, "THEME_PID_HOVERED", TREE_THEME_PID_HOVERED);
+    PyModule_AddIntConstant(module, "THEME_PID_NORMAL_SELECTED", TREE_THEME_PID_NORMAL_SELECTED);
+    PyModule_AddIntConstant(module, "THEME_PID_FOCUSED_SELECTED", TREE_THEME_PID_FOCUSED_SELECTED);
+    PyModule_AddIntConstant(module, "THEME_PID_ACTIVE_SELECTED", TREE_THEME_PID_ACTIVE_SELECTED);
+    PyModule_AddIntConstant(module, "THEME_PID_HOVERED_SELECTED", TREE_THEME_PID_HOVERED_SELECTED);
+    PyModule_AddIntConstant(module, "THEME_PID_NORMAL_TEXT", TREE_THEME_PID_NORMAL_TEXT);
+    PyModule_AddIntConstant(module, "THEME_PID_FOCUSED_TEXT", TREE_THEME_PID_FOCUSED_TEXT);
+    PyModule_AddIntConstant(module, "THEME_PID_NORMAL_SCROLL_AREA", TREE_THEME_PID_NORMAL_SCROLL_AREA);
+    PyModule_AddIntConstant(module, "THEME_PID_FOCUSED_SCROLL_AREA", TREE_THEME_PID_FOCUSED_SCROLL_AREA);
+    PyModule_AddIntConstant(module, "THEME_PID_ACTIVE_SCROLL_AREA", TREE_THEME_PID_ACTIVE_SCROLL_AREA);
+    PyModule_AddIntConstant(module, "THEME_PID_NORMAL_SCROLL_BAR", TREE_THEME_PID_NORMAL_SCROLL_BAR);
+    PyModule_AddIntConstant(module, "THEME_PID_FOCUSED_SCROLL_BAR", TREE_THEME_PID_FOCUSED_SCROLL_BAR);
+    PyModule_AddIntConstant(module, "THEME_PID_ACTIVE_SCROLL_BAR", TREE_THEME_PID_ACTIVE_SCROLL_BAR);
+    PyModule_AddIntConstant(module, "THEME_PID_CURSOR", TREE_THEME_PID_CURSOR);
+    PyModule_AddIntConstant(module, "THEME_PID_PROGRESS_BAR", TREE_THEME_PID_PROGRESS_BAR);
+    PyModule_AddIntConstant(module, "THEME_PID_BACKGROUND", TREE_THEME_PID_BACKGROUND);
 
     return module;
 }

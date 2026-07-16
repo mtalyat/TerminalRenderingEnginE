@@ -34,7 +34,7 @@ This repository includes a CPython extension module and a higher-level Python OO
 
 Main pieces:
 - Native extension source: `PyTREE/Source/PyTREE.c`
-- Python wrapper classes: `PyTREE/Test/pytree_ui.py`
+- Python wrapper classes: `PyTREE/Test/pytre.py`
 - Python demo: `PyTREE/Test/demo.py`
 
 Build the Python module:
@@ -63,7 +63,7 @@ Core classes:
 Example:
 
 ```python
-import pytree_ui as tree
+import pytre as tree
 
 tree.init()
 tree.set_window_title("My App")
