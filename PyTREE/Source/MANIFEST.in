@@ -1,0 +1,9 @@
+include setup.py
+include pyproject.toml
+include PyTREE.c
+include TREE.c
+include TREE.h
+include pytre.py
+include PyTREE.pyi
+include README.md
+include LICENSE

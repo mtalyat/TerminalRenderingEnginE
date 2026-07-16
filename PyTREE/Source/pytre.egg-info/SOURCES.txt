@@ -1,0 +1,16 @@
+LICENSE
+MANIFEST.in
+PyTREE.c
+PyTREE.pyi
+README.md
+TREE.c
+TREE.h
+pyproject.toml
+pytre.py
+setup.py
+../../LICENSE
+../../README.md
+pytre.egg-info/PKG-INFO
+pytre.egg-info/SOURCES.txt
+pytre.egg-info/dependency_links.txt
+pytre.egg-info/top_level.txt

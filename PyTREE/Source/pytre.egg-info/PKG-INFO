@@ -1,3 +1,41 @@
+Metadata-Version: 2.4
+Name: pytre
+Version: 1.0.0
+Summary: Python bindings for Terminal Rendering EnginE (TREE)
+Home-page: https://github.com/mtalyat/TerminalRenderingEnginE
+Author: mtalyat
+License: MIT
+Project-URL: Source, https://github.com/mtalyat/TerminalRenderingEnginE
+Project-URL: Issues, https://github.com/mtalyat/TerminalRenderingEnginE/issues
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: Microsoft :: Windows
+Classifier: Operating System :: POSIX :: Linux
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: C
+Classifier: Topic :: Software Development :: User Interfaces
+Classifier: Topic :: Terminals
+Requires-Python: >=3.9
+Description-Content-Type: text/markdown
+License-File: LICENSE
+Dynamic: author
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: license
+Dynamic: license-file
+Dynamic: project-url
+Dynamic: requires-python
+Dynamic: summary
+
 # Terminal Rendering EnginE (TREE)
  A rendering engine for a terminal.
 
@@ -34,7 +72,7 @@ This repository includes a CPython extension module and a higher-level Python OO
 
 Main pieces:
 - Native extension source: `PyTREE/Source/PyTREE.c`
-- Python wrapper classes: `PyTREE/Source/pytre.py`
+- Python wrapper classes: `PyTREE/Test/pytre.py`
 - Python demo: `PyTREE/Test/demo.py`
 
 Install (after publishing to PyPI):

@@ -1,4 +1,4 @@
-﻿#include "../../TREE/Source/TREE.h"
+﻿#include "TREE.h"
 #include <Python.h>
 #include <limits.h>
 #include <stdlib.h>

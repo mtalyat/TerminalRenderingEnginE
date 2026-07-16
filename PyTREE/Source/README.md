@@ -34,7 +34,7 @@ This repository includes a CPython extension module and a higher-level Python OO
 
 Main pieces:
 - Native extension source: `PyTREE/Source/PyTREE.c`
-- Python wrapper classes: `PyTREE/Source/pytre.py`
+- Python wrapper classes: `PyTREE/Test/pytre.py`
 - Python demo: `PyTREE/Test/demo.py`
 
 Install (after publishing to PyPI):
