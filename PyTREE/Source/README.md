@@ -34,8 +34,9 @@ This repository includes a CPython extension module and a higher-level Python OO
 
 Main pieces:
 - Native extension source: `PyTREE/Source/PyTREE.c`
-- Python wrapper classes: `PyTREE/Test/pytre.py`
-- Python demo: `PyTREE/Test/demo.py`
+- Python wrapper classes: `PyTREE/Source/pytre.py`
+- Python demo: `PyTREE/Demo/demo.py`
+- Python tests/smoke checks: `PyTREE/Test/test.py`
 
 Install (after publishing to PyPI):
 
@@ -54,7 +55,7 @@ Notes:
 
 Run the Python demo:
 
-1. Open a terminal in `PyTREE/Test`.
+1. Open a terminal in `PyTREE/Demo`.
 2. Run `python demo.py`.
 
 ## PyPI Packaging and Publishing
@@ -142,7 +143,7 @@ app.show_page("page1")
 app.run()
 ```
 
-The demo (`PyTREE/Test/demo.py`) includes a two-page setup where:
+The demo (`PyTREE/Demo/demo.py`) includes a two-page setup where:
 - Page 1 contains the full UI and a `Page 2` button.
 - Page 2 contains a button that returns to page 1.
 
@@ -156,6 +157,6 @@ The demo (`PyTREE/Test/demo.py`) includes a two-page setup where:
 
 Check out the [Demo](Demo/) directory for the demo project.
 
-Check out the [PyTREE Demo](PyTREE/Test/demo.py) for the Python class-based API and page switching.
+Check out the [PyTREE Demo](PyTREE/Demo/demo.py) for the Python class-based API and page switching.
 
 Check out the [Tutorial](https://github.com/mtalyat/TerminalRenderingEnginE/wiki/Tutorial) Wiki page for a usage guide.

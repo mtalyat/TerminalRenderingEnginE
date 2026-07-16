@@ -101,6 +101,12 @@ StyleCopReport.xml
 # Chutzpah Test files
 _Chutzpah*
 
+# Python packaging and cache artifacts
+dist/
+*.egg-info/
+__pycache__/
+*.pyc
+
 # Visual C++ cache files
 ipch/
 *.aps

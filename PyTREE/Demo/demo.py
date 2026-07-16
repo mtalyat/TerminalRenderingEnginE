@@ -9,7 +9,9 @@ BUILD_DIR = os.path.join(
     "build",
     "lib.win-amd64-cpython-313",
 )
+SOURCE_DIR = os.path.join(os.path.dirname(__file__), "..", "Source")
 sys.path.append(BUILD_DIR)
+sys.path.append(SOURCE_DIR)
 
 import pytre as tree
 
