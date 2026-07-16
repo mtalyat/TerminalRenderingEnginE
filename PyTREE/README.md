@@ -34,7 +34,7 @@ This repository includes a CPython extension module and a higher-level Python OO
 
 Main pieces:
 - Native extension source: `PyTREE/Source/PyTREE.c`
-- Python wrapper classes: `PyTREE/Test/pytre.py`
+- Python wrapper classes: `PyTREE/Source/pytre.py`
 - Python demo: `PyTREE/Test/demo.py`
 
 Install (after publishing to PyPI):
@@ -77,6 +77,19 @@ Publish manually:
 
 ```bash
 python -m twine upload dist/*
+```
+
+Or use the helper batch script from `PyTREE/Source`:
+
+```bat
+REM Validate build artifacts only (no upload)
+upload_pypi.bat --dry-run
+
+REM Upload to TestPyPI (uses TEST_PYPI_TOKEN env var)
+upload_pypi.bat --repository testpypi
+
+REM Upload to PyPI (uses PYPI_TOKEN env var)
+upload_pypi.bat --repository pypi
 ```
 
 Or publish with GitHub Actions:

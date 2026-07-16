@@ -79,6 +79,19 @@ Publish manually:
 python -m twine upload dist/*
 ```
 
+Or use the helper batch script from `PyTREE/Source`:
+
+```bat
+REM Validate build artifacts only (no upload)
+upload_pypi.bat --dry-run
+
+REM Upload to TestPyPI (uses TEST_PYPI_TOKEN env var)
+upload_pypi.bat --repository testpypi
+
+REM Upload to PyPI (uses PYPI_TOKEN env var)
+upload_pypi.bat --repository pypi
+```
+
 Or publish with GitHub Actions:
 - Workflow file: `.github/workflows/pypi-wheels.yml`
 - Push a tag like `pytre-v1.0.0` to trigger wheel+sdist publishing.
