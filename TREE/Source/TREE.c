@@ -8311,6 +8311,12 @@ TREE_Result TREE_Application_Init(TREE_Application *application, TREE_Size capac
 	}
 	application->eventHandler = eventHandler;
 	TREE_Extent extent = TREE_Window_GetExtent();
+	if (extent.width == 0 || extent.height == 0)
+	{
+		// Some hosts (like output panes) do not expose a real terminal size.
+		extent.width = 120;
+		extent.height = 30;
+	}
 	result = TREE_Surface_Init(application->surface, extent);
 	if (result)
 	{
@@ -8631,6 +8637,19 @@ TREE_Result _TREE_Application_Refresh_Surface(TREE_Application *application)
 	// resize the surface if needed
 	TREE_Extent newExtent = TREE_Window_GetExtent();
 	TREE_Extent oldExtent = application->surface->image.extent;
+	if (newExtent.width == 0 || newExtent.height == 0)
+	{
+		// Keep a valid render size when host output has no real terminal extent.
+		if (oldExtent.width > 0 && oldExtent.height > 0)
+		{
+			newExtent = oldExtent;
+		}
+		else
+		{
+			newExtent.width = 120;
+			newExtent.height = 30;
+		}
+	}
 	if (newExtent.width != oldExtent.width || newExtent.height != oldExtent.height)
 	{
 		// resize the surface

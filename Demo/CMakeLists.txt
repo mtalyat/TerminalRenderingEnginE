@@ -19,10 +19,10 @@ if (CMAKE_VERSION VERSION_GREATER 3.12)
 endif()
 
 # Link to the library built from Source
-find_library(TREE NAMES TREE PATHS "../Source/Build/" "../Source/Build/${CMAKE_BUILD_TYPE}/")
+find_library(TREE NAMES TREE PATHS "../TREE/Source/Build/" "../TREE/Source/Build/${CMAKE_BUILD_TYPE}/")
 
 # Link to the TREE library
 target_link_libraries(Demo PRIVATE ${TREE})
 
 # Add include directory for TREE.h
-target_include_directories(Demo PRIVATE "../Source/")
+target_include_directories(Demo PRIVATE "../TREE/Source/")
