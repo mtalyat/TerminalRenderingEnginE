@@ -333,9 +333,15 @@ void TREE_Free()
 	TREE_Cursor_SetVisible(TREE_TRUE);
 
 #ifdef TREE_WINDOWS
+	// Clear pending key presses so they do not leak to the shell.
+	FlushConsoleInputBuffer(GetStdHandle(STD_INPUT_HANDLE));
 #elif defined(TREE_LINUX)
 	// free keyboard device path
 	free(g_keyboardDevicePath);
+	g_keyboardDevicePath = NULL;
+
+	// Clear pending key presses so they do not leak to the shell.
+	tcflush(STDIN_FILENO, TCIFLUSH);
 
 	// restore original terminal attributes
 	tcsetattr(STDIN_FILENO, TCSANOW, &g_originalTermios);
@@ -8302,6 +8308,7 @@ TREE_Result TREE_Application_Init(TREE_Application *application, TREE_Size capac
 	application->controlsCapacity = capacity;
 	application->controlsSize = 0;
 	application->focusedControl = NULL;
+	application->forceRedraw = TREE_TRUE;
 	application->running = TREE_FALSE;
 	result = TREE_Input_Init(&application->input);
 	if (result)
@@ -8355,6 +8362,11 @@ TREE_Result TREE_Application_AddControl(TREE_Application *application, TREE_Cont
 	// add to the application
 	application->controls[application->controlsSize] = control;
 	application->controlsSize++;
+	control->transform->dirty = TREE_TRUE;
+	control->stateFlags |= TREE_CONTROL_STATE_FLAGS_DIRTY;
+
+	// ensure stale focus/active flags do not carry across pages.
+	control->stateFlags &= ~TREE_CONTROL_STATE_FLAGS_FOCUSED & ~TREE_CONTROL_STATE_FLAGS_ACTIVE;
 
 	// if no focused control, and this one can be focused, set it as the focused control
 	if (!application->focusedControl && (control->flags & TREE_CONTROL_FLAGS_FOCUSABLE))
@@ -8365,6 +8377,28 @@ TREE_Result TREE_Application_AddControl(TREE_Application *application, TREE_Cont
 			return result;
 		}
 	}
+
+	return TREE_OK;
+}
+
+TREE_Result TREE_Application_ClearControls(TREE_Application *application)
+{
+	TREE_Size i;
+
+	// validate
+	if (!application)
+	{
+		return TREE_ERROR_ARG_NULL;
+	}
+
+	for (i = 0; i < application->controlsSize; ++i)
+	{
+		application->controls[i] = NULL;
+	}
+
+	application->controlsSize = 0;
+	application->focusedControl = NULL;
+	application->forceRedraw = TREE_TRUE;
 
 	return TREE_OK;
 }
@@ -8702,6 +8736,15 @@ TREE_Result _TREE_Application_Refresh_Controls(TREE_Application *application, TR
 	dirtyRect.extent.height = 0;
 
 	TREE_Extent extent = application->surface->image.extent;
+	if (application->forceRedraw)
+	{
+		dirtyRect.offset.x = 0;
+		dirtyRect.offset.y = 0;
+		dirtyRect.extent.width = extent.width;
+		dirtyRect.extent.height = extent.height;
+		application->forceRedraw = TREE_FALSE;
+	}
+
 	TREE_Control *control;
 	TREE_Bool dirty;
 	TREE_Rect rect;
@@ -8779,6 +8822,7 @@ TREE_Result _TREE_Application_Refresh_Controls(TREE_Application *application, TR
 		{
 			return result;
 		}
+		*shouldPresent = TREE_TRUE;
 
 		// create event data
 		TREE_EventData_Draw eventData;
@@ -8932,6 +8976,13 @@ TREE_Result TREE_Application_Run(TREE_Application *application)
 			return result;
 		}
 	}
+
+	// Clear pending key presses before returning to the shell.
+#ifdef TREE_WINDOWS
+	FlushConsoleInputBuffer(GetStdHandle(STD_INPUT_HANDLE));
+#elif defined(TREE_LINUX)
+	tcflush(STDIN_FILENO, TCIFLUSH);
+#endif
 
 	// show cursor
 	TREE_Cursor_SetVisible(TREE_TRUE);

@@ -723,6 +723,33 @@ static PyObject* PyTREE_Application_Run_Wrap(PyObject* self, PyObject* args)
     Py_RETURN_NONE;
 }
 
+static PyObject* PyTREE_Application_ClearControls_Wrap(PyObject* self, PyObject* args)
+{
+    PyObject* appObj;
+    PyTREE_ApplicationWrapper* app;
+    TREE_Result result;
+    (void)self;
+
+    if (!PyArg_ParseTuple(args, "O", &appObj))
+    {
+        return NULL;
+    }
+
+    app = get_application_wrapper(appObj);
+    if (!app)
+    {
+        return NULL;
+    }
+
+    result = TREE_Application_ClearControls(&app->app);
+    if (result != TREE_OK)
+    {
+        return raise_tree_result(result);
+    }
+
+    Py_RETURN_NONE;
+}
+
 static PyObject* PyTREE_Application_Quit_Wrap(PyObject* self, PyObject* args)
 {
     PyObject* appObj;
@@ -1381,6 +1408,7 @@ static PyMethodDef MyMethods[] = {
     {"theme_create", PyTREE_Theme_Create, METH_NOARGS, "Create a TREE theme object."},
     {"application_create", PyTREE_Application_Create, METH_VARARGS, "Create a TREE application. Optional callback receives event dicts."},
     {"application_add_control", PyTREE_Application_AddControl_Wrap, METH_VARARGS, "Add a control to an application."},
+    {"application_clear_controls", PyTREE_Application_ClearControls_Wrap, METH_VARARGS, "Remove all controls from an application without freeing them."},
     {"application_run", PyTREE_Application_Run_Wrap, METH_VARARGS, "Run the application main loop."},
     {"application_quit", PyTREE_Application_Quit_Wrap, METH_VARARGS, "Stop the application main loop."},
     {"create_label", PyTREE_Create_Label, METH_VARARGS, "Create a label control."},

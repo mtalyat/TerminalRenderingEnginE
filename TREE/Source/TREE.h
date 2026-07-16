@@ -3060,6 +3060,11 @@ typedef struct _TREE_Application
 	/// The Surface this Application draws to.
 	/// </summary>
 	TREE_Surface* surface;
+
+	/// <summary>
+	/// True when the entire surface should be redrawn on next refresh.
+	/// </summary>
+	TREE_Bool forceRedraw;
 } TREE_Application;
 
 /// <summary>
@@ -3084,6 +3089,14 @@ TREE_EXTERN void TREE_Application_Free(TREE_Application* application);
 /// <param name="control">The Control to add.</param>
 /// <returns>A TREE_Result code.</returns>
 TREE_EXTERN TREE_Result TREE_Application_AddControl(TREE_Application* application, TREE_Control* control);
+
+/// <summary>
+/// Removes all controls from the given Application without freeing the controls themselves.
+/// Useful for implementing page/screen switching at runtime.
+/// </summary>
+/// <param name="application">The Application to clear controls from.</param>
+/// <returns>A TREE_Result code.</returns>
+TREE_EXTERN TREE_Result TREE_Application_ClearControls(TREE_Application* application);
 
 /// <summary>
 /// Sets the focus to the specified Control in the given Application.
